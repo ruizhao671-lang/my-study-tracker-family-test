@@ -1633,7 +1633,7 @@
         semesterTemplates = createDefaultSemesterTemplates();
       }
       const templateCatalogVersion = Number(savedState?.templateCatalogVersion || 0);
-      if (templateCatalogVersion < 2) {
+      if (templateCatalogVersion < 3) {
         const currentDefaults = createDefaultSemesterTemplates();
         const defaultNames = new Set(["我的第一学期", "考研备考模块", "证书考试备考模块", "通用考试学期"]);
         semesterTemplates = semesterTemplates.filter(template => !defaultNames.has(template.name));
@@ -1652,6 +1652,13 @@
           semesters.push(...createInitialSemesters().filter(semester => !existingNames.has(semester.name)));
         }
       }
+      if (starterContentVersion < 2) {
+        const graduateExamIndex = semesters.findIndex(semester => semester.name === "考研备考模块");
+        if (graduateExamIndex > 0) {
+          const [graduateExam] = semesters.splice(graduateExamIndex, 1);
+          semesters.unshift(graduateExam);
+        }
+      }
       const ownerName = typeof savedState?.ownerName === "string" ? savedState.ownerName.trim() : "";
       const shouldSeedInitialStages = !savedState?.onboardingSeeded
         && !ownerName
@@ -1663,8 +1670,8 @@
         courseTemplates,
         semesterTemplates,
         onboardingSeeded: true,
-        templateCatalogVersion: 2,
-        starterContentVersion: 1
+        templateCatalogVersion: 3,
+        starterContentVersion: 2
       };
     }
 
@@ -1768,8 +1775,8 @@
         ])
       ], "module");
       return [
-        { id: uid(), name: "我的第一学期", semester: cloneSemesterForTemplate(firstSemester) },
         { id: uid(), name: "考研备考模块", semester: cloneSemesterForTemplate(graduateExam) },
+        { id: uid(), name: "我的第一学期", semester: cloneSemesterForTemplate(firstSemester) },
         { id: uid(), name: "证书考试备考模块", semester: cloneSemesterForTemplate(certificateExam) }
       ];
     }
