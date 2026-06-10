@@ -91,7 +91,7 @@ function waitForBridge() {
   });
 }
 
-async function handleAuthChange(user) {
+async function handleAuthChange(user, options = {}) {
   const epoch = ++authEpoch;
   clearTimeout(saveTimer);
   loadingRemote = false;
@@ -100,7 +100,11 @@ async function handleAuthChange(user) {
 
   if (!user) {
     if (previousUserId) {
-      cacheAccountState(previousUserId, bridge.getState());
+      if (options.clearDeviceData) {
+        clearAccountLocalData(previousUserId);
+      } else {
+        cacheAccountState(previousUserId, bridge.getState());
+      }
     }
     previousUserId = null;
     window.studyCloud.setActiveUser?.(null);
@@ -448,6 +452,21 @@ function createCloudUI() {
   `;
   document.body.appendChild(shareDialog);
 
+  const signOutDialog = document.createElement("div");
+  signOutDialog.className = "cloud-dialog-backdrop";
+  signOutDialog.innerHTML = `
+    <section class="cloud-dialog">
+      <h2>退出登录</h2>
+      <p class="cloud-status">退出前会先把最后修改同步到云端。请选择是否保留这个账号在当前浏览器中的本地缓存。</p>
+      <div class="cloud-dialog-actions">
+        <button class="btn secondary cloud-close-signout" type="button">取消</button>
+        <button class="btn secondary cloud-signout-keep" type="button">退出登录</button>
+        <button class="btn cloud-signout-clear" type="button">退出并清除此设备数据</button>
+      </div>
+    </section>
+  `;
+  document.body.appendChild(signOutDialog);
+
   const setupDialog = document.createElement("div");
   setupDialog.className = "cloud-dialog-backdrop";
   setupDialog.innerHTML = `
@@ -490,6 +509,7 @@ function createCloudUI() {
     authError: authDialog.querySelector(".cloud-auth-error"),
     setupDialog,
     shareDialog,
+    signOutDialog,
     shareState: shareDialog.querySelector(".cloud-share-state"),
     shareLink: shareDialog.querySelector(".cloud-share-link"),
     shareHint: shareDialog.querySelector(".cloud-share-hint")
@@ -505,13 +525,16 @@ function createCloudUI() {
   refs.authDialog.querySelector(".cloud-close-auth").addEventListener("click", () => refs.authDialog.classList.remove("open"));
   refs.authDialog.querySelector(".cloud-reset-password").addEventListener("click", resetPassword);
   refs.shareDialog.querySelector(".cloud-close-share").addEventListener("click", () => refs.shareDialog.classList.remove("open"));
-  refs.signOutBtn.addEventListener("click", signOutSafely);
+  refs.signOutBtn.addEventListener("click", () => refs.signOutDialog.classList.add("open"));
+  refs.signOutDialog.querySelector(".cloud-close-signout").addEventListener("click", () => refs.signOutDialog.classList.remove("open"));
+  refs.signOutDialog.querySelector(".cloud-signout-keep").addEventListener("click", () => signOutSafely(false));
+  refs.signOutDialog.querySelector(".cloud-signout-clear").addEventListener("click", () => signOutSafely(true));
   refs.shareBtn.addEventListener("click", openShareDialog);
   refs.shareState.addEventListener("change", changeShareState);
   refs.shareDialog.querySelector(".cloud-copy-link").addEventListener("click", copyShareLink);
   refs.authForm.addEventListener("submit", submitAuth);
 
-  [refs.authDialog, refs.shareDialog, refs.setupDialog].forEach(backdrop => {
+  [refs.authDialog, refs.shareDialog, refs.signOutDialog, refs.setupDialog].forEach(backdrop => {
     backdrop.addEventListener("click", event => {
       if (event.target === backdrop) backdrop.classList.remove("open");
     });
@@ -553,9 +576,10 @@ async function submitAuth(event) {
   }
 }
 
-async function signOutSafely() {
+async function signOutSafely(clearDeviceData = false) {
   if (!currentUser) return;
   const userId = currentUser.uid;
+  ui.signOutDialog.querySelectorAll("button").forEach(button => { button.disabled = true; });
   ui.signOutBtn.disabled = true;
   setStatus("正在保存最后的修改并退出…", "syncing");
   try {
@@ -563,12 +587,20 @@ async function signOutSafely() {
     await saveCloudState(bridge.getState(), true, userId);
     await api("/api/auth/logout", { method: "POST" });
     localStorage.removeItem(SESSION_KEY);
-    await handleAuthChange(null);
+    await handleAuthChange(null, { clearDeviceData });
+    ui.signOutDialog.classList.remove("open");
+    setStatus(
+      clearDeviceData
+        ? "已退出，并清除当前账号在这台设备上的本地数据。云端数据仍然保留。"
+        : "已退出登录。当前账号的本地缓存仍保留在这台设备上。",
+      "local"
+    );
   } catch (error) {
     console.error(error);
     setStatus("退出失败，本地内容仍然安全，请稍后重试。", "error");
   } finally {
     ui.signOutBtn.disabled = false;
+    ui.signOutDialog.querySelectorAll("button").forEach(button => { button.disabled = false; });
   }
 }
 
@@ -684,6 +716,11 @@ function loadAccountState(userId) {
   } catch {
     return null;
   }
+}
+
+function clearAccountLocalData(userId) {
+  localStorage.removeItem(getAccountCacheKey(userId));
+  localStorage.removeItem(getAccountMetaKey(userId));
 }
 
 function loadGuestState() {

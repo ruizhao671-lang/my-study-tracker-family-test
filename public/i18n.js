@@ -183,6 +183,10 @@
     "家人只读分享": "Family read-only sharing",
     "登录 / 注册": "Log in / Register",
     "退出登录": "Log out",
+    "退出前会先把最后修改同步到云端。请选择是否保留这个账号在当前浏览器中的本地缓存。": "Your latest changes will sync before logout. Choose whether to keep this account's local cache in this browser.",
+    "退出并清除此设备数据": "Log out and clear this device",
+    "已退出，并清除当前账号在这台设备上的本地数据。云端数据仍然保留。": "Logged out and cleared this account's local data from this device. Cloud data is still available.",
+    "已退出登录。当前账号的本地缓存仍保留在这台设备上。": "Logged out. This account's local cache remains on this device.",
     "登录云端空间": "Log in to cloud space",
     "第一次使用可以直接注册。登录后，你的修改会自动同步。": "Register directly the first time. After login, your changes sync automatically.",
     "邮箱": "Email",
@@ -343,31 +347,40 @@
   function translateElement(root = document) {
     if (translating) return;
     translating = true;
-    const targetDocument = root.ownerDocument || root;
-    const walker = targetDocument.createTreeWalker(root, NodeFilter.SHOW_TEXT);
-    const textNodes = [];
-    while (walker.nextNode()) textNodes.push(walker.currentNode);
-    textNodes.forEach(node => {
-      if (node.parentElement?.closest("script, style, textarea, input")) return;
-      const trimmed = node.nodeValue.trim();
-      if (!trimmed) return;
-      const translated = translateText(trimmed);
-      if (translated !== trimmed) node.nodeValue = node.nodeValue.replace(trimmed, translated);
-    });
-    const elements = [
-      ...(root.matches?.("[placeholder], [title], [aria-label], option") ? [root] : []),
-      ...(root.querySelectorAll?.("[placeholder], [title], [aria-label], option") || [])
-    ];
-    elements.forEach(element => {
-      ["placeholder", "title", "aria-label"].forEach(attribute => {
-        if (!element.hasAttribute?.(attribute)) return;
-        const value = element.getAttribute(attribute);
-        element.setAttribute(attribute, translateText(value));
+    try {
+      const targetDocument = root.ownerDocument || root;
+      const targetNodeFilter = targetDocument.defaultView?.NodeFilter || NodeFilter;
+      const walker = targetDocument.createTreeWalker(root, targetNodeFilter.SHOW_TEXT);
+      const textNodes = [];
+      while (walker.nextNode()) textNodes.push(walker.currentNode);
+      textNodes.forEach(node => {
+        if (node.parentElement?.closest("script, style, textarea, input")) return;
+        const trimmed = node.nodeValue.trim();
+        if (!trimmed) return;
+        const translated = translateText(trimmed);
+        if (translated !== trimmed) node.nodeValue = node.nodeValue.replace(trimmed, translated);
       });
-      if (element.matches?.("option")) element.textContent = translateText(element.textContent.trim());
-    });
-    targetDocument.documentElement.lang = language;
-    translating = false;
+      const elements = [
+        ...(root.matches?.("[placeholder], [title], [aria-label], option") ? [root] : []),
+        ...(root.querySelectorAll?.("[placeholder], [title], [aria-label], option") || [])
+      ];
+      elements.forEach(element => {
+        ["placeholder", "title", "aria-label"].forEach(attribute => {
+          if (!element.hasAttribute?.(attribute)) return;
+          const value = element.getAttribute(attribute);
+          const translated = translateText(value);
+          if (translated !== value) element.setAttribute(attribute, translated);
+        });
+        if (element.matches?.("option")) {
+          const value = element.textContent.trim();
+          const translated = translateText(value);
+          if (translated !== value) element.textContent = translated;
+        }
+      });
+      targetDocument.documentElement.lang = language;
+    } finally {
+      translating = false;
+    }
   }
 
   function createSelector() {
