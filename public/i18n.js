@@ -1,0 +1,428 @@
+(() => {
+  const LANGUAGE_KEY = "study-tracker-language-v1";
+  const english = {
+    "我的学习系统": "My Study Tracker",
+    "学习系统操作": "Study tracker actions",
+    "总体进度": "Overall progress",
+    "总体进度：": "Overall progress: ",
+    "添加阶段": "Add stage",
+    "课程模板": "Course templates",
+    "阶段模板": "Stage templates",
+    "导出PDF": "Export PDF",
+    "导出备份": "Export backup",
+    "导入备份": "Import backup",
+    "列表": "List",
+    "饼状图": "Charts",
+    "菜地": "Garden",
+    "撤销": "Undo",
+    "恢复": "Redo",
+    "学习阶段": "Study stages",
+    "课程": "Courses",
+    "分类": "Categories",
+    "任务": "Tasks",
+    "已完成": "Completed",
+    "未完成": "Not completed",
+    "编辑": "Edit",
+    "取消": "Cancel",
+    "保存": "Save",
+    "关闭": "Close",
+    "删除": "Delete",
+    "复制": "Copy",
+    "更新模板": "Update template",
+    "存为模板": "Save as template",
+    "大学学期": "University semester",
+    "备考模块": "Exam preparation",
+    "添加数量": "Quantity",
+    "输入新学习阶段，例如 我的第二学期": "New study stage, e.g. My second semester",
+    "学习阶段类型": "Study stage type",
+    "输入新课程，例如 Systemtheorie": "New course, e.g. System Theory",
+    "新分类，例如 Vorlesung": "New category, e.g. Lecture",
+    "第一栏，例如 Kapitel 1": "First field, e.g. Chapter 1",
+    "第二栏，例如 Fourier": "Second field, e.g. Fourier",
+    "欢迎使用学习系统": "Welcome to My Study Tracker",
+    "这是一个全新的联网测试空间。我们准备了“我的第一学期”和“考研备考模块”，可以直接修改或删除；切换列表、饼状图和菜地，就能快速看懂它的构建方式。": "This is a new online test space. We prepared “My first semester” and “Postgraduate entrance exam preparation” for you to edit or delete. Switch between list, charts, and garden views to explore how it works.",
+    "你的名字": "Your name",
+    "例如：小林": "For example: Alex",
+    "导入原版备份": "Import previous backup",
+    "创建新的测试空间": "Create test space",
+    "考研备考模块": "Postgraduate entrance exam preparation",
+    "我的第一学期": "My first semester",
+    "证书考试备考模块": "Certificate exam preparation",
+    "高等数学": "Advanced Mathematics",
+    "程序设计基础": "Programming Fundamentals",
+    "基础语法": "Basic syntax",
+    "函数与模块": "Functions and modules",
+    "数据结构": "Data structures",
+    "练习项目": "Practice project",
+    "复习笔记": "Revision notes",
+    "模电": "Analog Electronics",
+    "数电": "Digital Electronics",
+    "数学": "Mathematics",
+    "英语": "English",
+    "政治": "Politics",
+    "专业课": "Major subject",
+    "公共课": "General subject",
+    "基础与教材": "Foundations and textbook",
+    "电路基础复习": "Circuit fundamentals review",
+    "半导体器件": "Semiconductor devices",
+    "基本放大电路": "Basic amplifier circuits",
+    "集成运放": "Operational amplifiers",
+    "重点专题": "Key topics",
+    "反馈电路": "Feedback circuits",
+    "信号运算与处理": "Signal operations and processing",
+    "波形发生与变换": "Waveform generation and conversion",
+    "电源电路": "Power supply circuits",
+    "真题冲刺": "Past papers and final review",
+    "整理公式与典型电路": "Organize formulas and typical circuits",
+    "历年真题": "Past exam papers",
+    "错题复盘": "Review mistakes",
+    "模拟考试": "Mock exam",
+    "数制与逻辑代数": "Number systems and Boolean algebra",
+    "门电路": "Logic gates",
+    "组合逻辑电路": "Combinational logic circuits",
+    "触发器": "Flip-flops",
+    "时序逻辑电路": "Sequential logic circuits",
+    "脉冲波形": "Pulse waveforms",
+    "存储器与可编程逻辑": "Memory and programmable logic",
+    "数模与模数转换": "DAC and ADC conversion",
+    "整理逻辑设计方法": "Organize logic design methods",
+    "基础阶段": "Foundation phase",
+    "高等数学基础": "Advanced mathematics foundations",
+    "线性代数基础": "Linear algebra foundations",
+    "概率论基础": "Probability foundations",
+    "整理公式与概念": "Organize formulas and concepts",
+    "强化阶段": "Intensive phase",
+    "专题强化": "Topic-focused practice",
+    "计算训练": "Calculation practice",
+    "阶段测试": "Phase test",
+    "历年真题一刷": "Past papers: first pass",
+    "历年真题二刷": "Past papers: second pass",
+    "模拟卷": "Mock paper",
+    "查漏补缺": "Find and fill knowledge gaps",
+    "冲刺阶段": "Final review phase",
+    "长期积累": "Long-term practice",
+    "核心词汇": "Core vocabulary",
+    "长难句": "Complex sentences",
+    "每日阅读": "Daily reading",
+    "翻译练习": "Translation practice",
+    "题型训练": "Question-type practice",
+    "阅读理解": "Reading comprehension",
+    "新题型": "New question types",
+    "完形填空": "Cloze test",
+    "作文素材": "Writing materials",
+    "历年真题精读": "Detailed past-paper reading",
+    "作文模板与批改": "Writing templates and feedback",
+    "马原": "Marxist principles",
+    "毛中特": "Mao Zedong Thought and Chinese socialism theory",
+    "史纲": "Modern Chinese history outline",
+    "思修法基": "Ethics and legal foundations",
+    "选择题练习": "Multiple-choice practice",
+    "时政整理": "Current affairs notes",
+    "知识框架": "Knowledge framework",
+    "背诵材料": "Memorization materials",
+    "主观题训练": "Written-response practice",
+    "考前复盘": "Pre-exam review",
+    "考试科目": "Exam subject",
+    "阅读考试大纲": "Read the exam syllabus",
+    "完成教材": "Complete the textbook",
+    "整理重点": "Organize key topics",
+    "专项练习": "Focused practice",
+    "课程内容": "Course content",
+    "练习": "Practice",
+    "实践": "Projects",
+    "还没有学习阶段。可以添加大学学期或备考模块。": "No study stages yet. Add a university semester or exam preparation module.",
+    "这个学习阶段还没有课程。": "This study stage has no courses yet.",
+    "这个学习阶段还没有课程，菜地还空着。": "This study stage has no courses yet, so the garden is still empty.",
+    "这个课程还没有分类。": "This course has no categories yet.",
+    "这个分类还没有任务。": "This category has no tasks yet.",
+    "这门课还没有 task。": "This course has no tasks yet.",
+    "暂无分类": "No categories",
+    "暂无课程": "No courses",
+    "暂无任务": "No tasks",
+    "暂无分类任务": "No category tasks",
+    "备注": "Notes",
+    "附件": "Attachments",
+    "删除附件": "Delete attachment",
+    "学习阶段已添加": "Study stage added",
+    "课程已添加": "Course added",
+    "分类已添加": "Category added",
+    "任务已添加": "Task added",
+    "学习阶段已删除": "Study stage deleted",
+    "课程已删除": "Course deleted",
+    "分类已删除": "Category deleted",
+    "任务已删除": "Task deleted",
+    "学习阶段已更新": "Study stage updated",
+    "课程已更新": "Course updated",
+    "分类已更新": "Category updated",
+    "任务已更新": "Task updated",
+    "备注已保存": "Notes saved",
+    "学期备注已保存": "Stage notes saved",
+    "课程备注已保存": "Course notes saved",
+    "附件已保存": "Attachment saved",
+    "附件已删除": "Attachment deleted",
+    "已撤销上一步": "Undid previous action",
+    "已恢复下一步": "Redid next action",
+    "数据备份已导出": "Backup exported",
+    "数据备份已导入": "Backup imported",
+    "保存阶段模板": "Save stage template",
+    "保存课程模板": "Save course template",
+    "模板名称": "Template name",
+    "课程名称": "Course name",
+    "课程标签（可选，例如专业课、公共课）": "Course tag (optional, e.g. major subject or general subject)",
+    "学习阶段名称": "Study stage name",
+    "分类名称": "Category name",
+    "第一栏": "First field",
+    "第二栏": "Second field",
+    "编辑学期": "Edit stage",
+    "编辑课程": "Edit course",
+    "编辑分类": "Edit category",
+    "编辑任务": "Edit task",
+    "修改名字": "Change name",
+    "名字已更新": "Name updated",
+    "只读分享": "Read-only sharing",
+    "家人只读分享": "Family read-only sharing",
+    "登录 / 注册": "Log in / Register",
+    "退出登录": "Log out",
+    "登录云端空间": "Log in to cloud space",
+    "第一次使用可以直接注册。登录后，你的修改会自动同步。": "Register directly the first time. After login, your changes sync automatically.",
+    "邮箱": "Email",
+    "密码": "Password",
+    "邀请码（仅注册需要）": "Invitation code (registration only)",
+    "注册新账号": "Create account",
+    "登录": "Log in",
+    "忘记密码": "Forgot password",
+    "注册新账号时，把当前浏览器里的内容带入新账号": "Import this browser's current content when creating the account",
+    "已保存到本机，正在同步云端…": "Saved locally, syncing to cloud…",
+    "本机已保存，正在同步云端…": "Saved locally, syncing to cloud…",
+    "暂未同步云端，请保持页面打开并检查网络。": "Not synced to cloud yet. Keep this page open and check your connection.",
+    "正在读取你的云端空间…": "Loading your cloud space…",
+    "已连接云端，之后的修改会自动同步。": "Connected to cloud. Future changes will sync automatically.",
+    "正在保存最后的修改并退出…": "Saving final changes and logging out…",
+    "正在打开家人分享的学习进度…": "Opening shared study progress…",
+    "这是只读分享页面。你可以查看进度，但不能修改学习内容。": "This is a read-only shared page. You can view progress but cannot edit it.",
+    "无法打开这个分享页面。链接可能已被撤回。": "This shared page cannot be opened. The link may have been revoked.",
+    "开启后才会生成可访问的链接。": "A shareable link will be generated after sharing is enabled.",
+    "开启只读分享": "Enable read-only sharing",
+    "关闭分享": "Disable sharing",
+    "分享状态": "Sharing status",
+    "复制链接": "Copy link",
+    "完成": "Done",
+    "链接已复制。": "Link copied.",
+    "只读链接": "Read-only link",
+    "语言": "Language",
+    "生成时间": "Generated",
+    "保存为 PDF": "Save as PDF",
+    "我的学习进度报告": "My Study Progress Report",
+    "总体进度：0/0": "Overall progress: 0/0",
+    "+ 添加阶段": "+ Add stage",
+    "+ 添加课程": "+ Add course",
+    "+ 添加分类": "+ Add category",
+    "+ 添加任务": "+ Add task",
+    "+ 上传图片/PDF": "+ Upload image/PDF",
+    "↶ 上一步": "↶ Undo",
+    "↷ 下一步": "↷ Redo",
+    "使用": "Use",
+    "改名": "Rename",
+    "状态": "Status",
+    "显示与历史操作": "Views and history",
+    "显示形式": "View mode",
+    "学习统计": "Study statistics",
+    "新课程，例如 Systemtheorie": "New course, e.g. System Theory",
+    "课程标签（可选），例如专业课": "Course tag (optional), e.g. major subject",
+    "按学期、课程、分类和任务拆解复习内容。联网测试版会先保存在当前浏览器，登录后也会自动同步到你的账号空间。": "Organize study content by stages, courses, categories, and tasks. This online test version saves locally first and syncs to your account after login.",
+    "深色为已完成，浅色为未完成。": "Dark colors are completed; light colors are not completed.",
+    "学期备注：目标、考试时间、整体安排": "Stage notes: goals, exam dates, and overall plan",
+    "课程备注：考试信息、资料链接、学习重点": "Course notes: exam information, resources, and key topics",
+    "备注：记录重点、问题或复习提示": "Notes: key points, questions, or revision reminders",
+    "填写第二栏内容": "Fill in the second field",
+    "收起或展开学期": "Collapse or expand stage",
+    "收起或展开课程": "Collapse or expand course",
+    "收起或展开分类": "Collapse or expand category",
+    "收起或展开备注与附件": "Collapse or expand notes and attachments",
+    "将当前学期保存为模板": "Save current stage as template",
+    "将当前课程保存为模板": "Save current course as template",
+    "复制学习阶段": "Copy study stage",
+    "上移学期": "Move stage up",
+    "下移学期": "Move stage down",
+    "删除学习阶段": "Delete study stage",
+    "复制课程": "Copy course",
+    "上移课程": "Move course up",
+    "下移课程": "Move course down",
+    "删除课程": "Delete course",
+    "复制分类": "Copy category",
+    "删除分类": "Delete category",
+    "上移任务": "Move task up",
+    "下移任务": "Move task down",
+    "复制任务": "Copy task",
+    "删除任务": "Delete task",
+    "删除模板": "Delete template",
+    "联网测试版": "Online test version",
+    "正在准备云端连接…": "Preparing cloud connection…",
+    "FastAPI 后端尚未启动": "FastAPI backend is not running",
+    "你的内容仍会保存在当前浏览器。启动测试后端后，账号、同步和家人分享才会启用。": "Your content is still saved in this browser. Accounts, sync, and family sharing become available after the test backend starts.",
+    "当前测试空间仅保存在这个浏览器。登录后会同步到你的账号空间。": "This test space is currently saved only in this browser. Log in to sync it to your account.",
+    "这是全新的空测试空间。登录或注册后即可开始使用。": "This is a new empty test space. Log in or register to begin.",
+    "已把当前浏览器内容导入新账号并同步。": "Imported this browser's content into the new account and synced it.",
+    "已把离线期间的本地修改同步到云端。": "Synced local changes made while offline.",
+    "已创建你的云端空间，之后的修改会自动同步。": "Created your cloud space. Future changes will sync automatically.",
+    "读取云端数据失败。本地内容仍然安全，请检查网络或权限设置。": "Could not load cloud data. Local content is still safe; check your connection or permissions.",
+    "暂未同步云端：内容过大，请减少较大的附件。": "Not synced to cloud: content is too large. Remove large attachments.",
+    "家人": "Family",
+    "只读分享链接": "Read-only sharing link",
+    "退出失败，本地内容仍然安全，请稍后重试。": "Logout failed. Local content is still safe; try again later.",
+    "测试版暂未开放邮件重置密码。忘记密码时请联系管理员，正式版再接入邮件服务。": "Email password reset is not available in this test version. Contact the administrator if you forget your password.",
+    "链接已开启。你可以把它发给家人。": "The link is enabled. You can send it to your family.",
+    "正在更新分享状态…": "Updating sharing status…",
+    "只读链接已开启，可以发给家人。": "The read-only link is enabled and ready to share.",
+    "分享已关闭，原链接无法继续查看。": "Sharing is disabled. The old link no longer works.",
+    "更新失败，请检查网络和后端服务。": "Update failed. Check your network and backend service.",
+    "请先开启只读分享。": "Enable read-only sharing first.",
+    "这个邮箱已经注册，请直接登录。": "This email is already registered. Log in instead.",
+    "邮箱或密码不正确。": "Incorrect email or password.",
+    "请输入正确的邮箱地址。": "Enter a valid email address.",
+    "邀请码不正确，请向邀请你的人确认。": "Incorrect invitation code. Confirm it with the person who invited you.",
+    "测试版注册暂未开放，请联系邀请你的人。": "Registration is currently closed. Contact the person who invited you.",
+    "尝试次数较多，请稍后再试。": "Too many attempts. Try again later.",
+    "操作失败，请检查网络后重试。": "Operation failed. Check your connection and try again.",
+    "账号本地缓存保存失败，附件可能过大。": "Could not save the account's local cache. Attachments may be too large.",
+    "PDF报告已打开，请选择保存为PDF": "PDF report opened. Choose Save as PDF.",
+    "还没有任务可以导出": "There are no tasks to export yet.",
+    "浏览器阻止了弹窗，请允许弹窗后再试": "The browser blocked the pop-up. Allow pop-ups and try again."
+  };
+
+  const reverseEnglish = new Map(Object.entries(english).map(([zh, en]) => [en, zh]));
+  const patterns = [
+    [/^总体进度：(\d+)\/(\d+)$/, "Overall progress: $1/$2"],
+    [/^已同步到云端 · (.+)$/, "Synced to cloud · $1"],
+    [/^总进度：(\d+)\/(\d+)$/, "Progress: $1/$2"],
+    [/^(.+)的学习系统$/, "$1's Study Tracker"],
+    [/^(.+)的学习进度报告$/, "$1's Study Progress Report"],
+    [/^(.+)分享的学习进度$/, "$1's shared study progress"],
+    [/^(.+)的学习进度（只读）$/, "$1's study progress (read-only)"],
+    [/^欢迎，(.+)$/, "Welcome, $1"],
+    [/^已添加 (\d+) 个学习阶段$/, "Added $1 study stages"],
+    [/^已添加 (\d+) 个课程$/, "Added $1 courses"],
+    [/^已添加 (\d+) 个分类$/, "Added $1 categories"],
+    [/^已添加 (\d+) 个任务$/, "Added $1 tasks"]
+  ];
+  const reversePatterns = [
+    [/^Overall progress: (\d+)\/(\d+)$/, "总体进度：$1/$2"],
+    [/^Synced to cloud · (.+)$/, "已同步到云端 · $1"],
+    [/^Progress: (\d+)\/(\d+)$/, "总进度：$1/$2"],
+    [/^(.+)'s Study Tracker$/, "$1的学习系统"],
+    [/^(.+)'s Study Progress Report$/, "$1的学习进度报告"],
+    [/^(.+)'s shared study progress$/, "$1分享的学习进度"],
+    [/^(.+)'s study progress \(read-only\)$/, "$1的学习进度（只读）"],
+    [/^Welcome, (.+)$/, "欢迎，$1"],
+    [/^Added (\d+) study stages$/, "已添加 $1 个学习阶段"],
+    [/^Added (\d+) courses$/, "已添加 $1 个课程"],
+    [/^Added (\d+) categories$/, "已添加 $1 个分类"],
+    [/^Added (\d+) tasks$/, "已添加 $1 个任务"]
+  ];
+
+  let language = localStorage.getItem(LANGUAGE_KEY) === "en" ? "en" : "zh-CN";
+  let translating = false;
+
+  function translateText(value, target = language) {
+    if (!value) return value;
+    if (target === "zh-CN") {
+      if (reverseEnglish.has(value)) return reverseEnglish.get(value);
+      for (const [pattern, replacement] of reversePatterns) {
+        if (pattern.test(value)) return value.replace(pattern, replacement);
+      }
+      return value;
+    }
+    const canonical = reverseEnglish.get(value) || value;
+    if (english[canonical]) return english[canonical];
+    for (const [pattern, replacement] of patterns) {
+      if (pattern.test(canonical)) return canonical.replace(pattern, replacement);
+    }
+    return canonical;
+  }
+
+  function translateElement(root = document) {
+    if (translating) return;
+    translating = true;
+    const targetDocument = root.ownerDocument || root;
+    const walker = targetDocument.createTreeWalker(root, NodeFilter.SHOW_TEXT);
+    const textNodes = [];
+    while (walker.nextNode()) textNodes.push(walker.currentNode);
+    textNodes.forEach(node => {
+      if (node.parentElement?.closest("script, style, textarea, input")) return;
+      const trimmed = node.nodeValue.trim();
+      if (!trimmed) return;
+      const translated = translateText(trimmed);
+      if (translated !== trimmed) node.nodeValue = node.nodeValue.replace(trimmed, translated);
+    });
+    const elements = [
+      ...(root.matches?.("[placeholder], [title], [aria-label], option") ? [root] : []),
+      ...(root.querySelectorAll?.("[placeholder], [title], [aria-label], option") || [])
+    ];
+    elements.forEach(element => {
+      ["placeholder", "title", "aria-label"].forEach(attribute => {
+        if (!element.hasAttribute?.(attribute)) return;
+        const value = element.getAttribute(attribute);
+        element.setAttribute(attribute, translateText(value));
+      });
+      if (element.matches?.("option")) element.textContent = translateText(element.textContent.trim());
+    });
+    targetDocument.documentElement.lang = language;
+    translating = false;
+  }
+
+  function createSelector() {
+    if (document.querySelector(".language-switcher")) return;
+    const wrapper = document.createElement("label");
+    wrapper.className = "language-switcher";
+    wrapper.innerHTML = `<span>语言</span><select aria-label="语言"><option value="zh-CN">中文</option><option value="en">English</option></select>`;
+    const style = document.createElement("style");
+    style.textContent = `
+      .language-switcher { display:inline-flex; align-items:center; gap:7px; margin-left:auto; font-size:13px; font-weight:700; color:#35594f; }
+      .language-switcher select { min-height:34px; border:1px solid #b8cec7; border-radius:6px; padding:4px 28px 4px 9px; background:#fff; color:#25463d; font:inherit; }
+      @media (max-width:720px) { .language-switcher { width:100%; justify-content:flex-end; } }
+    `;
+    document.head.appendChild(style);
+    const target = document.querySelector(".cloud-actions") || document.querySelector(".toolbar") || document.body;
+    target.appendChild(wrapper);
+    const select = wrapper.querySelector("select");
+    select.value = language;
+    select.addEventListener("change", () => {
+      language = select.value;
+      localStorage.setItem(LANGUAGE_KEY, language);
+      translateElement(document);
+      window.studyTrackerBridge?.render?.();
+      queueMicrotask(() => translateElement(document));
+    });
+  }
+
+  function translateDocument(targetDocument) {
+    const previous = translating;
+    translating = false;
+    translateElement(targetDocument);
+    translating = previous;
+  }
+
+  const observer = new MutationObserver(records => {
+    if (translating) return;
+    records.forEach(record => record.addedNodes.forEach(node => {
+      if (node.nodeType === Node.ELEMENT_NODE) translateElement(node);
+      if (node.nodeType === Node.TEXT_NODE && node.parentElement) translateElement(node.parentElement);
+    }));
+  });
+
+  function start() {
+    createSelector();
+    translateElement(document);
+    observer.observe(document.body, { childList: true, subtree: true });
+  }
+
+  window.studyI18n = {
+    getLanguage: () => language,
+    translateText,
+    translateElement,
+    translateDocument
+  };
+
+  if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", start);
+  else start();
+})();

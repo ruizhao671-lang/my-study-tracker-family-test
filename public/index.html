@@ -493,7 +493,13 @@
       justify-content: flex-end;
     }
 
-    .course-add,
+    .course-add {
+      display: grid;
+      grid-template-columns: minmax(160px, 1fr) minmax(150px, .8fr) 92px auto;
+      gap: 10px;
+      margin-top: 12px;
+    }
+
     .category-add {
       display: grid;
       grid-template-columns: minmax(160px, 1fr) 92px auto;
@@ -1445,7 +1451,6 @@
       </div>
       <div class="dialog-body">
         <p class="welcome-copy">这是一个全新的联网测试空间。我们准备了“我的第一学期”和“考研备考模块”，可以直接修改或删除；切换列表、饼状图和菜地，就能快速看懂它的构建方式。</p>
-        <p class="welcome-notice"><strong>原来的本地版和其中的数据没有被删除。</strong><br>若要带入旧内容，请先在原版点击“导出备份”，再在这里选择“导入原版备份”。</p>
         <div class="field">
           <label for="ownerName">你的名字</label>
           <input class="input" id="ownerName" name="ownerName" maxlength="30" placeholder="例如：小林" required>
@@ -2069,6 +2074,7 @@
             </div>
             <form class="course-add" data-action="add-course">
               <input class="input" name="courseName" placeholder="新课程，例如 Systemtheorie">
+              <input class="input" name="courseLabel" placeholder="课程标签（可选），例如专业课">
               <input class="input amount-input" name="courseAmount" type="number" min="1" max="100" value="1" title="添加数量">
               <button class="btn secondary" type="submit">+ 添加课程</button>
             </form>
@@ -2476,6 +2482,14 @@
       saveState();
       render();
       if (message) showToast(message);
+    }
+
+    function commitDisclosureChange() {
+      if (window.studyCloud?.isReadOnly?.()) {
+        render();
+        return;
+      }
+      commit();
     }
 
     function stepHistory(direction) {
@@ -3300,6 +3314,7 @@
         </html>
       `);
       reportWindow.document.close();
+      window.studyI18n?.translateDocument?.(reportWindow.document);
       showToast("PDF报告已打开，请选择保存为PDF");
     }
 
@@ -3352,10 +3367,15 @@
 
       if (form.dataset.action === "add-course" && semester) {
         const name = form.elements.courseName.value.trim();
+        const label = form.elements.courseLabel.value.trim();
         if (!name) return;
         const amount = getAmount(form.elements.courseAmount.value);
         const names = createNames(name, amount, semester.courses);
-        semester.courses.unshift(...names.map(courseName => createCourseData(courseName)));
+        semester.courses.unshift(...names.map(courseName => {
+          const newCourse = createCourseData(courseName);
+          newCourse.label = label;
+          return newCourse;
+        }));
         commit(amount === 1 ? "课程已添加" : `已添加 ${amount} 个课程`);
       }
 
@@ -3478,7 +3498,7 @@
 
       if (action === "toggle-semester" && semester) {
         semester.collapsed = !semester.collapsed;
-        commit();
+        commitDisclosureChange();
       }
 
       if (action === "toggle-semester-info" && semester) {
@@ -3539,7 +3559,7 @@
 
       if (action === "toggle-course" && course) {
         course.collapsed = !course.collapsed;
-        commit();
+        commitDisclosureChange();
       }
 
       if (action === "toggle-course-info" && course) {
@@ -3623,7 +3643,7 @@
 
       if (action === "toggle-category" && category) {
         category.collapsed = !category.collapsed;
-        commit();
+        commitDisclosureChange();
       }
 
       if (action === "edit-category" && category) {
@@ -3862,5 +3882,6 @@
     render();
     if (!state.ownerName && !READ_ONLY_LINK) openWelcomeModal();
   </script>
+  <script src="i18n.js"></script>
 </body>
 </html>

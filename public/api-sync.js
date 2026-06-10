@@ -20,8 +20,16 @@ let previousUserId = null;
 let pendingInitialState = null;
 let authEpoch = 0;
 let readOnlyObserver = null;
+let pendingCloudChanges = false;
+let changeRevision = 0;
 
 const ui = createCloudUI();
+
+window.addEventListener("beforeunload", event => {
+  if (!currentUser || readOnly || !pendingCloudChanges) return;
+  event.preventDefault();
+  event.returnValue = "";
+});
 
 window.studyCloud = {
   ...window.studyCloud,
@@ -29,8 +37,11 @@ window.studyCloud = {
   queueSave(nextState) {
     if (readOnly || loadingRemote || !currentUser) return;
     const userId = currentUser.uid;
+    pendingCloudChanges = true;
+    changeRevision += 1;
     cacheAccountState(userId, nextState);
     writeLocalMeta(userId, { userId, updatedAt: Date.now() });
+    setStatus("已保存到本机，正在同步云端…", "syncing");
     clearTimeout(saveTimer);
     saveTimer = setTimeout(() => saveCloudState(nextState, false, userId), 900);
   }
@@ -84,6 +95,7 @@ async function handleAuthChange(user) {
   const epoch = ++authEpoch;
   clearTimeout(saveTimer);
   loadingRemote = false;
+  pendingCloudChanges = false;
   currentUser = user;
 
   if (!user) {
@@ -99,7 +111,7 @@ async function handleAuthChange(user) {
     setStatus(
       hasGuestContent
         ? "当前测试空间仅保存在这个浏览器。登录后会同步到你的账号空间。"
-        : "这是全新的空测试空间，原来的本地版和其中的数据没有被删除。可通过“导入备份”带入旧内容。",
+        : "这是全新的空测试空间。登录或注册后即可开始使用。",
       "local"
     );
     ui.authBtn.hidden = false;
@@ -171,16 +183,18 @@ async function handleAuthChange(user) {
 async function saveCloudState(nextState, force = false, expectedUserId = currentUser?.uid) {
   if ((!force && (readOnly || loadingRemote)) || !expectedUserId || currentUser?.uid !== expectedUserId) return;
 
+  const savingRevision = changeRevision;
   const serialized = JSON.stringify(nextState);
   const bytes = new Blob([serialized]).size;
   if (bytes > API_SAFE_BYTES) {
-    setStatus("本地内容已保存，但测试版云端数据过大。请减少较大的附件。", "error");
+    pendingCloudChanges = true;
+    setStatus("暂未同步云端：内容过大，请减少较大的附件。", "error");
     return;
   }
 
   try {
     const clientUpdatedAt = Date.now();
-    setStatus("正在同步修改…", "syncing");
+    setStatus("本机已保存，正在同步云端…", "syncing");
     const result = await api("/api/workspace", {
       method: "PUT",
       body: { state: nextState, client_updated_at: clientUpdatedAt }
@@ -189,10 +203,14 @@ async function saveCloudState(nextState, force = false, expectedUserId = current
     workspaceMeta = { ...workspaceMeta, state: nextState, clientUpdatedAt: result.clientUpdatedAt };
     cacheAccountState(expectedUserId, nextState);
     writeLocalMeta(expectedUserId, { userId: expectedUserId, updatedAt: clientUpdatedAt });
-    setStatus("已自动同步到云端。", "online");
+    if (savingRevision === changeRevision) {
+      pendingCloudChanges = false;
+      setStatus(`已同步到云端 · ${formatSyncTime(new Date())}`, "online");
+    }
   } catch (error) {
     console.error(error);
-    setStatus("云端同步失败，本地内容仍然安全。", "error");
+    pendingCloudChanges = true;
+    setStatus("暂未同步云端，请保持页面打开并检查网络。", "error");
   }
 }
 
@@ -615,6 +633,10 @@ function buildShareLink() {
 function setStatus(message, kind) {
   ui.status.textContent = message;
   ui.status.dataset.kind = kind;
+}
+
+function formatSyncTime(date) {
+  return date.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit", second: "2-digit" });
 }
 
 function humanizeAuthError(code = "") {
