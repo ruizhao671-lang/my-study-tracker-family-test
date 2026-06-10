@@ -181,6 +181,7 @@
     "名字已更新": "Name updated",
     "只读分享": "Read-only sharing",
     "家人只读分享": "Family read-only sharing",
+    "只有拿到链接的人可以查看。家人不能修改内容，你也可以随时撤回链接。": "Only people with the link can view it. Your family cannot edit anything, and you can revoke the link at any time.",
     "登录 / 注册": "Log in / Register",
     "退出登录": "Log out",
     "退出前会先把最后修改同步到云端。请选择是否保留这个账号在当前浏览器中的本地缓存。": "Your latest changes will sync before logout. Choose whether to keep this account's local cache in this browser.",

@@ -145,8 +145,8 @@
     }
 
     .toolbar {
-      display: grid;
-      grid-template-columns: minmax(220px, 1fr) 132px 92px auto auto auto auto auto auto;
+      display: flex;
+      flex-wrap: wrap;
       gap: 10px;
       align-items: center;
       padding: 14px;
@@ -154,6 +154,25 @@
       border-radius: 8px;
       background: var(--panel);
       box-shadow: 0 2px 8px rgba(18, 38, 34, 0.04);
+    }
+
+    .toolbar #semesterName {
+      flex: 1 1 360px;
+      min-width: min(360px, 100%);
+    }
+
+    .toolbar #stageKind {
+      flex: 0 1 190px;
+      min-width: min(170px, 100%);
+    }
+
+    .toolbar #semesterAmount {
+      flex: 0 0 100px;
+      width: 100px;
+    }
+
+    .toolbar .btn {
+      flex: 0 0 auto;
     }
 
     .viewbar {
@@ -1247,11 +1266,24 @@
 
     @media (max-width: 820px) {
       .topbar,
-      .toolbar,
       .semester-header,
       .course-header,
       .category-header {
         grid-template-columns: 1fr;
+      }
+
+      .toolbar #semesterName,
+      .toolbar #stageKind {
+        flex-basis: 100%;
+      }
+
+      .toolbar #semesterAmount {
+        flex: 1 1 90px;
+        width: auto;
+      }
+
+      .toolbar .btn {
+        flex: 1 1 auto;
       }
 
       .task {
