@@ -1,0 +1,3859 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>My Study Tracker</title>
+  <style>
+    :root {
+      --bg: #f3f6f5;
+      --panel: #ffffff;
+      --panel-soft: #f7faf9;
+      --text: #152622;
+      --muted: #657773;
+      --line: #dbe4e1;
+      --line-strong: #cbd9d5;
+      --primary: #0f766e;
+      --primary-dark: #095e59;
+      --green: #2f8f56;
+      --red: #647875;
+      --yellow: #477b8c;
+      --accent: #4d8991;
+      --shadow: 0 8px 22px rgba(18, 38, 34, 0.07);
+      --shadow-raised: 0 16px 34px rgba(18, 38, 34, 0.1);
+      font-family: Inter, "Segoe UI", Arial, "Microsoft YaHei", sans-serif;
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    body {
+      margin: 0;
+      min-height: 100vh;
+      color: var(--text);
+      background:
+        linear-gradient(180deg, #e7f1ef 0, rgba(231, 241, 239, 0.38) 240px, transparent 400px),
+        var(--bg);
+    }
+
+    button,
+    input,
+    select {
+      font: inherit;
+    }
+
+    button {
+      border: 0;
+      cursor: pointer;
+    }
+
+    .app {
+      width: min(1200px, calc(100% - 36px));
+      margin: 0 auto;
+      padding: 34px 0 48px;
+    }
+
+    .topbar {
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) auto;
+      gap: 20px;
+      align-items: end;
+      margin-bottom: 26px;
+    }
+
+    .eyebrow {
+      margin: 0 0 8px;
+      color: var(--green);
+      font-weight: 700;
+      letter-spacing: 0;
+    }
+
+    h1 {
+      margin: 0;
+      color: #102d29;
+      font-size: 46px;
+      line-height: 1.1;
+      letter-spacing: 0;
+    }
+
+    .title-row {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px;
+      align-items: center;
+    }
+
+    .btn.name-edit {
+      min-height: 34px;
+      padding: 0 11px;
+      font-size: 13px;
+    }
+
+    .subtitle {
+      max-width: 680px;
+      margin: 14px 0 0;
+      color: var(--muted);
+      line-height: 1.7;
+    }
+
+    .global-card {
+      width: min(360px, 100%);
+      padding: 19px 20px 18px;
+      border: 1px solid var(--line-strong);
+      border-top: 4px solid var(--primary);
+      border-radius: 8px;
+      background: var(--panel);
+      box-shadow: var(--shadow-raised);
+    }
+
+    .global-card strong {
+      display: block;
+      color: var(--primary-dark);
+      font-size: 32px;
+      margin-bottom: 10px;
+    }
+
+    .global-card p {
+      margin: 0;
+      color: var(--muted);
+      font-weight: 600;
+    }
+
+    .progress-bar {
+      overflow: hidden;
+      width: 100%;
+      height: 18px;
+      border-radius: 999px;
+      border: 1px solid #ccdad6;
+      background: #e2eae7;
+      box-shadow: inset 0 1px 2px rgba(15, 23, 42, 0.08);
+    }
+
+    .progress-fill {
+      width: 0%;
+      height: 100%;
+      border-radius: inherit;
+      background: linear-gradient(90deg, #0f766e 0%, #2f8f56 68%, #57a7a1 100%);
+      box-shadow: inset 0 1px rgba(255, 255, 255, 0.35);
+      transition: width 260ms ease;
+    }
+
+    .global-card .progress-bar {
+      height: 28px;
+      margin: 12px 0 14px;
+    }
+
+    .toolbar {
+      display: grid;
+      grid-template-columns: minmax(220px, 1fr) 132px 92px auto auto auto auto auto auto;
+      gap: 10px;
+      align-items: center;
+      padding: 14px;
+      border: 1px solid var(--line-strong);
+      border-radius: 8px;
+      background: var(--panel);
+      box-shadow: 0 2px 8px rgba(18, 38, 34, 0.04);
+    }
+
+    .viewbar {
+      display: flex;
+      flex-wrap: wrap;
+      justify-content: space-between;
+      gap: 10px;
+      align-items: center;
+      margin-top: 12px;
+    }
+
+    .segmented,
+    .history-actions {
+      display: inline-flex;
+      gap: 6px;
+      padding: 4px;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      background: var(--panel);
+    }
+
+    .segment {
+      min-height: 36px;
+      border-radius: 6px;
+      padding: 0 12px;
+      color: var(--muted);
+      background: transparent;
+    }
+
+    .segment.active {
+      color: #fff;
+      background: var(--primary);
+    }
+
+    .input,
+    .select,
+    .textarea {
+      width: 100%;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      color: var(--text);
+      background: #fff;
+      outline: none;
+    }
+
+    .input,
+    .select {
+      height: 42px;
+      padding: 0 12px;
+    }
+
+    .amount-input {
+      text-align: center;
+    }
+
+    .textarea {
+      min-height: 180px;
+      resize: vertical;
+      padding: 10px 12px;
+      line-height: 1.6;
+    }
+
+    .input:focus,
+    .select:focus,
+    .textarea:focus {
+      border-color: var(--primary);
+      box-shadow: 0 0 0 3px rgba(15, 118, 110, 0.15);
+    }
+
+    .btn {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      min-height: 42px;
+      border-radius: 8px;
+      padding: 0 14px;
+      color: #fff;
+      background: var(--primary);
+      white-space: nowrap;
+    }
+
+    .btn:hover {
+      background: var(--primary-dark);
+    }
+
+    .btn.secondary {
+      color: var(--text);
+      border: 1px solid var(--line);
+      background: #fff;
+    }
+
+    .btn.secondary:hover {
+      border-color: var(--line-strong);
+      background: var(--panel-soft);
+    }
+
+    .btn.danger {
+      background: var(--red);
+    }
+
+    .btn.icon {
+      width: 36px;
+      min-height: 36px;
+      padding: 0;
+      color: var(--muted);
+      border: 1px solid var(--line);
+      background: #fff;
+    }
+
+    .btn.icon:hover {
+      color: var(--text);
+      background: var(--panel-soft);
+    }
+
+    .btn.note-toggle {
+      width: auto;
+      padding: 0 10px;
+      color: var(--primary-dark);
+      font-size: 13px;
+      font-weight: 700;
+    }
+
+    .btn.template-toggle {
+      width: auto;
+      padding: 0 10px;
+      color: var(--primary-dark);
+      font-size: 13px;
+      font-weight: 700;
+    }
+
+    .btn:disabled {
+      cursor: not-allowed;
+      opacity: 0.45;
+    }
+
+    .stats {
+      display: grid;
+      grid-template-columns: repeat(5, minmax(0, 1fr));
+      gap: 12px;
+      margin: 16px 0;
+    }
+
+    .stat {
+      padding: 14px;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      background: var(--panel);
+      box-shadow: 0 1px 3px rgba(18, 38, 34, 0.03);
+    }
+
+    .stat:nth-child(1) {
+      border-top: 3px solid var(--primary);
+    }
+
+    .stat:nth-child(2) {
+      border-top: 3px solid var(--accent);
+    }
+
+    .stat:nth-child(3) {
+      border-top: 3px solid #556985;
+    }
+
+    .stat:nth-child(4) {
+      border-top: 3px solid var(--green);
+    }
+
+    .stat:nth-child(5) {
+      border-top: 3px solid #72a3ab;
+    }
+
+    .stat span {
+      display: block;
+      color: var(--muted);
+      font-size: 13px;
+    }
+
+    .stat strong {
+      display: block;
+      margin-top: 6px;
+      font-size: 24px;
+    }
+
+    .courses {
+      display: grid;
+      gap: 16px;
+      margin-top: 16px;
+    }
+
+    .semester-wrap,
+    .course-wrap,
+    .category-wrap,
+    .task-wrap {
+      display: grid;
+      gap: 8px;
+    }
+
+    .paste-zone {
+      display: none;
+      width: 100%;
+      min-height: 34px;
+      border: 1px dashed var(--primary);
+      border-radius: 8px;
+      color: var(--primary-dark);
+      background: #eaf5f2;
+      font-weight: 700;
+    }
+
+    .paste-zone.empty-paste {
+      display: block;
+    }
+
+    .semester-wrap:hover > .paste-zone,
+    .course-wrap:hover > .paste-zone,
+    .category-wrap:hover > .paste-zone,
+    .task-wrap:hover > .paste-zone {
+      display: block;
+    }
+
+    .semester {
+      border: 1px solid var(--line-strong);
+      border-radius: 8px;
+      background: var(--panel);
+      box-shadow: var(--shadow-raised);
+    }
+
+    .semester-header {
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) auto;
+      gap: 14px;
+      align-items: start;
+      padding: 21px 20px 20px;
+      background: #f1f7f5;
+      border-bottom: 1px solid var(--line);
+    }
+
+    .semester-title {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px;
+      align-items: center;
+      margin-bottom: 12px;
+    }
+
+    .semester-title h2 {
+      margin: 0;
+      font-size: 27px;
+      line-height: 1.25;
+    }
+
+    .semester-courses {
+      display: grid;
+      gap: 16px;
+      padding: 16px;
+    }
+
+    .course {
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      background: var(--panel);
+      box-shadow: 0 3px 10px rgba(18, 38, 34, 0.04);
+    }
+
+    .semester.collapsed .semester-courses,
+    .semester.collapsed .course-add,
+    .semester.info-collapsed .semester-extra,
+    .course.collapsed .categories,
+    .course.collapsed .category-add,
+    .course.info-collapsed .course-extra,
+    .category.collapsed .tasks,
+    .category.collapsed .quick-add,
+    .task.collapsed .task-extra {
+      display: none;
+    }
+
+    .course-header {
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) auto;
+      gap: 14px;
+      align-items: start;
+      padding: 18px;
+      border-bottom: 1px solid var(--line);
+      background: #ffffff;
+    }
+
+    .course-title {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px;
+      align-items: center;
+      margin-bottom: 12px;
+    }
+
+    .course-title h2 {
+      margin: 0;
+      font-size: 24px;
+      line-height: 1.25;
+    }
+
+    .badge {
+      display: inline-flex;
+      align-items: center;
+      min-height: 26px;
+      border-radius: 999px;
+      padding: 0 10px;
+      color: var(--primary-dark);
+      background: #e5f2ee;
+      font-size: 13px;
+      font-weight: 700;
+    }
+
+    .course-label {
+      display: inline-flex;
+      align-items: center;
+      min-height: 24px;
+      padding: 0 9px;
+      border: 1px solid #cbded8;
+      border-radius: 999px;
+      background: #f4faf8;
+      color: #42655c;
+      font-size: 12px;
+      font-weight: 700;
+    }
+
+    .semester .progress-bar {
+      height: 24px;
+    }
+
+    .course .progress-bar {
+      height: 21px;
+    }
+
+    .actions {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      justify-content: flex-end;
+    }
+
+    .course-add,
+    .category-add {
+      display: grid;
+      grid-template-columns: minmax(160px, 1fr) 92px auto;
+      gap: 10px;
+      margin-top: 12px;
+    }
+
+    .quick-add {
+      display: grid;
+      grid-template-columns: minmax(150px, 1fr) minmax(150px, 1fr) 92px auto;
+      gap: 10px;
+      margin-top: 12px;
+    }
+
+    .category > .quick-add {
+      margin-top: 0;
+      padding: 0 12px 12px;
+    }
+
+    .batch-panel {
+      display: grid;
+      gap: 10px;
+      margin-top: 12px;
+      padding: 12px;
+      border: 1px dashed #afc5bf;
+      border-radius: 8px;
+      background: #fff;
+    }
+
+    .category > .batch-panel {
+      margin: 0 12px 12px;
+    }
+
+    .batch-help {
+      margin: 0;
+      color: var(--muted);
+      font-size: 13px;
+      line-height: 1.6;
+    }
+
+    .batch-actions {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      justify-content: flex-end;
+    }
+
+    .categories {
+      display: grid;
+      gap: 12px;
+      padding: 16px;
+    }
+
+    .category {
+      border: 1px solid #d4dfdc;
+      border-radius: 8px;
+      background: var(--panel-soft);
+    }
+
+    .category-header {
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) auto;
+      gap: 12px;
+      align-items: center;
+      padding: 15px 14px;
+      border-bottom: 1px solid var(--line);
+    }
+
+    .category-header h3 {
+      margin: 0;
+      font-size: 18px;
+    }
+
+    .tasks {
+      display: grid;
+      gap: 8px;
+      padding: 14px 12px;
+    }
+
+    .task {
+      display: grid;
+      grid-template-columns: 28px 28px minmax(0, 1fr) auto;
+      gap: 8px;
+      align-items: center;
+      min-height: 48px;
+      padding: 9px 10px;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      background: #fff;
+      transition: border-color 160ms ease, box-shadow 160ms ease;
+    }
+
+    .task:hover {
+      border-color: #c9d8d4;
+      box-shadow: 0 2px 8px rgba(18, 38, 34, 0.05);
+    }
+
+    .task.done .task-name {
+      color: var(--muted);
+      text-decoration: line-through;
+    }
+
+    .task-number {
+      color: var(--muted);
+      font-variant-numeric: tabular-nums;
+      text-align: right;
+    }
+
+    .task-name {
+      min-width: 0;
+      overflow-wrap: anywhere;
+      line-height: 1.45;
+    }
+
+    .task-title {
+      display: block;
+      font-weight: 700;
+    }
+
+    .task-detail {
+      display: block;
+      margin-top: 2px;
+      color: var(--muted);
+    }
+
+    .task-detail-input {
+      width: min(360px, 100%);
+      height: 34px;
+      margin-top: 6px;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      padding: 0 10px;
+      color: var(--text);
+      background: #fff;
+      outline: none;
+    }
+
+    .task-detail-input:focus {
+      border-color: var(--primary);
+      box-shadow: 0 0 0 3px rgba(15, 118, 110, 0.15);
+    }
+
+    .task-extra {
+      grid-column: 3 / -1;
+      display: grid;
+      gap: 10px;
+      padding: 10px 0 2px;
+    }
+
+    .entity-extra {
+      display: grid;
+      gap: 10px;
+      margin-top: 12px;
+      padding: 12px;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      background: #fbfcfc;
+    }
+
+    .entity-note {
+      min-height: 82px;
+    }
+
+    .task-note {
+      min-height: 70px;
+    }
+
+    .task-files {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      align-items: center;
+    }
+
+    .attachment {
+      display: inline-flex;
+      gap: 8px;
+      align-items: center;
+      min-height: 34px;
+      padding: 5px 8px;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      background: #fff;
+      color: var(--text);
+    }
+
+    .attachment img {
+      width: 34px;
+      height: 34px;
+      border-radius: 6px;
+      object-fit: cover;
+    }
+
+    .attachment a {
+      color: var(--primary-dark);
+      text-decoration: none;
+    }
+
+    .charts {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+      gap: 14px;
+    }
+
+    .chart-course {
+      display: grid;
+      gap: 16px;
+      padding: 18px;
+      border: 1px solid #dfe5ef;
+      border-radius: 8px;
+      background: var(--panel);
+      box-shadow: 0 12px 30px rgba(16, 24, 40, 0.08);
+    }
+
+    .chart-semester {
+      display: grid;
+      gap: 14px;
+      padding: 16px;
+      border: 1px solid #dfe5ef;
+      border-radius: 8px;
+      background: #f3f7ff;
+    }
+
+    .chart-semester-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 12px;
+    }
+
+    .chart-semester-header h2 {
+      margin: 0;
+      font-size: 24px;
+    }
+
+    .chart-semester .charts {
+      margin-top: 0;
+    }
+
+    .chart-course h2 {
+      margin: 0;
+      font-size: 20px;
+    }
+
+    .chart-course > .pdf-row {
+      display: flex;
+      justify-content: space-between;
+      gap: 12px;
+      align-items: center;
+    }
+
+    .pie-layout {
+      display: grid;
+      grid-template-columns: 160px minmax(0, 1fr);
+      gap: 16px;
+      align-items: center;
+    }
+
+    .pie {
+      position: relative;
+      display: grid;
+      place-items: center;
+      width: 160px;
+      height: 160px;
+      border-radius: 50%;
+      background: #e9eef8;
+    }
+
+    .pie::after {
+      content: "";
+      width: 82px;
+      height: 82px;
+      border-radius: 50%;
+      background: var(--panel);
+    }
+
+    .pie-label {
+      position: absolute;
+      z-index: 1;
+      font-size: 22px;
+      font-weight: 800;
+    }
+
+    .legend {
+      display: grid;
+      gap: 8px;
+    }
+
+    .legend-item {
+      display: grid;
+      grid-template-columns: 22px minmax(0, 1fr) auto;
+      gap: 8px;
+      align-items: center;
+      font-size: 13px;
+    }
+
+    .swatch {
+      width: 10px;
+      height: 10px;
+      border-radius: 2px;
+    }
+
+    .swatches {
+      display: flex;
+      gap: 2px;
+    }
+
+    .garden-semester {
+      display: grid;
+      gap: 14px;
+      padding: 16px;
+      border: 1px solid #cbd9d5;
+      border-radius: 8px;
+      background:
+        linear-gradient(180deg, rgba(255, 255, 255, 0.62), transparent 120px),
+        #e6f1e6;
+      box-shadow: var(--shadow);
+    }
+
+    .garden-header {
+      display: flex;
+      flex-wrap: wrap;
+      justify-content: space-between;
+      gap: 12px;
+      align-items: center;
+    }
+
+    .garden-header h2 {
+      margin: 0;
+      font-size: 24px;
+    }
+
+    .garden-body {
+      display: grid;
+      grid-template-columns: 82px minmax(0, 1fr);
+      gap: 14px;
+      align-items: stretch;
+    }
+
+    .garden-farmer {
+      display: grid;
+      align-content: start;
+      justify-items: center;
+      gap: 8px;
+      min-height: 220px;
+      padding: 12px 8px;
+      border: 1px solid rgba(76, 96, 70, 0.22);
+      border-radius: 8px;
+      background: rgba(255, 255, 255, 0.36);
+      color: #4c3a25;
+      font-size: 12px;
+      font-weight: 700;
+    }
+
+    .farmer-avatar {
+      position: relative;
+      width: 46px;
+      height: 72px;
+    }
+
+    .farmer-avatar::before {
+      content: "";
+      position: absolute;
+      left: 10px;
+      top: 2px;
+      width: 26px;
+      height: 18px;
+      border-radius: 60% 60% 45% 45%;
+      background: #8d673b;
+      box-shadow: 0 8px 0 #f1c69f;
+    }
+
+    .farmer-avatar::after {
+      content: "";
+      position: absolute;
+      left: 13px;
+      top: 30px;
+      width: 20px;
+      height: 30px;
+      border-radius: 8px 8px 4px 4px;
+      background: #517d55;
+      box-shadow:
+        -10px 8px 0 -4px #f1c69f,
+        10px 8px 0 -4px #f1c69f,
+        -5px 32px 0 -3px #6d5235,
+        5px 32px 0 -3px #6d5235;
+    }
+
+    .garden-field {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(128px, 1fr));
+      gap: 14px;
+      align-items: stretch;
+    }
+
+    .garden-course {
+      display: grid;
+      grid-template-rows: auto minmax(180px, 1fr) auto;
+      gap: 12px;
+      padding: 14px;
+      border: 1px solid #c8d5ca;
+      border-radius: 8px;
+      background:
+        linear-gradient(90deg, rgba(255, 255, 255, 0.42), transparent 26%, rgba(255, 255, 255, 0.28) 52%, transparent 76%),
+        #d9c4a2;
+    }
+
+    .garden-course-header {
+      display: flex;
+      flex-wrap: wrap;
+      justify-content: center;
+      gap: 10px;
+      align-items: center;
+      text-align: center;
+      color: #3b2e1d;
+    }
+
+    .garden-course-header h3 {
+      margin: 0;
+      font-size: 18px;
+    }
+
+    .garden-ridge {
+      display: grid;
+      grid-template-columns: 1fr;
+      grid-auto-rows: minmax(38px, auto);
+      align-content: start;
+      gap: 8px;
+      padding: 10px;
+      border-radius: 8px;
+      background:
+        repeating-linear-gradient(
+          0deg,
+          rgba(101, 72, 43, 0.17) 0,
+          rgba(101, 72, 43, 0.17) 2px,
+          transparent 2px,
+          transparent 28px
+        ),
+        #b68758;
+    }
+
+    .garden-plot {
+      position: relative;
+      display: grid;
+      place-items: center;
+      min-height: 36px;
+      aspect-ratio: auto;
+      border: 1px solid rgba(70, 47, 27, 0.2);
+      border-left: 4px solid var(--plot-accent, #8a6b45);
+      border-radius: 6px;
+      background:
+        radial-gradient(circle at 35% 35%, rgba(255, 255, 255, 0.18), transparent 28%),
+        #9f7046;
+      overflow: hidden;
+    }
+
+    .garden-plot.done {
+      background:
+        radial-gradient(circle at 50% 78%, rgba(44, 90, 42, 0.25), transparent 32%),
+        #9f7046;
+    }
+
+    .plant {
+      position: relative;
+      display: block;
+      width: 24px;
+      height: 26px;
+    }
+
+    .plant-seed {
+      width: 10px;
+      height: 8px;
+      border-radius: 999px;
+      background: #5d4429;
+      box-shadow: 0 8px 0 rgba(52, 37, 23, 0.28);
+    }
+
+    .plant-sprout,
+    .plant-leaf,
+    .plant-bloom,
+    .plant-harvest {
+      border-bottom: 3px solid rgba(47, 87, 39, 0.35);
+    }
+
+    .plant-sprout::before,
+    .plant-leaf::before,
+    .plant-bloom::before,
+    .plant-harvest::before {
+      content: "";
+      position: absolute;
+      left: 50%;
+      bottom: 4px;
+      width: 3px;
+      height: var(--stem-height, 15px);
+      border-radius: 999px;
+      background: #2f8f56;
+      transform: translateX(-50%);
+    }
+
+    .plant-sprout::after,
+    .plant-leaf::after,
+    .plant-bloom::after,
+    .plant-harvest::after {
+      content: "";
+      position: absolute;
+      left: 11px;
+      bottom: 14px;
+      width: var(--leaf-size, 10px);
+      height: var(--leaf-size, 10px);
+      border-radius: 999px 999px 999px 0;
+      background: #55a95c;
+      transform: rotate(-35deg);
+      box-shadow: calc(var(--leaf-size, 10px) * -0.85) 2px 0 #3f9950;
+    }
+
+    .plant-sprout {
+      --stem-height: 12px;
+      --leaf-size: 8px;
+    }
+
+    .plant-leaf {
+      --stem-height: 17px;
+      --leaf-size: 11px;
+    }
+
+    .plant-bloom {
+      --stem-height: 19px;
+      --leaf-size: 12px;
+    }
+
+    .plant-bloom .flower,
+    .plant-harvest .fruit {
+      position: absolute;
+      left: 50%;
+      top: 1px;
+      z-index: 1;
+      width: 10px;
+      height: 10px;
+      border-radius: 50%;
+      transform: translateX(-50%);
+    }
+
+    .plant-bloom .flower {
+      background: #f3d6e7;
+      box-shadow: 0 -4px 0 #c472a5, 4px 0 0 #c472a5, 0 4px 0 #c472a5, -4px 0 0 #c472a5;
+    }
+
+    .plant-harvest {
+      --stem-height: 20px;
+      --leaf-size: 13px;
+    }
+
+    .plant-harvest .fruit {
+      background: #6fac58;
+      box-shadow: -5px 2px 0 #7fbf63, 5px 2px 0 #5f9f4a;
+    }
+
+    .garden-meta {
+      display: grid;
+      gap: 8px;
+      color: #5b4a34;
+      font-size: 13px;
+    }
+
+    .garden-category {
+      display: inline-flex;
+      align-items: center;
+      min-height: 24px;
+      border-radius: 999px;
+      padding: 0 9px;
+      background: rgba(255, 255, 255, 0.55);
+    }
+
+    .task-meta {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      align-items: center;
+      color: var(--muted);
+      font-size: 12px;
+    }
+
+    .category-progress-bar {
+      max-width: 360px;
+      height: 18px;
+      margin-top: 10px;
+    }
+
+    .pill {
+      display: inline-flex;
+      align-items: center;
+      min-height: 22px;
+      border-radius: 999px;
+      padding: 0 8px;
+      background: #e9f0ee;
+    }
+
+    .empty {
+      padding: 32px 18px;
+      border: 1px dashed #afc5bf;
+      border-radius: 8px;
+      color: var(--muted);
+      text-align: center;
+      background: rgba(255, 255, 255, 0.7);
+    }
+
+    .modal {
+      position: fixed;
+      inset: 0;
+      display: none;
+      place-items: center;
+      padding: 20px;
+      background: rgba(15, 23, 42, 0.42);
+      z-index: 10;
+    }
+
+    .modal.open {
+      display: grid;
+    }
+
+    .dialog {
+      width: min(520px, 100%);
+      border-radius: 8px;
+      background: #fff;
+      box-shadow: 0 28px 70px rgba(15, 23, 42, 0.28);
+    }
+
+    .template-dialog {
+      width: min(700px, 100%);
+    }
+
+    .dialog-header,
+    .dialog-body,
+    .dialog-footer {
+      padding: 16px;
+    }
+
+    .dialog-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 12px;
+      border-bottom: 1px solid var(--line);
+    }
+
+    .dialog-header h2 {
+      margin: 0;
+      font-size: 20px;
+    }
+
+    .dialog-body {
+      display: grid;
+      gap: 12px;
+    }
+
+    .field {
+      display: grid;
+      gap: 6px;
+    }
+
+    .field label {
+      color: var(--muted);
+      font-size: 13px;
+      font-weight: 700;
+    }
+
+    .template-list {
+      display: grid;
+      gap: 10px;
+    }
+
+    .template-item {
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) auto;
+      gap: 14px;
+      align-items: center;
+      padding: 12px;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      background: var(--panel-soft);
+    }
+
+    .template-item strong {
+      display: block;
+      margin-bottom: 5px;
+      font-size: 16px;
+    }
+
+    .template-meta {
+      color: var(--muted);
+      font-size: 13px;
+    }
+
+    .template-empty {
+      color: var(--muted);
+      padding: 24px 12px;
+      text-align: center;
+    }
+
+    .welcome-copy {
+      margin: 0;
+      color: var(--muted);
+      line-height: 1.65;
+    }
+
+    .welcome-notice {
+      margin-top: 12px;
+      padding: 11px 12px;
+      border: 1px solid #cbded8;
+      border-radius: 7px;
+      background: #f4faf8;
+      color: #315f52;
+      font-size: 13px;
+      line-height: 1.6;
+    }
+
+    .welcome-dialog .dialog-footer .btn {
+      flex: 1 1 180px;
+    }
+
+    .dialog-footer {
+      display: flex;
+      gap: 10px;
+      justify-content: flex-end;
+      border-top: 1px solid var(--line);
+    }
+
+    .toast {
+      position: fixed;
+      right: 18px;
+      bottom: 18px;
+      display: none;
+      max-width: 360px;
+      padding: 12px 14px;
+      border-radius: 8px;
+      color: #fff;
+      background: #153633;
+      box-shadow: var(--shadow);
+      z-index: 20;
+    }
+
+    .toast.show {
+      display: block;
+    }
+
+    @media (max-width: 820px) {
+      .topbar,
+      .toolbar,
+      .semester-header,
+      .course-header,
+      .category-header {
+        grid-template-columns: 1fr;
+      }
+
+      .task {
+        grid-template-columns: 28px 28px minmax(0, 1fr);
+      }
+
+      .task .actions {
+        grid-column: 1 / -1;
+        justify-content: flex-start;
+      }
+
+      .task-extra {
+        grid-column: 1 / -1;
+      }
+
+      .pie-layout {
+        grid-template-columns: 1fr;
+        justify-items: center;
+      }
+
+      .garden-ridge {
+        grid-auto-rows: minmax(34px, auto);
+      }
+
+      .garden-body {
+        grid-template-columns: 1fr;
+      }
+
+      .garden-farmer {
+        min-height: auto;
+        grid-template-columns: auto 1fr;
+        justify-items: start;
+        align-items: center;
+      }
+
+      .global-card {
+        width: 100%;
+      }
+
+      .stats {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+      }
+
+      .actions {
+        justify-content: flex-start;
+      }
+    }
+
+    @media (max-width: 520px) {
+      .app {
+        width: min(100% - 20px, 1200px);
+        padding-top: 18px;
+      }
+
+      h1 {
+        font-size: 34px;
+      }
+
+      .stats {
+        grid-template-columns: 1fr;
+      }
+
+      .quick-add,
+      .course-add,
+      .category-add {
+        grid-template-columns: 1fr;
+      }
+
+      .template-item {
+        grid-template-columns: 1fr;
+      }
+    }
+  </style>
+</head>
+<body>
+  <main class="app">
+    <section class="topbar">
+      <div>
+        <p class="eyebrow">Study Tracker</p>
+        <div class="title-row">
+          <h1 id="appTitle">我的学习系统</h1>
+          <button class="btn secondary name-edit" id="editOwnerBtn" type="button" hidden>修改名字</button>
+        </div>
+        <p class="subtitle">按学期、课程、分类和任务拆解复习内容。联网测试版会先保存在当前浏览器，登录后也会自动同步到你的账号空间。</p>
+      </div>
+
+      <aside class="global-card" aria-label="总体进度">
+        <strong id="globalPercent">0%</strong>
+        <div class="progress-bar" aria-hidden="true">
+          <div class="progress-fill" id="globalBar"></div>
+        </div>
+        <p id="globalText">总体进度：0/0</p>
+      </aside>
+    </section>
+
+    <section class="toolbar" aria-label="学习系统操作">
+      <input class="input" id="semesterName" placeholder="输入新学习阶段，例如 我的第二学期">
+      <select class="input" id="stageKind" title="学习阶段类型">
+        <option value="semester">大学学期</option>
+        <option value="module">备考模块</option>
+      </select>
+      <input class="input amount-input" id="semesterAmount" type="number" min="1" max="20" value="1" title="添加数量">
+      <button class="btn" id="addSemesterBtn">+ 添加阶段</button>
+      <button class="btn secondary" id="loadTemplateBtn">课程模板</button>
+      <button class="btn secondary" id="loadSemesterTemplateBtn">阶段模板</button>
+      <button class="btn secondary" id="exportBtn">导出PDF</button>
+      <button class="btn secondary" id="exportBackupBtn" type="button">导出备份</button>
+      <button class="btn secondary" id="importBackupBtn" type="button">导入备份</button>
+      <input id="importBackupInput" type="file" accept=".json,application/json" hidden>
+    </section>
+
+    <section class="viewbar" aria-label="显示与历史操作">
+      <div class="segmented" aria-label="显示形式">
+        <button class="segment active" id="listViewBtn" type="button">列表</button>
+        <button class="segment" id="chartViewBtn" type="button">饼状图</button>
+        <button class="segment" id="gardenViewBtn" type="button">菜地</button>
+      </div>
+      <div class="history-actions">
+        <button class="btn secondary" id="undoBtn" type="button" disabled>↶ 上一步</button>
+        <button class="btn secondary" id="redoBtn" type="button" disabled>↷ 下一步</button>
+      </div>
+    </section>
+
+    <section class="stats" aria-label="学习统计">
+      <div class="stat">
+        <span>学习阶段</span>
+        <strong id="semesterCount">0</strong>
+      </div>
+      <div class="stat">
+        <span>课程</span>
+        <strong id="courseCount">0</strong>
+      </div>
+      <div class="stat">
+        <span>分类</span>
+        <strong id="categoryCount">0</strong>
+      </div>
+      <div class="stat">
+        <span>任务</span>
+        <strong id="taskCount">0</strong>
+      </div>
+      <div class="stat">
+        <span>已完成</span>
+        <strong id="doneCount">0</strong>
+      </div>
+    </section>
+
+    <section class="courses" id="courses"></section>
+  </main>
+
+  <div class="modal" id="editModal" role="dialog" aria-modal="true" aria-labelledby="modalTitle">
+    <form class="dialog" id="editForm">
+      <div class="dialog-header">
+        <h2 id="modalTitle">编辑</h2>
+      </div>
+      <div class="dialog-body" id="modalBody"></div>
+      <div class="dialog-footer">
+        <button class="btn secondary" type="button" id="cancelEditBtn">取消</button>
+        <button class="btn" type="submit">保存</button>
+      </div>
+    </form>
+  </div>
+
+  <div class="modal" id="templateModal" role="dialog" aria-modal="true" aria-labelledby="templateModalTitle">
+    <section class="dialog template-dialog">
+      <div class="dialog-header">
+        <h2 id="templateModalTitle">课程模板</h2>
+        <button class="btn icon" type="button" id="closeTemplateBtn" title="关闭">×</button>
+      </div>
+      <div class="dialog-body">
+        <div class="template-list" id="templateList"></div>
+      </div>
+      <div class="dialog-footer">
+        <button class="btn secondary" type="button" id="closeTemplateFooterBtn">关闭</button>
+      </div>
+    </section>
+  </div>
+
+  <div class="modal" id="semesterTemplateModal" role="dialog" aria-modal="true" aria-labelledby="semesterTemplateModalTitle">
+    <section class="dialog template-dialog">
+      <div class="dialog-header">
+        <h2 id="semesterTemplateModalTitle">阶段模板</h2>
+        <button class="btn icon" type="button" id="closeSemesterTemplateBtn" title="关闭">×</button>
+      </div>
+      <div class="dialog-body">
+        <div class="template-list" id="semesterTemplateList"></div>
+      </div>
+      <div class="dialog-footer">
+        <button class="btn secondary" type="button" id="closeSemesterTemplateFooterBtn">关闭</button>
+      </div>
+    </section>
+  </div>
+
+  <div class="modal" id="welcomeModal" role="dialog" aria-modal="true" aria-labelledby="welcomeTitle">
+    <form class="dialog welcome-dialog" id="welcomeForm">
+      <div class="dialog-header">
+        <h2 id="welcomeTitle">欢迎使用学习系统</h2>
+      </div>
+      <div class="dialog-body">
+        <p class="welcome-copy">这是一个全新的联网测试空间。我们准备了“我的第一学期”和“考研备考模块”，可以直接修改或删除；切换列表、饼状图和菜地，就能快速看懂它的构建方式。</p>
+        <p class="welcome-notice"><strong>原来的本地版和其中的数据没有被删除。</strong><br>若要带入旧内容，请先在原版点击“导出备份”，再在这里选择“导入原版备份”。</p>
+        <div class="field">
+          <label for="ownerName">你的名字</label>
+          <input class="input" id="ownerName" name="ownerName" maxlength="30" placeholder="例如：小林" required>
+        </div>
+      </div>
+      <div class="dialog-footer">
+        <button class="btn secondary" id="welcomeImportBtn" type="button">导入原版备份</button>
+        <button class="btn" type="submit">创建新的测试空间</button>
+      </div>
+    </form>
+  </div>
+
+  <div class="toast" id="toast" role="status"></div>
+
+  <script src="cloud-bootstrap.js"></script>
+  <script type="module" src="api-sync.js"></script>
+  <script>
+    const STORAGE_KEY = "study-tracker-online-state-v1";
+    const READ_ONLY_LINK = Boolean(new URLSearchParams(location.search).get("view"));
+
+    const templateCourses = [
+      {
+        name: "Systemtheorie",
+        categories: [
+          { name: "Vorlesung", tasks: ["Kapitel 1", "Notizen 1", "Notizen 2"] },
+          { name: "Übung", tasks: ["Übung 1", "Übung 2", "Übung 3"] },
+          { name: "Altklausur", tasks: ["Klausur 1", "Klausur 2", "Klausur 3", "Klausur 4", "Klausur 5"] }
+        ]
+      },
+      {
+        name: "Algorithmen und Datenstrukturen",
+        categories: [
+          { name: "Vorlesung", tasks: ["Kapitel 1", "Kapitel 2", "Zusammenfassung"] },
+          { name: "Übung", tasks: ["Übung 1", "Übung 2", "Übung 3"] },
+          { name: "Prüfung", tasks: ["Altklausur 1", "Altklausur 2", "Fehlerliste prüfen"] }
+        ]
+      }
+    ];
+
+    let state = normalizeState(loadState());
+    let editContext = null;
+    let appClipboard = null;
+    let templatePlacementActive = false;
+    let selectedTemplateId = null;
+    let viewMode = "list";
+    let history = [JSON.stringify(state)];
+    let historyIndex = 0;
+
+    const els = {
+      courses: document.querySelector("#courses"),
+      appTitle: document.querySelector("#appTitle"),
+      editOwnerBtn: document.querySelector("#editOwnerBtn"),
+      semesterName: document.querySelector("#semesterName"),
+      stageKind: document.querySelector("#stageKind"),
+      semesterAmount: document.querySelector("#semesterAmount"),
+      addSemesterBtn: document.querySelector("#addSemesterBtn"),
+      loadTemplateBtn: document.querySelector("#loadTemplateBtn"),
+      loadSemesterTemplateBtn: document.querySelector("#loadSemesterTemplateBtn"),
+      exportBtn: document.querySelector("#exportBtn"),
+      exportBackupBtn: document.querySelector("#exportBackupBtn"),
+      importBackupBtn: document.querySelector("#importBackupBtn"),
+      importBackupInput: document.querySelector("#importBackupInput"),
+      listViewBtn: document.querySelector("#listViewBtn"),
+      chartViewBtn: document.querySelector("#chartViewBtn"),
+      gardenViewBtn: document.querySelector("#gardenViewBtn"),
+      undoBtn: document.querySelector("#undoBtn"),
+      redoBtn: document.querySelector("#redoBtn"),
+      semesterCount: document.querySelector("#semesterCount"),
+      globalPercent: document.querySelector("#globalPercent"),
+      globalBar: document.querySelector("#globalBar"),
+      globalText: document.querySelector("#globalText"),
+      courseCount: document.querySelector("#courseCount"),
+      categoryCount: document.querySelector("#categoryCount"),
+      taskCount: document.querySelector("#taskCount"),
+      doneCount: document.querySelector("#doneCount"),
+      editModal: document.querySelector("#editModal"),
+      editForm: document.querySelector("#editForm"),
+      modalTitle: document.querySelector("#modalTitle"),
+      modalBody: document.querySelector("#modalBody"),
+      cancelEditBtn: document.querySelector("#cancelEditBtn"),
+      templateModal: document.querySelector("#templateModal"),
+      templateList: document.querySelector("#templateList"),
+      closeTemplateBtn: document.querySelector("#closeTemplateBtn"),
+      closeTemplateFooterBtn: document.querySelector("#closeTemplateFooterBtn"),
+      semesterTemplateModal: document.querySelector("#semesterTemplateModal"),
+      semesterTemplateList: document.querySelector("#semesterTemplateList"),
+      closeSemesterTemplateBtn: document.querySelector("#closeSemesterTemplateBtn"),
+      closeSemesterTemplateFooterBtn: document.querySelector("#closeSemesterTemplateFooterBtn"),
+      welcomeModal: document.querySelector("#welcomeModal"),
+      welcomeForm: document.querySelector("#welcomeForm"),
+      welcomeImportBtn: document.querySelector("#welcomeImportBtn"),
+      ownerName: document.querySelector("#ownerName"),
+      toast: document.querySelector("#toast")
+    };
+
+    function uid() {
+      return `${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 9)}`;
+    }
+
+    function loadState() {
+      if (READ_ONLY_LINK) return { ownerName: "", semesters: [], courseTemplates: [] };
+      try {
+        const cloudLocal = window.studyCloud?.loadLocalState?.();
+        if (cloudLocal) return cloudLocal;
+      } catch (error) {
+        console.warn("Could not load saved study data.", error);
+      }
+      return {};
+    }
+
+    function saveState() {
+      if (window.studyCloud?.isReadOnly?.()) return true;
+      try {
+        if (window.studyCloud?.saveLocalState) {
+          window.studyCloud.saveLocalState(state);
+        } else {
+          localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
+        }
+        window.studyCloud?.queueSave?.(JSON.parse(JSON.stringify(state)));
+        return true;
+      } catch (error) {
+        showToast("保存失败：附件可能太大，请删除大文件后重试");
+        return false;
+      }
+    }
+
+    function normalizeState(savedState) {
+      let semesters;
+      if (Array.isArray(savedState?.semesters)) {
+        semesters = savedState.semesters;
+      } else {
+        const existingCourses = Array.isArray(savedState?.courses) ? savedState.courses : [];
+        semesters = [{
+          id: uid(),
+          name: "我的第四学期",
+          collapsed: false,
+          courses: existingCourses
+        }];
+      }
+
+      semesters.forEach(semester => {
+        if (semester.name === "示例学期（可以随便修改或删除）") {
+          semester.name = "我的第一学期（示例，可随便修改或删除）";
+        }
+        semester.collapsed = Boolean(semester.collapsed);
+        semester.kind = semester.kind === "module" ? "module" : "semester";
+        semester.infoCollapsed = semester.infoCollapsed !== false;
+        semester.note = semester.note || "";
+        semester.attachments = Array.isArray(semester.attachments) ? semester.attachments : [];
+        semester.courses = Array.isArray(semester.courses) ? semester.courses : [];
+        semester.courses.forEach(course => {
+          course.collapsed = Boolean(course.collapsed);
+          course.infoCollapsed = course.infoCollapsed !== false;
+          course.label = typeof course.label === "string" ? course.label.trim() : "";
+          course.note = course.note || "";
+          course.attachments = Array.isArray(course.attachments) ? course.attachments : [];
+          course.categories = Array.isArray(course.categories) ? course.categories : [];
+          course.categories.forEach(category => {
+            category.collapsed = Boolean(category.collapsed);
+            category.tasks = Array.isArray(category.tasks) ? category.tasks : [];
+            category.tasks.forEach(task => {
+              task.note = task.note || "";
+              task.attachments = Array.isArray(task.attachments) ? task.attachments : [];
+              task.collapsed = task.collapsed !== false;
+            });
+          });
+        });
+      });
+
+      let courseTemplates;
+      if (Array.isArray(savedState?.courseTemplates) && (savedState.courseTemplates.length || savedState.onboardingSeeded)) {
+        courseTemplates = savedState.courseTemplates
+          .map(normalizeCourseTemplate)
+          .filter(Boolean);
+      } else {
+        courseTemplates = createDefaultCourseTemplates();
+      }
+      let semesterTemplates;
+      const hasLegacyStageTemplate = savedState?.semesterTemplates?.some(template => template?.name === "通用考试学期");
+      if (Array.isArray(savedState?.semesterTemplates) && !hasLegacyStageTemplate && (savedState.semesterTemplates.length || savedState.onboardingSeeded)) {
+        semesterTemplates = savedState.semesterTemplates
+          .map(normalizeSemesterTemplate)
+          .filter(Boolean);
+      } else {
+        semesterTemplates = createDefaultSemesterTemplates();
+      }
+      const templateCatalogVersion = Number(savedState?.templateCatalogVersion || 0);
+      if (templateCatalogVersion < 2) {
+        const currentDefaults = createDefaultSemesterTemplates();
+        const defaultNames = new Set(["我的第一学期", "考研备考模块", "证书考试备考模块", "通用考试学期"]);
+        semesterTemplates = semesterTemplates.filter(template => !defaultNames.has(template.name));
+        semesterTemplates.push(...currentDefaults);
+      }
+      const starterContentVersion = Number(savedState?.starterContentVersion || 0);
+      if (starterContentVersion < 1) {
+        const legacyDemoNames = new Set([
+          "示例学期（可以随便修改或删除）",
+          "我的第一学期（示例，可随便修改或删除）"
+        ]);
+        const hadLegacyDemo = semesters.some(semester => legacyDemoNames.has(semester.name));
+        if (hadLegacyDemo) {
+          semesters = semesters.filter(semester => !legacyDemoNames.has(semester.name));
+          const existingNames = new Set(semesters.map(semester => semester.name));
+          semesters.push(...createInitialSemesters().filter(semester => !existingNames.has(semester.name)));
+        }
+      }
+      const ownerName = typeof savedState?.ownerName === "string" ? savedState.ownerName.trim() : "";
+      const shouldSeedInitialStages = !savedState?.onboardingSeeded
+        && !ownerName
+        && semesters.every(semester => !semester.courses?.length);
+      if (shouldSeedInitialStages) semesters = createInitialSemesters();
+      return {
+        ownerName,
+        semesters,
+        courseTemplates,
+        semesterTemplates,
+        onboardingSeeded: true,
+        templateCatalogVersion: 2,
+        starterContentVersion: 1
+      };
+    }
+
+    function createSemesterData(name, courses = [], kind = "semester") {
+      return {
+        id: uid(),
+        name,
+        kind,
+        collapsed: false,
+        infoCollapsed: true,
+        note: "",
+        attachments: [],
+        courses
+      };
+    }
+
+    function createCourseData(name, categories = []) {
+      return {
+        id: uid(),
+        name,
+        label: "",
+        collapsed: false,
+        infoCollapsed: true,
+        note: "",
+        attachments: [],
+        categories: categories.map(category => ({
+          id: uid(),
+          name: category.name,
+          collapsed: false,
+          tasks: category.tasks.map(taskName => ({
+            id: uid(),
+            name: taskName,
+            done: false,
+            note: "",
+            attachments: [],
+            collapsed: true
+          }))
+        }))
+      };
+    }
+
+    function createDefaultCourseTemplates() {
+      return templateCourses.map(course => ({
+        id: uid(),
+        name: course.name,
+        course: createCourseData(course.name, course.categories)
+      }));
+    }
+
+    function cloneSemesterForTemplate(semester) {
+      const cloned = copySemester(semester, []);
+      cloned.name = semester.name || "未命名学习阶段";
+      cloned.courses.forEach(course => course.categories.forEach(category => {
+        category.tasks.forEach(task => { task.done = false; });
+      }));
+      return cloned;
+    }
+
+    function createDefaultSemesterTemplates() {
+      const firstSemester = createSemesterData("我的第一学期", [
+        createCourseData("高等数学", [
+          { name: "课程内容", tasks: ["第 1 章", "第 2 章", "第 3 章"] },
+          { name: "练习", tasks: ["习题 1", "习题 2", "错题整理"] }
+        ]),
+        createCourseData("程序设计基础", [
+          { name: "课程内容", tasks: ["基础语法", "函数与模块", "数据结构"] },
+          { name: "实践", tasks: ["练习项目", "复习笔记"] }
+        ])
+      ], "semester");
+      const graduateExam = createSemesterData("考研备考模块", [
+        createLabeledCourse("模电", "专业课", [
+          { name: "基础与教材", tasks: ["电路基础复习", "半导体器件", "基本放大电路", "集成运放"] },
+          { name: "重点专题", tasks: ["反馈电路", "信号运算与处理", "波形发生与变换", "电源电路"] },
+          { name: "真题冲刺", tasks: ["整理公式与典型电路", "历年真题", "错题复盘", "模拟考试"] }
+        ]),
+        createLabeledCourse("数电", "专业课", [
+          { name: "基础与教材", tasks: ["数制与逻辑代数", "门电路", "组合逻辑电路", "触发器"] },
+          { name: "重点专题", tasks: ["时序逻辑电路", "脉冲波形", "存储器与可编程逻辑", "数模与模数转换"] },
+          { name: "真题冲刺", tasks: ["整理逻辑设计方法", "历年真题", "错题复盘", "模拟考试"] }
+        ]),
+        createLabeledCourse("数学", "公共课", [
+          { name: "基础阶段", tasks: ["高等数学基础", "线性代数基础", "概率论基础", "整理公式与概念"] },
+          { name: "强化阶段", tasks: ["专题强化", "计算训练", "错题整理", "阶段测试"] },
+          { name: "真题冲刺", tasks: ["历年真题一刷", "历年真题二刷", "模拟卷", "查漏补缺"] }
+        ]),
+        createLabeledCourse("英语", "公共课", [
+          { name: "长期积累", tasks: ["核心词汇", "长难句", "每日阅读", "翻译练习"] },
+          { name: "题型训练", tasks: ["阅读理解", "新题型", "完形填空", "作文素材"] },
+          { name: "真题冲刺", tasks: ["历年真题精读", "作文模板与批改", "模拟考试", "错题复盘"] }
+        ]),
+        createLabeledCourse("政治", "公共课", [
+          { name: "基础阶段", tasks: ["马原", "毛中特", "史纲", "思修法基"] },
+          { name: "强化阶段", tasks: ["选择题练习", "时政整理", "错题整理", "知识框架"] },
+          { name: "冲刺阶段", tasks: ["背诵材料", "主观题训练", "模拟卷", "考前复盘"] }
+        ])
+      ], "module");
+      const certificateExam = createSemesterData("证书考试备考模块", [
+        createCourseData("考试科目", [
+          { name: "学习", tasks: ["阅读考试大纲", "完成教材", "整理重点"] },
+          { name: "练习", tasks: ["专项练习", "模拟考试"] }
+        ])
+      ], "module");
+      return [
+        { id: uid(), name: "我的第一学期", semester: cloneSemesterForTemplate(firstSemester) },
+        { id: uid(), name: "考研备考模块", semester: cloneSemesterForTemplate(graduateExam) },
+        { id: uid(), name: "证书考试备考模块", semester: cloneSemesterForTemplate(certificateExam) }
+      ];
+    }
+
+    function createInitialSemesters() {
+      return createDefaultSemesterTemplates()
+        .slice(0, 2)
+        .map(template => cloneSemesterForTemplate(template.semester));
+    }
+
+    function createLabeledCourse(name, label, categories) {
+      const course = createCourseData(name, categories);
+      course.label = label;
+      return course;
+    }
+
+    function normalizeSemesterTemplate(template) {
+      const sourceSemester = template?.semester || template;
+      if (!sourceSemester || !Array.isArray(sourceSemester.courses)) return null;
+      return {
+        id: template.id || uid(),
+        name: template.name || sourceSemester.name || "未命名阶段模板",
+        semester: cloneSemesterForTemplate(sourceSemester)
+      };
+    }
+
+    function cloneCourseForTemplate(course) {
+      return {
+        id: uid(),
+        name: course.name || "未命名课程",
+        label: course.label || "",
+        collapsed: false,
+        infoCollapsed: true,
+        note: course.note || "",
+        attachments: (course.attachments || []).map(file => ({ ...file })),
+        categories: (course.categories || []).map(category => ({
+          id: uid(),
+          name: category.name || "未命名分类",
+          collapsed: false,
+          tasks: (category.tasks || []).map(copyTask)
+        }))
+      };
+    }
+
+    function normalizeCourseTemplate(template) {
+      const sourceCourse = template?.course || template;
+      if (!sourceCourse || !Array.isArray(sourceCourse.categories)) return null;
+      return {
+        id: template.id || uid(),
+        name: template.name || sourceCourse.name || "未命名模板",
+        course: cloneCourseForTemplate(sourceCourse)
+      };
+    }
+
+    function getProgress(tasks) {
+      const total = tasks.length;
+      const done = tasks.filter(task => task.done).length;
+      return {
+        done,
+        total,
+        percent: total ? Math.round((done / total) * 100) : 0
+      };
+    }
+
+    function getCourseTasks(course) {
+      return course.categories.flatMap(category => category.tasks);
+    }
+
+    function getSemesterTasks(semester) {
+      return semester.courses.flatMap(course => getCourseTasks(course));
+    }
+
+    function getTotals() {
+      const courses = state.semesters.flatMap(semester => semester.courses);
+      const categories = courses.flatMap(course => course.categories);
+      const tasks = categories.flatMap(category => category.tasks);
+      const progress = getProgress(tasks);
+      return {
+        semesters: state.semesters.length,
+        courses: courses.length,
+        categories: categories.length,
+        tasks: tasks.length,
+        done: progress.done,
+        percent: progress.percent
+      };
+    }
+
+    function render() {
+      const pageTitle = state.ownerName ? `${state.ownerName}的学习系统` : "我的学习系统";
+      els.appTitle.textContent = pageTitle;
+      els.editOwnerBtn.hidden = !state.ownerName;
+      document.title = "My Study Tracker";
+
+      const totals = getTotals();
+      els.semesterCount.textContent = totals.semesters;
+      els.courseCount.textContent = totals.courses;
+      els.categoryCount.textContent = totals.categories;
+      els.taskCount.textContent = totals.tasks;
+      els.doneCount.textContent = totals.done;
+      els.globalPercent.textContent = `${totals.percent}%`;
+      els.globalBar.style.width = `${totals.percent}%`;
+      els.globalText.textContent = `总体进度：${totals.done}/${totals.tasks}`;
+      els.listViewBtn.classList.toggle("active", viewMode === "list");
+      els.chartViewBtn.classList.toggle("active", viewMode === "chart");
+      els.gardenViewBtn.classList.toggle("active", viewMode === "garden");
+      els.undoBtn.disabled = historyIndex === 0;
+      els.redoBtn.disabled = historyIndex === history.length - 1;
+
+      els.courses.replaceChildren();
+
+      if (!state.semesters.length) {
+        const empty = document.createElement("div");
+        empty.className = "empty";
+        empty.textContent = "还没有学习阶段。可以添加大学学期或备考模块。";
+        els.courses.appendChild(empty);
+        return;
+      }
+
+      if (viewMode === "chart") {
+        els.courses.className = "courses";
+        state.semesters.forEach(semester => {
+          els.courses.appendChild(renderChartSemester(semester));
+        });
+        return;
+      }
+
+      if (viewMode === "garden") {
+        els.courses.className = "courses";
+        state.semesters.forEach(semester => {
+          els.courses.appendChild(renderGardenSemester(semester));
+        });
+        return;
+      }
+
+      els.courses.className = "courses";
+
+      state.semesters.forEach(semester => {
+        const wrap = document.createElement("div");
+        wrap.className = "semester-wrap";
+        wrap.dataset.semesterId = semester.id;
+        if (appClipboard?.type === "semester") {
+          wrap.appendChild(renderPasteZone("paste-semester-before", "粘贴学习阶段到上方"));
+        }
+        wrap.appendChild(renderSemester(semester));
+        if (appClipboard?.type === "semester") {
+          wrap.appendChild(renderPasteZone("paste-semester-after", "粘贴学习阶段到下方"));
+        }
+        els.courses.appendChild(wrap);
+      });
+    }
+
+    function renderPasteZone(action, label) {
+      const button = document.createElement("button");
+      button.className = "paste-zone";
+      button.type = "button";
+      button.dataset.action = action;
+      button.textContent = label;
+      return button;
+    }
+
+    function renderChartSemester(semester) {
+      const semesterEl = document.createElement("section");
+      semesterEl.className = "chart-semester";
+      const progress = getProgress(getSemesterTasks(semester));
+      semesterEl.innerHTML = `
+        <header class="chart-semester-header">
+          <h2></h2>
+          <strong>${progress.percent}% · ${progress.done}/${progress.total}</strong>
+        </header>
+        <div class="charts"></div>
+      `;
+      semesterEl.querySelector("h2").textContent = semester.name;
+      const charts = semesterEl.querySelector(".charts");
+      semester.courses.forEach(course => charts.appendChild(renderChartCourse(course)));
+      if (!semester.courses.length) {
+        charts.innerHTML = `<div class="empty">这个学习阶段还没有课程。</div>`;
+      }
+      return semesterEl;
+    }
+
+    function getPlantStage(percent) {
+      if (percent >= 100) return "harvest";
+      if (percent >= 75) return "bloom";
+      if (percent >= 50) return "leaf";
+      if (percent >= 25) return "sprout";
+      return "seed";
+    }
+
+    function renderPlant(stage) {
+      if (stage === "seed") return `<span class="plant plant-seed" aria-hidden="true"></span>`;
+      if (stage === "bloom") return `<span class="plant plant-bloom" aria-hidden="true"><span class="flower"></span></span>`;
+      if (stage === "harvest") return `<span class="plant plant-harvest" aria-hidden="true"><span class="fruit"></span></span>`;
+      return `<span class="plant plant-${stage}" aria-hidden="true"></span>`;
+    }
+
+    function renderGardenSemester(semester) {
+      const semesterEl = document.createElement("section");
+      semesterEl.className = "garden-semester";
+      const progress = getProgress(getSemesterTasks(semester));
+      semesterEl.innerHTML = `
+        <header class="garden-header">
+          <h2></h2>
+          <strong>${progress.percent}% · ${progress.done}/${progress.total}</strong>
+        </header>
+        <div class="garden-body">
+          <aside class="garden-farmer">
+            <span class="farmer-avatar" aria-hidden="true"></span>
+            <span class="farmer-name"></span>
+          </aside>
+          <div class="garden-field"></div>
+        </div>
+      `;
+      semesterEl.querySelector("h2").textContent = semester.name;
+      semesterEl.querySelector(".farmer-name").textContent = state.ownerName || "我";
+      const field = semesterEl.querySelector(".garden-field");
+      if (!semester.courses.length) {
+        field.innerHTML = `<div class="empty">这个学习阶段还没有课程，菜地还空着。</div>`;
+        return semesterEl;
+      }
+      semester.courses.forEach(course => field.appendChild(renderGardenCourse(course)));
+      return semesterEl;
+    }
+
+    function renderGardenCourse(course) {
+      const courseEl = document.createElement("article");
+      courseEl.className = "garden-course";
+      const tasks = getCourseTasks(course);
+      const progress = getProgress(tasks);
+      const stage = getPlantStage(progress.percent);
+      const categoryColors = ["#2563eb", "#168653", "#c2410c", "#7c3aed", "#be185d", "#087f8c"];
+      const categoriesMeta = course.categories.map((category, index) => {
+        const categoryProgress = getProgress(category.tasks);
+        return `<span class="garden-category">${escapeHtml(category.name)} ${categoryProgress.done}/${categoryProgress.total}</span>`;
+      }).join("");
+
+      courseEl.innerHTML = `
+        <header class="garden-course-header">
+          <h3></h3>
+          <strong>${progress.percent}% · ${progress.done}/${progress.total}</strong>
+        </header>
+        <div class="garden-ridge"></div>
+        <div class="garden-meta">${categoriesMeta || `<span class="garden-category">暂无分类</span>`}</div>
+      `;
+      courseEl.querySelector("h3").textContent = course.name;
+      if (course.label) {
+        const label = document.createElement("span");
+        label.className = "course-label";
+        label.textContent = course.label;
+        courseEl.querySelector(".garden-course-header").insertBefore(label, courseEl.querySelector(".garden-course-header strong"));
+      }
+
+      const ridge = courseEl.querySelector(".garden-ridge");
+      if (!tasks.length) {
+        ridge.innerHTML = `<div class="empty">这门课还没有 task。</div>`;
+        return courseEl;
+      }
+
+      course.categories.forEach((category, categoryIndex) => {
+        category.tasks.forEach((task, taskIndex) => {
+          const plot = document.createElement("div");
+          plot.className = `garden-plot${task.done ? " done" : ""}`;
+          plot.style.setProperty("--plot-accent", categoryColors[categoryIndex % categoryColors.length]);
+          const title = [category.name, task.title || task.name || "", task.detail || ""].filter(Boolean).join(" · ");
+          plot.title = title;
+          plot.setAttribute("aria-label", `${title}：${task.done ? "已完成" : "未完成"}`);
+          if (task.done) {
+            plot.innerHTML = renderPlant(stage);
+          }
+          ridge.appendChild(plot);
+        });
+      });
+
+      return courseEl;
+    }
+
+    function renderSemester(semester) {
+      const semesterEl = document.createElement("section");
+      semesterEl.className = `semester${semester.collapsed ? " collapsed" : ""}${semester.infoCollapsed ? " info-collapsed" : ""}`;
+      semesterEl.dataset.semesterId = semester.id;
+      const progress = getProgress(getSemesterTasks(semester));
+      semesterEl.innerHTML = `
+        <header class="semester-header">
+          <div>
+            <div class="semester-title">
+              <h2></h2>
+              <span class="badge"></span>
+            </div>
+            <div class="progress-bar" aria-hidden="true">
+              <div class="progress-fill"></div>
+            </div>
+            <form class="course-add" data-action="add-course">
+              <input class="input" name="courseName" placeholder="新课程，例如 Systemtheorie">
+              <input class="input amount-input" name="courseAmount" type="number" min="1" max="100" value="1" title="添加数量">
+              <button class="btn secondary" type="submit">+ 添加课程</button>
+            </form>
+            <div class="semester-extra entity-extra">
+              <textarea class="textarea entity-note" data-action="update-semester-note" placeholder="学期备注：目标、考试时间、整体安排"></textarea>
+              <div class="task-files">
+                <label class="btn secondary">
+                  + 上传图片/PDF
+                  <input type="file" data-action="add-semester-attachment" accept="image/*,.pdf,application/pdf" multiple hidden>
+                </label>
+                <div class="attachments"></div>
+              </div>
+            </div>
+          </div>
+          <div class="actions">
+            <button class="btn icon" type="button" data-action="toggle-semester" title="收起或展开学期">${semester.collapsed ? "▸" : "▾"}</button>
+            <button class="btn icon note-toggle" type="button" data-action="toggle-semester-info" title="收起或展开备注与附件">备注/附件 ${semester.infoCollapsed ? "▸" : "▾"}</button>
+            <button class="btn icon template-toggle" type="button" data-action="save-semester-template" title="将当前学期保存为模板">存为模板</button>
+            <button class="btn icon" type="button" data-action="edit-semester" title="编辑学期">✎</button>
+            <button class="btn icon" type="button" data-action="copy-semester" title="复制学习阶段">⧉</button>
+            <button class="btn icon" type="button" data-action="move-semester-up" title="上移学期">↑</button>
+            <button class="btn icon" type="button" data-action="move-semester-down" title="下移学期">↓</button>
+            <button class="btn icon" type="button" data-action="delete-semester" title="删除学习阶段">×</button>
+          </div>
+        </header>
+        <div class="semester-courses"></div>
+      `;
+      semesterEl.querySelector(".semester-title h2").textContent = semester.name;
+      semesterEl.querySelector(".badge").textContent = `${semester.kind === "module" ? "备考模块" : "大学学期"} · ${progress.done}/${progress.total} · ${progress.percent}%`;
+      semesterEl.querySelector(".progress-fill").style.width = `${progress.percent}%`;
+      semesterEl.querySelector(".entity-note").value = semester.note || "";
+      renderAttachments(semesterEl.querySelector(".attachments"), semester, "semester");
+
+      const coursesEl = semesterEl.querySelector(".semester-courses");
+      if (!semester.courses.length) {
+        const empty = document.createElement("div");
+        empty.className = "empty";
+        empty.textContent = "这个学习阶段还没有课程。";
+        coursesEl.appendChild(empty);
+        if (appClipboard?.type === "course") {
+          const zone = renderPasteZone("paste-course-empty", "粘贴课程到这个学习阶段");
+          zone.classList.add("empty-paste");
+          coursesEl.appendChild(zone);
+        }
+        if (templatePlacementActive) {
+          const zone = renderPasteZone("place-template-empty", "放置课程模板至此");
+          zone.classList.add("empty-paste");
+          coursesEl.appendChild(zone);
+        }
+      } else {
+        semester.courses.forEach(course => {
+          const wrap = document.createElement("div");
+          wrap.className = "course-wrap";
+          wrap.dataset.courseId = course.id;
+          if (appClipboard?.type === "course") {
+            wrap.appendChild(renderPasteZone("paste-course-before", "粘贴课程到上方"));
+          }
+          if (templatePlacementActive) {
+            wrap.appendChild(renderPasteZone("place-template-before", "放置课程模板至上方"));
+          }
+          wrap.appendChild(renderCourse(course));
+          if (appClipboard?.type === "course") {
+            wrap.appendChild(renderPasteZone("paste-course-after", "粘贴课程到下方"));
+          }
+          if (templatePlacementActive) {
+            wrap.appendChild(renderPasteZone("place-template-after", "放置课程模板至下方"));
+          }
+          coursesEl.appendChild(wrap);
+        });
+      }
+      return semesterEl;
+    }
+
+    function renderChartCourse(course) {
+      const card = document.createElement("article");
+      card.className = "chart-course";
+      const tasks = getCourseTasks(course);
+      const progress = getProgress(tasks);
+      const palette = [
+        ["#2563eb", "#bfdbfe"],
+        ["#168653", "#b7e4cf"],
+        ["#c2410c", "#fed7aa"],
+        ["#7c3aed", "#ddd6fe"],
+        ["#be185d", "#fbcfe8"],
+        ["#087f8c", "#b7e8ed"]
+      ];
+      let cursor = 0;
+      const segments = [];
+      const legend = [];
+
+      course.categories.forEach((category, index) => {
+        const catProgress = getProgress(category.tasks);
+        const [doneColor, pendingColor] = palette[index % palette.length];
+        const doneAngle = tasks.length ? (catProgress.done / tasks.length) * 360 : 0;
+        const pendingAngle = tasks.length ? ((catProgress.total - catProgress.done) / tasks.length) * 360 : 0;
+        if (doneAngle) segments.push(`${doneColor} ${cursor}deg ${cursor + doneAngle}deg`);
+        cursor += doneAngle;
+        if (pendingAngle) segments.push(`${pendingColor} ${cursor}deg ${cursor + pendingAngle}deg`);
+        cursor += pendingAngle;
+        legend.push(`
+          <div class="legend-item">
+            <span class="swatches">
+              <span class="swatch" style="background:${doneColor}"></span>
+              <span class="swatch" style="background:${pendingColor}"></span>
+            </span>
+            <span>${escapeHtml(category.name)}</span>
+            <strong>${catProgress.done}/${catProgress.total}</strong>
+          </div>
+        `);
+      });
+
+      const background = segments.length ? `conic-gradient(${segments.join(",")})` : "#e9eef8";
+      card.innerHTML = `
+        <div class="pdf-row">
+          <h2></h2>
+          <strong>${progress.percent}% · ${progress.done}/${progress.total}</strong>
+        </div>
+        <div class="pie-layout">
+          <div class="pie" style="background:${background}">
+            <span class="pie-label">${progress.percent}%</span>
+          </div>
+          <div class="legend">${legend.join("") || `<span class="pdf-muted">暂无分类任务</span>`}</div>
+        </div>
+        <p class="batch-help">深色为已完成，浅色为未完成。</p>
+      `;
+      card.querySelector("h2").textContent = course.name;
+      if (course.label) {
+        const label = document.createElement("span");
+        label.className = "course-label";
+        label.textContent = course.label;
+        card.querySelector(".pdf-row").insertBefore(label, card.querySelector(".pdf-row strong"));
+      }
+      return card;
+    }
+
+    function renderCourse(course) {
+      const courseEl = document.createElement("article");
+      courseEl.className = `course${course.collapsed ? " collapsed" : ""}${course.infoCollapsed ? " info-collapsed" : ""}`;
+      courseEl.dataset.courseId = course.id;
+
+      const tasks = getCourseTasks(course);
+      const progress = getProgress(tasks);
+      const linkedTemplate = state.courseTemplates.find(template => template.id === course.templateSourceId);
+
+      courseEl.innerHTML = `
+        <header class="course-header">
+          <div>
+            <div class="course-title">
+              <h2></h2>
+              <span class="course-label" hidden></span>
+              <span class="badge"></span>
+            </div>
+            <div class="progress-bar" aria-hidden="true">
+              <div class="progress-fill"></div>
+            </div>
+            <form class="category-add" data-action="add-category">
+              <input class="input" name="categoryName" placeholder="新分类，例如 Vorlesung">
+              <input class="input amount-input" name="categoryAmount" type="number" min="1" max="100" value="1" title="添加数量">
+              <button class="btn secondary" type="submit">+ 添加分类</button>
+            </form>
+            <div class="course-extra entity-extra">
+              <textarea class="textarea entity-note" data-action="update-course-note" placeholder="课程备注：考试信息、资料链接、学习重点"></textarea>
+              <div class="task-files">
+                <label class="btn secondary">
+                  + 上传图片/PDF
+                  <input type="file" data-action="add-course-attachment" accept="image/*,.pdf,application/pdf" multiple hidden>
+                </label>
+                <div class="attachments"></div>
+              </div>
+            </div>
+          </div>
+          <div class="actions">
+            <button class="btn icon" type="button" data-action="toggle-course" title="收起或展开课程">${course.collapsed ? "▸" : "▾"}</button>
+            <button class="btn icon note-toggle" type="button" data-action="toggle-course-info" title="收起或展开备注与附件">备注/附件 ${course.infoCollapsed ? "▸" : "▾"}</button>
+            <button class="btn icon template-toggle" type="button" data-action="save-course-template" title="将当前课程保存为模板">${linkedTemplate ? "更新模板" : "存为模板"}</button>
+            <button class="btn icon" type="button" data-action="edit-course" title="编辑课程">✎</button>
+            <button class="btn icon" type="button" data-action="copy-course" title="复制课程">⧉</button>
+            <button class="btn icon" type="button" data-action="move-course-up" title="上移课程">↑</button>
+            <button class="btn icon" type="button" data-action="move-course-down" title="下移课程">↓</button>
+            <button class="btn icon" type="button" data-action="delete-course" title="删除课程">×</button>
+          </div>
+        </header>
+        <div class="categories"></div>
+      `;
+
+      courseEl.querySelector("h2").textContent = course.name;
+      const courseLabel = courseEl.querySelector(".course-label");
+      courseLabel.textContent = course.label || "";
+      courseLabel.hidden = !course.label;
+      courseEl.querySelector(".badge").textContent = `${progress.done}/${progress.total} · ${progress.percent}%`;
+      courseEl.querySelector(".progress-fill").style.width = `${progress.percent}%`;
+      courseEl.querySelector(".entity-note").value = course.note || "";
+      renderAttachments(courseEl.querySelector(".attachments"), course, "course");
+
+      const categoriesEl = courseEl.querySelector(".categories");
+      if (!course.categories.length) {
+        const empty = document.createElement("div");
+        empty.className = "empty";
+        empty.textContent = "这个课程还没有分类。";
+        categoriesEl.appendChild(empty);
+      } else {
+        course.categories.forEach(category => {
+          const wrap = document.createElement("div");
+          wrap.className = "category-wrap";
+          wrap.dataset.categoryId = category.id;
+          if (appClipboard?.type === "category") {
+            wrap.appendChild(renderPasteZone("paste-category-before", "粘贴分类到上方"));
+          }
+          wrap.appendChild(renderCategory(course, category));
+          if (appClipboard?.type === "category") {
+            wrap.appendChild(renderPasteZone("paste-category-after", "粘贴分类到下方"));
+          }
+          categoriesEl.appendChild(wrap);
+        });
+      }
+
+      return courseEl;
+    }
+
+    function renderCategory(course, category) {
+      const categoryEl = document.createElement("section");
+      categoryEl.className = `category${category.collapsed ? " collapsed" : ""}`;
+      categoryEl.dataset.categoryId = category.id;
+
+      const progress = getProgress(category.tasks);
+      categoryEl.innerHTML = `
+        <header class="category-header">
+          <div>
+            <h3></h3>
+            <div class="task-meta">
+              <span class="pill"></span>
+            </div>
+            <div class="progress-bar category-progress-bar" aria-hidden="true">
+              <div class="progress-fill"></div>
+            </div>
+            <form class="quick-add" data-action="add-task">
+              <input class="input" name="taskName" placeholder="第一栏，例如 Kapitel 1">
+              <input class="input" name="taskDetail" placeholder="第二栏，例如 Fourier">
+              <input class="input amount-input" name="taskAmount" type="number" min="1" max="200" value="1" title="添加数量">
+              <button class="btn secondary" type="submit">+ 添加任务</button>
+            </form>
+          </div>
+          <div class="actions">
+            <button class="btn icon" type="button" data-action="toggle-category" title="收起或展开分类">${category.collapsed ? "▸" : "▾"}</button>
+            <button class="btn icon" type="button" data-action="edit-category" title="编辑分类">✎</button>
+            <button class="btn icon" type="button" data-action="copy-category" title="复制分类">⧉</button>
+            <button class="btn icon" type="button" data-action="delete-category" title="删除分类">×</button>
+          </div>
+        </header>
+        <div class="tasks"></div>
+      `;
+
+      categoryEl.querySelector("h3").textContent = category.name;
+      categoryEl.querySelector(".pill").textContent = `${progress.done}/${progress.total} · ${progress.percent}%`;
+      categoryEl.querySelector(".progress-fill").style.width = `${progress.percent}%`;
+
+      const tasksEl = categoryEl.querySelector(".tasks");
+      if (!category.tasks.length) {
+        const empty = document.createElement("div");
+        empty.className = "empty";
+        empty.textContent = "这个分类还没有任务。";
+        tasksEl.appendChild(empty);
+      } else {
+        category.tasks.forEach((task, index) => {
+          const wrap = document.createElement("div");
+          wrap.className = "task-wrap";
+          wrap.dataset.taskId = task.id;
+          if (appClipboard?.type === "task") {
+            wrap.appendChild(renderPasteZone("paste-task-before", "粘贴任务到上方"));
+          }
+          wrap.appendChild(renderTask(task, index));
+          if (appClipboard?.type === "task") {
+            wrap.appendChild(renderPasteZone("paste-task-after", "粘贴任务到下方"));
+          }
+          tasksEl.appendChild(wrap);
+        });
+      }
+
+      return categoryEl;
+    }
+
+    function renderTask(task, index) {
+      const taskEl = document.createElement("div");
+      const collapsed = task.collapsed !== false;
+      taskEl.className = `task${task.done ? " done" : ""}${collapsed ? " collapsed" : ""}`;
+      taskEl.dataset.taskId = task.id;
+
+      taskEl.innerHTML = `
+        <span class="task-number"></span>
+        <input type="checkbox" data-action="toggle-task">
+        <span class="task-name"></span>
+        <div class="actions">
+          <button class="btn icon note-toggle" type="button" data-action="toggle-task-details" title="收起或展开备注与附件">备注/附件 ${collapsed ? "▸" : "▾"}</button>
+          <button class="btn icon" type="button" data-action="move-task-up" title="上移任务">↑</button>
+          <button class="btn icon" type="button" data-action="move-task-down" title="下移任务">↓</button>
+          <button class="btn icon" type="button" data-action="edit-task" title="编辑任务">✎</button>
+          <button class="btn icon" type="button" data-action="copy-task" title="复制任务">⧉</button>
+          <button class="btn icon" type="button" data-action="delete-task" title="删除任务">×</button>
+        </div>
+        <div class="task-extra">
+          <textarea class="textarea task-note" data-action="update-task-note" placeholder="备注：记录重点、问题或复习提示"></textarea>
+          <div class="task-files">
+            <label class="btn secondary">
+              + 上传图片/PDF
+              <input type="file" data-action="add-task-attachment" accept="image/*,.pdf,application/pdf" multiple hidden>
+            </label>
+            <div class="attachments"></div>
+          </div>
+        </div>
+      `;
+
+      taskEl.querySelector(".task-number").textContent = `${index + 1}.`;
+      taskEl.querySelector("input").checked = task.done;
+      const title = task.title || task.name || "";
+      const detail = task.detail || "";
+      const nameEl = taskEl.querySelector(".task-name");
+      nameEl.innerHTML = `
+        <strong class="task-title"></strong>
+        ${detail ? `<span class="task-detail"></span>` : `<input class="task-detail-input" data-action="update-task-detail" placeholder="填写第二栏内容">`}
+      `;
+      nameEl.querySelector(".task-title").textContent = title;
+      const detailEl = nameEl.querySelector(".task-detail");
+      if (detailEl) detailEl.textContent = detail;
+      const detailInput = nameEl.querySelector(".task-detail-input");
+      if (detailInput) detailInput.value = detail;
+      taskEl.querySelector(".task-note").value = task.note || "";
+      renderAttachments(taskEl.querySelector(".attachments"), task, "task");
+
+      return taskEl;
+    }
+
+    function renderAttachments(container, entity, type) {
+      container.replaceChildren();
+      (entity.attachments || []).forEach((file, index) => {
+        const item = document.createElement("span");
+        item.className = "attachment";
+
+        if (file.type?.startsWith("image/")) {
+          const image = document.createElement("img");
+          image.src = file.data;
+          image.alt = file.name;
+          item.appendChild(image);
+        }
+
+        const link = document.createElement("a");
+        link.href = file.data;
+        link.download = file.name;
+        link.textContent = file.name;
+        item.appendChild(link);
+
+        const remove = document.createElement("button");
+        remove.className = "btn icon";
+        remove.type = "button";
+        remove.dataset.action = `delete-${type}-attachment`;
+        remove.dataset.index = index;
+        remove.title = "删除附件";
+        remove.textContent = "×";
+        item.appendChild(remove);
+        container.appendChild(item);
+      });
+    }
+
+    function findSemester(semesterId) {
+      return state.semesters.find(semester => semester.id === semesterId);
+    }
+
+    function findCourse(semester, courseId) {
+      return semester.courses.find(course => course.id === courseId);
+    }
+
+    function findCategory(course, categoryId) {
+      return course.categories.find(category => category.id === categoryId);
+    }
+
+    function findFromEvent(target) {
+      const semesterEl = target.closest(".semester");
+      const courseEl = target.closest(".course");
+      const categoryEl = target.closest(".category");
+      const taskEl = target.closest(".task");
+      const semesterWrap = target.closest(".semester-wrap");
+      const courseWrap = target.closest(".course-wrap");
+      const categoryWrap = target.closest(".category-wrap");
+      const taskWrap = target.closest(".task-wrap");
+      const semesterId = semesterEl?.dataset.semesterId || semesterWrap?.dataset.semesterId;
+      const semester = semesterId ? findSemester(semesterId) : null;
+      const courseId = courseEl?.dataset.courseId || courseWrap?.dataset.courseId;
+      const course = semester && courseId ? findCourse(semester, courseId) : null;
+      const categoryId = categoryEl?.dataset.categoryId || categoryWrap?.dataset.categoryId;
+      const category = course && categoryId ? findCategory(course, categoryId) : null;
+      const taskId = taskEl?.dataset.taskId || taskWrap?.dataset.taskId;
+      const task = category && taskId ? category.tasks.find(item => item.id === taskId) : null;
+      return { semester, course, category, task };
+    }
+
+    function commit(message, recordHistory = true) {
+      if (recordHistory) {
+        const snapshot = JSON.stringify(state);
+        if (snapshot !== history[historyIndex]) {
+          history = history.slice(0, historyIndex + 1);
+          history.push(snapshot);
+          if (history.length > 50) history.shift();
+          historyIndex = history.length - 1;
+        }
+      }
+      saveState();
+      render();
+      if (message) showToast(message);
+    }
+
+    function stepHistory(direction) {
+      const nextIndex = historyIndex + direction;
+      if (nextIndex < 0 || nextIndex >= history.length) return;
+      historyIndex = nextIndex;
+      state = normalizeState(JSON.parse(history[historyIndex]));
+      saveState();
+      render();
+      showToast(direction < 0 ? "已撤销上一步" : "已恢复下一步");
+    }
+
+    function readAttachment(file) {
+      return new Promise((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onload = () => resolve({
+          name: file.name,
+          type: file.type || "application/octet-stream",
+          data: reader.result
+        });
+        reader.onerror = reject;
+        reader.readAsDataURL(file);
+      });
+    }
+
+    function showToast(message) {
+      els.toast.textContent = message;
+      els.toast.classList.add("show");
+      clearTimeout(showToast.timer);
+      showToast.timer = setTimeout(() => {
+        els.toast.classList.remove("show");
+      }, 2200);
+    }
+
+    function moveItem(items, item, direction) {
+      const index = items.indexOf(item);
+      if (index < 0 || items.length < 2) return false;
+      const nextIndex = (index + direction + items.length) % items.length;
+      const [removed] = items.splice(index, 1);
+      items.splice(nextIndex, 0, removed);
+      return true;
+    }
+
+    function getAmount(value, max = 100) {
+      const amount = Number(value);
+      if (!Number.isInteger(amount) || amount < 1) return 1;
+      return Math.min(amount, max);
+    }
+
+    function escapeRegExp(value) {
+      return value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+    }
+
+    function getNextNumber(baseName, existingItems, key = "name") {
+      const pattern = new RegExp(`^${escapeRegExp(baseName)}\\s+(\\d+)$`, "i");
+      const numbers = existingItems
+        .map(item => String(item[key] || item.name || "").match(pattern))
+        .filter(Boolean)
+        .map(match => Number(match[1]))
+        .filter(Number.isInteger);
+
+      return numbers.length ? Math.max(...numbers) + 1 : 1;
+    }
+
+    function createNames(baseName, amount, existingItems, key = "name") {
+      if (amount === 1) return [baseName];
+
+      const start = getNextNumber(baseName, existingItems, key);
+      return Array.from({ length: amount }, (_, index) => `${baseName} ${start + index}`);
+    }
+
+    function getCopyName(name, siblings) {
+      const base = `${name} 副本`;
+      const existingNames = new Set(siblings.map(item => item.name));
+      if (!existingNames.has(base)) return base;
+
+      let index = 2;
+      while (existingNames.has(`${base} ${index}`)) {
+        index++;
+      }
+      return `${base} ${index}`;
+    }
+
+    function copyTask(task) {
+      const title = task.title || task.name || "";
+      const detail = task.detail || "";
+      return {
+        id: uid(),
+        title,
+        detail,
+        name: detail ? `${title} ${detail}` : title,
+        done: false,
+        note: task.note || "",
+        attachments: (task.attachments || []).map(file => ({ ...file })),
+        collapsed: true
+      };
+    }
+
+    function copyCategory(category, siblingCategories) {
+      return {
+        id: uid(),
+        name: getCopyName(category.name, siblingCategories),
+        tasks: category.tasks.map(copyTask)
+      };
+    }
+
+    function copyCourse(course, siblingCourses) {
+      const copiedCategories = course.categories.map(category => ({
+        id: uid(),
+        name: category.name,
+        tasks: category.tasks.map(copyTask)
+      }));
+
+      return {
+        id: uid(),
+        name: getCopyName(course.name, siblingCourses),
+        label: course.label || "",
+        collapsed: false,
+        infoCollapsed: true,
+        note: course.note || "",
+        attachments: (course.attachments || []).map(file => ({ ...file })),
+        categories: copiedCategories
+      };
+    }
+
+    function copySemester(semester, siblingSemesters) {
+      return {
+        id: uid(),
+        name: getCopyName(semester.name, siblingSemesters),
+        kind: semester.kind === "module" ? "module" : "semester",
+        collapsed: false,
+        infoCollapsed: true,
+        note: semester.note || "",
+        attachments: (semester.attachments || []).map(file => ({ ...file })),
+        courses: semester.courses.map(course => ({
+          id: uid(),
+          name: course.name,
+          label: course.label || "",
+          collapsed: false,
+          infoCollapsed: true,
+          note: course.note || "",
+          attachments: (course.attachments || []).map(file => ({ ...file })),
+          categories: course.categories.map(category => ({
+            id: uid(),
+            name: category.name,
+            collapsed: false,
+            tasks: category.tasks.map(copyTask)
+          }))
+        }))
+      };
+    }
+
+    function putClipboard(type, item) {
+      templatePlacementActive = false;
+      selectedTemplateId = null;
+      appClipboard = {
+        type,
+        item: JSON.parse(JSON.stringify(item))
+      };
+      render();
+      showToast(`${type === "semester" ? "学习阶段" : type === "course" ? "课程" : type === "category" ? "分类" : "任务"}已复制，选择目标位置粘贴`);
+    }
+
+    function openEditModal(title, fields, onSave) {
+      editContext = onSave;
+      els.modalTitle.textContent = title;
+      els.modalBody.replaceChildren();
+
+      fields.forEach(field => {
+        const wrap = document.createElement("div");
+        wrap.className = "field";
+
+        const label = document.createElement("label");
+        label.setAttribute("for", field.name);
+        label.textContent = field.label;
+
+        const input = document.createElement(field.multiline ? "textarea" : "input");
+        input.className = field.multiline ? "textarea" : "input";
+        input.id = field.name;
+        input.name = field.name;
+        input.value = field.value;
+        input.required = field.required !== false;
+        if (field.placeholder) input.placeholder = field.placeholder;
+
+        wrap.append(label, input);
+        els.modalBody.appendChild(wrap);
+      });
+
+      els.editModal.classList.add("open");
+      const firstInput = els.modalBody.querySelector("input, textarea");
+      if (firstInput) firstInput.focus();
+    }
+
+    function closeEditModal() {
+      editContext = null;
+      els.editModal.classList.remove("open");
+      els.editForm.reset();
+      els.modalBody.replaceChildren();
+    }
+
+    function openWelcomeModal() {
+      els.ownerName.value = state.ownerName || "";
+      els.welcomeModal.classList.add("open");
+      els.ownerName.focus();
+    }
+
+    function closeWelcomeModal() {
+      els.welcomeModal.classList.remove("open");
+      els.welcomeForm.reset();
+    }
+
+    function addSemester() {
+      const name = els.semesterName.value.trim();
+      if (!name) return;
+      const amount = getAmount(els.semesterAmount.value, 20);
+      const names = createNames(name, amount, state.semesters);
+      state.semesters.push(...names.map(semesterName => createSemesterData(semesterName, [], els.stageKind.value)));
+      els.semesterName.value = "";
+      els.semesterAmount.value = "1";
+      commit(amount === 1 ? "学习阶段已添加" : `已添加 ${amount} 个学习阶段`);
+    }
+
+    function renderTemplateList() {
+      els.templateList.replaceChildren();
+      if (!state.courseTemplates.length) {
+        const empty = document.createElement("p");
+        empty.className = "template-empty";
+        empty.textContent = "还没有保存的课程模板。";
+        els.templateList.appendChild(empty);
+        return;
+      }
+
+      state.courseTemplates.forEach(template => {
+        const item = document.createElement("article");
+        item.className = "template-item";
+        item.dataset.templateId = template.id;
+        const categoryCount = template.course.categories.length;
+        const taskCount = getCourseTasks(template.course).length;
+        item.innerHTML = `
+          <div>
+            <strong class="template-name"></strong>
+            <span class="template-meta">${categoryCount} 个分类 · ${taskCount} 个任务</span>
+          </div>
+          <div class="actions">
+            <button class="btn" type="button" data-action="use-template">使用</button>
+            <button class="btn secondary" type="button" data-action="rename-template">改名</button>
+            <button class="btn icon" type="button" data-action="delete-template" title="删除模板">×</button>
+          </div>
+        `;
+        item.querySelector(".template-name").textContent = template.name;
+        els.templateList.appendChild(item);
+      });
+    }
+
+    function renderSemesterTemplateList() {
+      els.semesterTemplateList.replaceChildren();
+      state.semesterTemplates.forEach(template => {
+        const item = document.createElement("article");
+        item.className = "template-item";
+        item.dataset.templateId = template.id;
+        const courseCount = template.semester.courses.length;
+        const taskCount = getSemesterTasks(template.semester).length;
+        const kindLabel = template.semester.kind === "module" ? "备考模块" : "大学学期";
+        item.innerHTML = `
+          <div>
+            <strong class="template-name"></strong>
+            <span class="template-meta">${kindLabel} · ${courseCount} 门课程 · ${taskCount} 个任务</span>
+          </div>
+          <div class="actions">
+            <button class="btn" type="button" data-action="use-semester-template">添加阶段</button>
+            <button class="btn secondary" type="button" data-action="rename-semester-template">改名</button>
+            <button class="btn icon" type="button" data-action="delete-semester-template" title="删除模板">×</button>
+          </div>
+        `;
+        item.querySelector(".template-name").textContent = template.name;
+        els.semesterTemplateList.appendChild(item);
+      });
+    }
+
+    function openSemesterTemplateLibrary() {
+      appClipboard = null;
+      render();
+      renderSemesterTemplateList();
+      els.semesterTemplateModal.classList.add("open");
+    }
+
+    function closeSemesterTemplateLibrary() {
+      els.semesterTemplateModal.classList.remove("open");
+    }
+
+    function saveSemesterTemplate(semester, templateName) {
+      const existing = state.semesterTemplates.find(template => template.name === templateName);
+      if (existing) {
+        existing.semester = cloneSemesterForTemplate(semester);
+        commit(`阶段模板“${templateName}”已更新`);
+        return;
+      }
+      state.semesterTemplates.push({
+        id: uid(),
+        name: templateName,
+        semester: cloneSemesterForTemplate(semester)
+      });
+      commit(`阶段模板“${templateName}”已保存`);
+    }
+
+    function openTemplateLibrary() {
+      templatePlacementActive = false;
+      selectedTemplateId = null;
+      appClipboard = null;
+      render();
+      renderTemplateList();
+      els.templateModal.classList.add("open");
+    }
+
+    function closeTemplateLibrary() {
+      els.templateModal.classList.remove("open");
+    }
+
+    function startTemplatePlacement(templateId) {
+      const template = state.courseTemplates.find(item => item.id === templateId);
+      if (!template) return;
+      selectedTemplateId = template.id;
+      templatePlacementActive = true;
+      appClipboard = null;
+      closeTemplateLibrary();
+      render();
+      showToast(`“${template.name}”待放置；点击其他地方将取消`);
+    }
+
+    function placeTemplateCourses(semester, index) {
+      const template = state.courseTemplates.find(item => item.id === selectedTemplateId);
+      if (!template) {
+        templatePlacementActive = false;
+        selectedTemplateId = null;
+        render();
+        return;
+      }
+      const freshCourse = cloneCourseForTemplate(template.course);
+      freshCourse.templateSourceId = template.id;
+      const existingSameName = semester.courses.filter(item => {
+        return item.name === freshCourse.name || item.name.startsWith(`${freshCourse.name} `);
+      });
+      if (existingSameName.length) {
+        freshCourse.name = `${freshCourse.name} ${existingSameName.length + 1}`;
+      }
+      semester.courses.splice(index, 0, freshCourse);
+      templatePlacementActive = false;
+      selectedTemplateId = null;
+      commit(`课程模板“${template.name}”已放置`);
+    }
+
+    function saveCourseTemplate(course, templateName) {
+      const existing = state.courseTemplates.find(template => template.name === templateName);
+      if (existing) {
+        existing.course = cloneCourseForTemplate(course);
+        existing.name = templateName;
+        course.templateSourceId = existing.id;
+        commit(`课程模板“${templateName}”已更新`);
+        return;
+      }
+      const template = {
+        id: uid(),
+        name: templateName,
+        course: cloneCourseForTemplate(course)
+      };
+      state.courseTemplates.push(template);
+      course.templateSourceId = template.id;
+      commit(`课程模板“${templateName}”已保存`);
+    }
+
+    function escapeHtml(value) {
+      return String(value ?? "")
+        .replaceAll("&", "&amp;")
+        .replaceAll("<", "&lt;")
+        .replaceAll(">", "&gt;")
+        .replaceAll('"', "&quot;")
+        .replaceAll("'", "&#039;");
+    }
+
+    function progressBarHtml(percent) {
+      return `
+        <div class="pdf-bar">
+          <div class="pdf-bar-fill" style="width: ${percent}%"></div>
+        </div>
+      `;
+    }
+
+    function getSafeFileName(value) {
+      const safe = String(value || "study-tracker")
+        .trim()
+        .replace(/[\\/:*?"<>|]+/g, "-")
+        .replace(/\s+/g, "-");
+      return safe || "study-tracker";
+    }
+
+    function resetHistory() {
+      history = [JSON.stringify(state)];
+      historyIndex = 0;
+    }
+
+    function exportDataBackup() {
+      const payload = {
+        app: "study-tracker",
+        formatVersion: 2,
+        exportedAt: new Date().toISOString(),
+        data: state
+      };
+      const blob = new Blob([JSON.stringify(payload, null, 2)], { type: "application/json" });
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement("a");
+      const date = new Date().toISOString().slice(0, 10);
+      link.href = url;
+      link.download = `${getSafeFileName(state.ownerName)}-study-tracker-backup-${date}.json`;
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      URL.revokeObjectURL(url);
+      showToast("数据备份已导出");
+    }
+
+    function readBackupState(parsed) {
+      const candidate = parsed?.data || parsed;
+      const hasKnownShape =
+        candidate &&
+        typeof candidate === "object" &&
+        (Array.isArray(candidate.semesters) || Array.isArray(candidate.courses) || Array.isArray(candidate.courseTemplates));
+
+      if (!hasKnownShape) return null;
+      return normalizeState(candidate);
+    }
+
+    async function importDataBackup(file) {
+      if (!file) return;
+
+      try {
+        const parsed = JSON.parse(await file.text());
+        const importedState = readBackupState(parsed);
+        if (!importedState) {
+          showToast("导入失败：这不是可识别的学习系统备份");
+          return;
+        }
+        if (!confirm("导入备份会替换当前浏览器里的学习数据，继续吗？")) return;
+        state = importedState;
+        resetHistory();
+        saveState();
+        render();
+        if (state.ownerName) {
+          closeWelcomeModal();
+        } else {
+          openWelcomeModal();
+        }
+        showToast("数据备份已导入");
+      } catch (error) {
+        console.warn("Could not import backup.", error);
+        showToast("导入失败：请确认文件是 JSON 备份");
+      }
+    }
+
+    function exportPdfReport() {
+      const totals = getTotals();
+      if (!totals.tasks) {
+        showToast("还没有任务可以导出");
+        return;
+      }
+
+      const reportWindow = window.open("", "_blank");
+      if (!reportWindow) {
+        showToast("浏览器阻止了弹窗，请允许弹窗后再试");
+        return;
+      }
+
+      const generatedAt = new Date().toLocaleString("zh-CN");
+      const reportTitle = state.ownerName ? `${state.ownerName}的学习进度报告` : "我的学习进度报告";
+      const coursesHtml = state.semesters.map(semester => {
+        const semesterProgress = getProgress(getSemesterTasks(semester));
+        const semesterCoursesHtml = semester.courses.map(course => {
+        const courseTasks = getCourseTasks(course);
+        const courseProgress = getProgress(courseTasks);
+        const palette = [
+          ["#2563eb", "#bfdbfe"],
+          ["#168653", "#b7e4cf"],
+          ["#c2410c", "#fed7aa"],
+          ["#7c3aed", "#ddd6fe"],
+          ["#be185d", "#fbcfe8"],
+          ["#087f8c", "#b7e8ed"]
+        ];
+        let pieCursor = 0;
+        const pieSegments = [];
+        const pieLegend = course.categories.map((category, index) => {
+          const categoryProgress = getProgress(category.tasks);
+          const [doneColor, pendingColor] = palette[index % palette.length];
+          const doneAngle = courseTasks.length ? (categoryProgress.done / courseTasks.length) * 360 : 0;
+          const pendingAngle = courseTasks.length ? ((categoryProgress.total - categoryProgress.done) / courseTasks.length) * 360 : 0;
+          if (doneAngle) pieSegments.push(`${doneColor} ${pieCursor}deg ${pieCursor + doneAngle}deg`);
+          pieCursor += doneAngle;
+          if (pendingAngle) pieSegments.push(`${pendingColor} ${pieCursor}deg ${pieCursor + pendingAngle}deg`);
+          pieCursor += pendingAngle;
+          return `
+            <div class="pdf-legend-item">
+              <span class="pdf-swatches">
+                <span style="background:${doneColor}"></span>
+                <span style="background:${pendingColor}"></span>
+              </span>
+              <span>${escapeHtml(category.name)}</span>
+              <strong>${categoryProgress.done}/${categoryProgress.total}</strong>
+            </div>
+          `;
+        }).join("");
+        const pieBackground = pieSegments.length ? `conic-gradient(${pieSegments.join(",")})` : "#e9eef8";
+        const categoriesHtml = course.categories.map(category => {
+          const categoryProgress = getProgress(category.tasks);
+          const tasksHtml = category.tasks.map((task, index) => {
+            const title = task.title || task.name || "";
+            const detail = task.detail || "";
+            return `
+              <tr>
+                <td>${index + 1}</td>
+                <td>${task.done ? "✓" : "○"}</td>
+                <td>
+                  <strong>${escapeHtml(title)}</strong>
+                  ${detail ? `<span>${escapeHtml(detail)}</span>` : ""}
+                  ${task.note ? `<span>备注：${escapeHtml(task.note)}</span>` : ""}
+                  ${(task.attachments || []).length ? `<span>附件：${task.attachments.length} 个</span>` : ""}
+                </td>
+              </tr>
+            `;
+          }).join("");
+
+          return `
+            <section class="pdf-category">
+              <div class="pdf-row">
+                <h3>${escapeHtml(category.name)}</h3>
+                <strong>${categoryProgress.percent}% · ${categoryProgress.done}/${categoryProgress.total}</strong>
+              </div>
+              ${progressBarHtml(categoryProgress.percent)}
+              <table>
+                <thead>
+                  <tr>
+                    <th>#</th>
+                    <th>状态</th>
+                    <th>任务</th>
+                  </tr>
+                </thead>
+                <tbody>${tasksHtml || `<tr><td colspan="3">暂无任务</td></tr>`}</tbody>
+              </table>
+            </section>
+          `;
+        }).join("");
+
+          return `
+          <section class="pdf-course">
+            <div class="pdf-row">
+              <h2>${escapeHtml(course.name)}</h2>
+              <strong>${courseProgress.percent}% · ${courseProgress.done}/${courseProgress.total}</strong>
+            </div>
+            ${progressBarHtml(courseProgress.percent)}
+            ${course.note ? `<p class="pdf-muted">备注：${escapeHtml(course.note)}</p>` : ""}
+            ${(course.attachments || []).length ? `<p class="pdf-muted">附件：${course.attachments.length} 个</p>` : ""}
+            <div class="pdf-chart">
+              <div class="pdf-course-pie" style="background:${pieBackground}">
+                <span>${courseProgress.percent}%</span>
+              </div>
+              <div class="pdf-legend">
+                ${pieLegend || `<span class="pdf-muted">暂无分类任务</span>`}
+                <p class="pdf-muted">深色为已完成，浅色为未完成。</p>
+              </div>
+            </div>
+            ${categoriesHtml || `<p class="pdf-muted">暂无分类</p>`}
+          </section>
+        `;
+        }).join("");
+
+        return `
+          <section class="pdf-semester">
+            <div class="pdf-row pdf-semester-title">
+              <h2>${escapeHtml(semester.name)}</h2>
+              <strong>${semesterProgress.percent}% · ${semesterProgress.done}/${semesterProgress.total}</strong>
+            </div>
+            ${progressBarHtml(semesterProgress.percent)}
+            ${semester.note ? `<p class="pdf-muted">备注：${escapeHtml(semester.note)}</p>` : ""}
+            ${(semester.attachments || []).length ? `<p class="pdf-muted">附件：${semester.attachments.length} 个</p>` : ""}
+            ${semesterCoursesHtml || `<p class="pdf-muted">暂无课程</p>`}
+          </section>
+        `;
+      }).join("");
+
+      reportWindow.document.write(`
+        <!DOCTYPE html>
+        <html lang="zh-CN">
+        <head>
+          <meta charset="UTF-8">
+          <title>${escapeHtml(reportTitle)}</title>
+          <style>
+            @page { size: A4; margin: 14mm; }
+            * { box-sizing: border-box; }
+            body {
+              margin: 0;
+              color: #152622;
+              background: #fff;
+              font-family: "Segoe UI", Arial, "Microsoft YaHei", sans-serif;
+              font-size: 12px;
+            }
+            .pdf-page { max-width: 760px; margin: 0 auto; }
+            .pdf-hero {
+              display: grid;
+              grid-template-columns: 1fr 118px;
+              gap: 18px;
+              align-items: center;
+              padding-bottom: 16px;
+              border-bottom: 2px solid #dbe4e1;
+            }
+            h1, h2, h3, p { margin: 0; }
+            h1 { font-size: 26px; letter-spacing: 0; }
+            h2 { font-size: 17px; }
+            h3 { font-size: 14px; }
+            .pdf-muted { color: #657773; margin-top: 8px; }
+            .pdf-ring {
+              display: grid;
+              place-items: center;
+              width: 112px;
+              height: 112px;
+              border-radius: 50%;
+              background: conic-gradient(#2563eb ${totals.percent}%, #e9eef8 0);
+            }
+            .pdf-ring span {
+              display: grid;
+              place-items: center;
+              width: 76px;
+              height: 76px;
+              border-radius: 50%;
+              background: #fff;
+              font-size: 22px;
+              font-weight: 800;
+            }
+            .pdf-stats {
+              display: grid;
+              grid-template-columns: repeat(5, 1fr);
+              gap: 8px;
+              margin: 14px 0;
+            }
+            .pdf-stat {
+              padding: 9px;
+              border: 1px solid #e8edf5;
+              border-radius: 8px;
+            }
+            .pdf-stat span {
+              display: block;
+              color: #657773;
+              font-size: 12px;
+            }
+            .pdf-stat strong {
+              display: block;
+              margin-top: 4px;
+              font-size: 18px;
+            }
+            .pdf-course {
+              margin-top: 12px;
+              padding: 12px;
+              border: 1px solid #dbe4e1;
+              border-radius: 8px;
+              break-inside: avoid;
+              page-break-inside: avoid;
+            }
+            .pdf-semester {
+              margin-top: 16px;
+              padding: 12px;
+              border: 2px solid #cbd9d5;
+              border-radius: 8px;
+            }
+            .pdf-semester-title h2 {
+              font-size: 20px;
+            }
+            .pdf-category {
+              margin-top: 10px;
+              padding: 10px;
+              border: 1px solid #dbe4e1;
+              border-radius: 8px;
+              background: #f7faf9;
+              break-inside: auto;
+            }
+            .pdf-chart {
+              display: grid;
+              grid-template-columns: 108px 1fr;
+              gap: 16px;
+              align-items: center;
+              margin: 10px 0 14px;
+              padding: 10px;
+              border: 1px solid #dbe4e1;
+              border-radius: 8px;
+            }
+            .pdf-course-pie {
+              position: relative;
+              display: grid;
+              place-items: center;
+              width: 100px;
+              height: 100px;
+              border-radius: 50%;
+            }
+            .pdf-course-pie::after {
+              content: "";
+              width: 54px;
+              height: 54px;
+              border-radius: 50%;
+              background: #fff;
+            }
+            .pdf-course-pie span {
+              position: absolute;
+              z-index: 1;
+              font-size: 15px;
+              font-weight: 800;
+            }
+            .pdf-legend {
+              display: grid;
+              gap: 5px;
+            }
+            .pdf-legend-item {
+              display: grid;
+              grid-template-columns: 22px 1fr auto;
+              gap: 7px;
+              align-items: center;
+              font-size: 11px;
+            }
+            .pdf-swatches {
+              display: flex;
+              gap: 2px;
+            }
+            .pdf-swatches span {
+              display: block;
+              width: 10px;
+              height: 10px;
+              margin: 0;
+              border-radius: 2px;
+            }
+            .pdf-row {
+              display: flex;
+              justify-content: space-between;
+              gap: 14px;
+              align-items: center;
+            }
+            .pdf-bar {
+              overflow: hidden;
+              height: 8px;
+              margin: 8px 0 10px;
+              border-radius: 999px;
+              background: #e3eae8;
+            }
+            .pdf-bar-fill {
+              height: 100%;
+              border-radius: inherit;
+              background: linear-gradient(90deg, #0f766e, #2f8f56);
+            }
+            table {
+              width: 100%;
+              border-collapse: collapse;
+              font-size: 11px;
+            }
+            th, td {
+              padding: 6px;
+              border-bottom: 1px solid #dbe4e1;
+              text-align: left;
+              vertical-align: top;
+            }
+            th { color: #657773; font-weight: 700; }
+            td:nth-child(1) { width: 32px; color: #657773; }
+            td:nth-child(2) { width: 44px; font-weight: 800; }
+            td span {
+              display: block;
+              margin-top: 2px;
+              color: #657773;
+            }
+            .pdf-actions {
+              display: flex;
+              justify-content: flex-end;
+              margin: 18px 0;
+            }
+            button {
+              border: 0;
+              border-radius: 8px;
+              padding: 10px 14px;
+              color: #fff;
+              background: #0f766e;
+              font: inherit;
+              cursor: pointer;
+            }
+            @media print {
+              .pdf-actions { display: none; }
+              body {
+                print-color-adjust: exact;
+                -webkit-print-color-adjust: exact;
+              }
+              .pdf-page { max-width: none; }
+              .pdf-course:first-of-type { margin-top: 8px; }
+            }
+          </style>
+        </head>
+        <body>
+          <main class="pdf-page">
+            <div class="pdf-actions">
+              <button onclick="window.print()">保存为 PDF</button>
+            </div>
+            <section class="pdf-hero">
+              <div>
+                <h1>${escapeHtml(reportTitle)}</h1>
+                <p class="pdf-muted">生成时间：${escapeHtml(generatedAt)}</p>
+                <p class="pdf-muted">总体进度：${totals.done}/${totals.tasks}</p>
+              </div>
+              <div class="pdf-ring"><span>${totals.percent}%</span></div>
+            </section>
+            <section class="pdf-stats">
+              <div class="pdf-stat"><span>学习阶段</span><strong>${totals.semesters}</strong></div>
+              <div class="pdf-stat"><span>课程</span><strong>${totals.courses}</strong></div>
+              <div class="pdf-stat"><span>分类</span><strong>${totals.categories}</strong></div>
+              <div class="pdf-stat"><span>任务</span><strong>${totals.tasks}</strong></div>
+              <div class="pdf-stat"><span>已完成</span><strong>${totals.done}</strong></div>
+            </section>
+            ${coursesHtml}
+          </main>
+          <script>
+            window.addEventListener("load", () => setTimeout(() => window.print(), 300));
+          <\/script>
+        </body>
+        </html>
+      `);
+      reportWindow.document.close();
+      showToast("PDF报告已打开，请选择保存为PDF");
+    }
+
+    els.addSemesterBtn.addEventListener("click", addSemester);
+    els.semesterName.addEventListener("keydown", event => {
+      if (event.key === "Enter") addSemester();
+    });
+    els.editOwnerBtn.addEventListener("click", () => {
+      openEditModal("修改名字", [
+        { label: "你的名字", name: "name", value: state.ownerName }
+      ], values => {
+        state.ownerName = values.name;
+        commit("名字已更新");
+      });
+    });
+    els.loadTemplateBtn.addEventListener("click", openTemplateLibrary);
+    els.loadSemesterTemplateBtn.addEventListener("click", openSemesterTemplateLibrary);
+    els.exportBtn.addEventListener("click", exportPdfReport);
+    els.exportBackupBtn.addEventListener("click", exportDataBackup);
+    els.importBackupBtn.addEventListener("click", () => {
+      els.importBackupInput.click();
+    });
+    els.welcomeImportBtn.addEventListener("click", () => {
+      els.importBackupInput.click();
+    });
+    els.importBackupInput.addEventListener("change", async event => {
+      const [file] = event.target.files;
+      await importDataBackup(file);
+      event.target.value = "";
+    });
+    els.listViewBtn.addEventListener("click", () => {
+      viewMode = "list";
+      render();
+    });
+    els.chartViewBtn.addEventListener("click", () => {
+      viewMode = "chart";
+      render();
+    });
+    els.gardenViewBtn.addEventListener("click", () => {
+      viewMode = "garden";
+      render();
+    });
+    els.undoBtn.addEventListener("click", () => stepHistory(-1));
+    els.redoBtn.addEventListener("click", () => stepHistory(1));
+
+    els.courses.addEventListener("submit", event => {
+      event.preventDefault();
+      const form = event.target;
+      const { semester, course, category } = findFromEvent(form);
+
+      if (form.dataset.action === "add-course" && semester) {
+        const name = form.elements.courseName.value.trim();
+        if (!name) return;
+        const amount = getAmount(form.elements.courseAmount.value);
+        const names = createNames(name, amount, semester.courses);
+        semester.courses.unshift(...names.map(courseName => createCourseData(courseName)));
+        commit(amount === 1 ? "课程已添加" : `已添加 ${amount} 个课程`);
+      }
+
+      if (form.dataset.action === "add-category" && course) {
+        const input = form.elements.categoryName;
+        const name = input.value.trim();
+        if (!name) return;
+        const amount = getAmount(form.elements.categoryAmount.value);
+        const names = createNames(name, amount, course.categories);
+        course.categories.push(...names.map(categoryName => ({ id: uid(), name: categoryName, collapsed: false, tasks: [] })));
+        commit(amount === 1 ? "分类已添加" : `已添加 ${amount} 个分类`);
+      }
+
+      if (form.dataset.action === "add-task" && category) {
+        const title = form.elements.taskName.value.trim();
+        const detail = form.elements.taskDetail.value.trim();
+        if (!title) return;
+        const amount = getAmount(form.elements.taskAmount.value, 200);
+        if (detail) {
+          const details = createNames(detail, amount, category.tasks, "detail");
+          category.tasks.push(...details.map(taskDetail => ({
+            id: uid(),
+            title,
+            detail: taskDetail,
+            name: `${title} ${taskDetail}`,
+            done: false,
+            note: "",
+            attachments: [],
+            collapsed: true
+          })));
+        } else {
+          const titles = createNames(title, amount, category.tasks, "title");
+          category.tasks.push(...titles.map(taskTitle => ({
+            id: uid(),
+            title: taskTitle,
+            detail: "",
+            name: taskTitle,
+            done: false,
+            note: "",
+            attachments: [],
+            collapsed: true
+          })));
+        }
+        commit(amount === 1 ? "任务已添加" : `已添加 ${amount} 个任务`);
+      }
+    });
+
+    els.courses.addEventListener("input", event => {
+      const action = event.target.dataset.action;
+      const { semester, course, task } = findFromEvent(event.target);
+      if (action === "update-semester-note" && semester) semester.note = event.target.value;
+      if (action === "update-course-note" && course) course.note = event.target.value;
+      if (action === "update-task-note" && task) task.note = event.target.value;
+      if (!["update-semester-note", "update-course-note", "update-task-note"].includes(action)) return;
+      saveState();
+    });
+
+    els.courses.addEventListener("change", async event => {
+      const action = event.target.dataset.action;
+      const { semester, course, task } = findFromEvent(event.target);
+
+      if (action === "toggle-task" && task) {
+        task.done = event.target.checked;
+        commit();
+      }
+
+      if (action === "update-task-detail" && task) {
+        task.detail = event.target.value.trim();
+        task.name = task.detail ? `${task.title || task.name} ${task.detail}` : task.title || task.name;
+        commit("第二栏已更新");
+      }
+
+      if (action === "update-semester-note" && semester) {
+        semester.note = event.target.value.trim();
+        commit("学期备注已保存");
+      }
+
+      if (action === "update-course-note" && course) {
+        course.note = event.target.value.trim();
+        commit("课程备注已保存");
+      }
+
+      if (action === "update-task-note" && task) {
+        task.note = event.target.value.trim();
+        commit("备注已保存");
+      }
+
+      const uploadEntity =
+        action === "add-semester-attachment" ? semester :
+        action === "add-course-attachment" ? course :
+        action === "add-task-attachment" ? task : null;
+
+      if (uploadEntity) {
+        const files = [...event.target.files];
+        const allowedFiles = files.filter(file => file.type.startsWith("image/") || file.type === "application/pdf" || file.name.toLowerCase().endsWith(".pdf"));
+        if (allowedFiles.length !== files.length) {
+          showToast("这里只支持上传图片或 PDF");
+          return;
+        }
+        if (allowedFiles.some(file => file.size > 1024 * 1024)) {
+          showToast("单个附件目前不能超过 1 MB");
+          return;
+        }
+        const remaining = Math.max(0, 5 - (uploadEntity.attachments || []).length);
+        if (!remaining) {
+          showToast("每个任务最多保存 5 个附件");
+          return;
+        }
+        const attachments = await Promise.all(allowedFiles.slice(0, remaining).map(readAttachment));
+        uploadEntity.attachments = [...(uploadEntity.attachments || []), ...attachments];
+        commit("附件已保存");
+      }
+    });
+
+    els.courses.addEventListener("click", event => {
+      const action = event.target.dataset.action;
+      if (!action) return;
+
+      const { semester, course, category, task } = findFromEvent(event.target);
+
+      if (action === "toggle-semester" && semester) {
+        semester.collapsed = !semester.collapsed;
+        commit();
+      }
+
+      if (action === "toggle-semester-info" && semester) {
+        semester.infoCollapsed = !semester.infoCollapsed;
+        commit();
+      }
+
+      if (action === "edit-semester" && semester) {
+        openEditModal("编辑学期", [
+          { label: "学习阶段名称", name: "name", value: semester.name }
+        ], values => {
+          semester.name = values.name;
+          commit("学习阶段已更新");
+        });
+      }
+
+      if (action === "save-semester-template" && semester) {
+        openEditModal("保存阶段模板", [
+          { label: "模板名称", name: "name", value: semester.name }
+        ], values => saveSemesterTemplate(semester, values.name));
+      }
+
+      if (action === "delete-semester" && semester && confirm(`删除学习阶段“${semester.name}”？`)) {
+        state.semesters = state.semesters.filter(item => item.id !== semester.id);
+        commit("学习阶段已删除");
+      }
+
+      if (action === "copy-semester" && semester) {
+        putClipboard("semester", semester);
+      }
+
+      if (action === "paste-semester-after" && semester && appClipboard?.type === "semester") {
+        const index = state.semesters.indexOf(semester);
+        state.semesters.splice(index + 1, 0, copySemester(appClipboard.item, state.semesters));
+        appClipboard = null;
+        commit("学习阶段已粘贴");
+      }
+
+      if (action === "paste-semester-before" && semester && appClipboard?.type === "semester") {
+        const index = state.semesters.indexOf(semester);
+        state.semesters.splice(index, 0, copySemester(appClipboard.item, state.semesters));
+        appClipboard = null;
+        commit("学习阶段已粘贴");
+      }
+
+      if (action === "move-semester-up" && semester && moveItem(state.semesters, semester, -1)) {
+        commit();
+      }
+
+      if (action === "move-semester-down" && semester && moveItem(state.semesters, semester, 1)) {
+        commit();
+      }
+
+      if (action === "delete-semester-attachment" && semester) {
+        semester.attachments = (semester.attachments || []).filter((_, index) => index !== Number(event.target.dataset.index));
+        commit("附件已删除");
+      }
+
+      if (action === "toggle-course" && course) {
+        course.collapsed = !course.collapsed;
+        commit();
+      }
+
+      if (action === "toggle-course-info" && course) {
+        course.infoCollapsed = !course.infoCollapsed;
+        commit();
+      }
+
+      if (action === "edit-course" && course) {
+        openEditModal("编辑课程", [
+          { label: "课程名称", name: "name", value: course.name },
+          { label: "课程标签（可选，例如专业课、公共课）", name: "label", value: course.label || "", required: false }
+        ], values => {
+          course.name = values.name;
+          course.label = values.label;
+          commit("课程已更新");
+        });
+      }
+
+      if (action === "save-course-template" && course) {
+        const linkedTemplate = state.courseTemplates.find(template => template.id === course.templateSourceId);
+        openEditModal("保存课程模板", [
+          { label: "模板名称", name: "name", value: linkedTemplate?.name || course.name }
+        ], values => {
+          saveCourseTemplate(course, values.name);
+        });
+      }
+
+      if (action === "delete-course" && semester && course && confirm(`删除课程“${course.name}”？`)) {
+        semester.courses = semester.courses.filter(item => item.id !== course.id);
+        commit("课程已删除");
+      }
+
+      if (action === "copy-course" && course) {
+        putClipboard("course", course);
+      }
+
+      if (action === "paste-course-after" && semester && course && appClipboard?.type === "course") {
+        const index = semester.courses.indexOf(course);
+        semester.courses.splice(index + 1, 0, copyCourse(appClipboard.item, semester.courses));
+        appClipboard = null;
+        commit("课程已粘贴");
+      }
+
+      if (action === "paste-course-before" && semester && course && appClipboard?.type === "course") {
+        const index = semester.courses.indexOf(course);
+        semester.courses.splice(index, 0, copyCourse(appClipboard.item, semester.courses));
+        appClipboard = null;
+        commit("课程已粘贴");
+      }
+
+      if (action === "paste-course-empty" && semester && appClipboard?.type === "course") {
+        semester.courses.push(copyCourse(appClipboard.item, semester.courses));
+        appClipboard = null;
+        commit("课程已粘贴");
+      }
+
+      if (action === "place-template-empty" && semester && templatePlacementActive) {
+        placeTemplateCourses(semester, 0);
+      }
+
+      if (action === "place-template-before" && semester && course && templatePlacementActive) {
+        placeTemplateCourses(semester, semester.courses.indexOf(course));
+      }
+
+      if (action === "place-template-after" && semester && course && templatePlacementActive) {
+        placeTemplateCourses(semester, semester.courses.indexOf(course) + 1);
+      }
+
+      if (action === "move-course-up" && semester && course && moveItem(semester.courses, course, -1)) {
+        commit();
+      }
+
+      if (action === "move-course-down" && semester && course && moveItem(semester.courses, course, 1)) {
+        commit();
+      }
+
+      if (action === "delete-course-attachment" && course) {
+        course.attachments = (course.attachments || []).filter((_, index) => index !== Number(event.target.dataset.index));
+        commit("附件已删除");
+      }
+
+      if (action === "toggle-category" && category) {
+        category.collapsed = !category.collapsed;
+        commit();
+      }
+
+      if (action === "edit-category" && category) {
+        openEditModal("编辑分类", [
+          { label: "分类名称", name: "name", value: category.name }
+        ], values => {
+          category.name = values.name;
+          commit("分类已更新");
+        });
+      }
+
+      if (action === "delete-category" && course && category && confirm(`删除分类“${category.name}”？`)) {
+        course.categories = course.categories.filter(item => item.id !== category.id);
+        commit("分类已删除");
+      }
+
+      if (action === "copy-category" && course && category) {
+        putClipboard("category", category);
+      }
+
+      if (action === "paste-category-after" && course && category && appClipboard?.type === "category") {
+        const index = course.categories.indexOf(category);
+        course.categories.splice(index + 1, 0, copyCategory(appClipboard.item, course.categories));
+        appClipboard = null;
+        commit("分类已粘贴");
+      }
+
+      if (action === "paste-category-before" && course && category && appClipboard?.type === "category") {
+        const index = course.categories.indexOf(category);
+        course.categories.splice(index, 0, copyCategory(appClipboard.item, course.categories));
+        appClipboard = null;
+        commit("分类已粘贴");
+      }
+
+      if (action === "edit-task" && task) {
+        openEditModal("编辑任务", [
+          { label: "第一栏", name: "title", value: task.title || task.name || "" },
+          { label: "第二栏", name: "detail", value: task.detail || "", required: false }
+        ], values => {
+          task.title = values.title;
+          task.detail = values.detail;
+          task.name = values.detail ? `${values.title} ${values.detail}` : values.title;
+          commit("任务已更新");
+        });
+      }
+
+      if (action === "delete-task" && category && task) {
+        category.tasks = category.tasks.filter(item => item.id !== task.id);
+        commit("任务已删除");
+      }
+
+      if (action === "delete-task-attachment" && task) {
+        task.attachments = (task.attachments || []).filter((_, index) => index !== Number(event.target.dataset.index));
+        commit("附件已删除");
+      }
+
+      if (action === "copy-task" && task) {
+        putClipboard("task", task);
+      }
+
+      if (action === "toggle-task-details" && task) {
+        task.collapsed = task.collapsed === false;
+        commit();
+      }
+
+      if (action === "paste-task-after" && category && task && appClipboard?.type === "task") {
+        const index = category.tasks.indexOf(task);
+        category.tasks.splice(index + 1, 0, copyTask(appClipboard.item));
+        appClipboard = null;
+        commit("任务已粘贴");
+      }
+
+      if (action === "paste-task-before" && category && task && appClipboard?.type === "task") {
+        const index = category.tasks.indexOf(task);
+        category.tasks.splice(index, 0, copyTask(appClipboard.item));
+        appClipboard = null;
+        commit("任务已粘贴");
+      }
+
+      if (action === "move-task-up" && category && task && moveItem(category.tasks, task, -1)) {
+        commit();
+      }
+
+      if (action === "move-task-down" && category && task && moveItem(category.tasks, task, 1)) {
+        commit();
+      }
+
+    });
+
+    document.addEventListener("click", event => {
+      if (!templatePlacementActive) return;
+      if (event.target.closest("#loadTemplateBtn")) return;
+      if (event.target.closest("#templateModal")) return;
+      if (event.target.closest("[data-action^='place-template-']")) return;
+      templatePlacementActive = false;
+      selectedTemplateId = null;
+      render();
+      showToast("已取消放置课程模板");
+    });
+
+    els.templateList.addEventListener("click", event => {
+      const action = event.target.dataset.action;
+      if (!action) return;
+      const item = event.target.closest(".template-item");
+      const template = item && state.courseTemplates.find(entry => entry.id === item.dataset.templateId);
+      if (!template) return;
+
+      if (action === "use-template") {
+        startTemplatePlacement(template.id);
+      }
+
+      if (action === "rename-template") {
+        closeTemplateLibrary();
+        openEditModal("修改模板名称", [
+          { label: "模板名称", name: "name", value: template.name }
+        ], values => {
+          template.name = values.name;
+          commit("模板名称已更新");
+          openTemplateLibrary();
+        });
+      }
+
+      if (action === "delete-template" && confirm(`删除课程模板“${template.name}”？`)) {
+        state.courseTemplates = state.courseTemplates.filter(entry => entry.id !== template.id);
+        commit("课程模板已删除");
+        renderTemplateList();
+      }
+    });
+
+    els.semesterTemplateList.addEventListener("click", event => {
+      const action = event.target.dataset.action;
+      if (!action) return;
+      const item = event.target.closest(".template-item");
+      const template = item && state.semesterTemplates.find(entry => entry.id === item.dataset.templateId);
+      if (!template) return;
+
+      if (action === "use-semester-template") {
+        const freshSemester = cloneSemesterForTemplate(template.semester);
+        freshSemester.name = getCopyName(freshSemester.name, state.semesters);
+        state.semesters.push(freshSemester);
+        closeSemesterTemplateLibrary();
+        commit(`已添加阶段模板“${template.name}”`);
+      }
+
+      if (action === "rename-semester-template") {
+        openEditModal("重命名阶段模板", [
+          { label: "模板名称", name: "name", value: template.name }
+        ], values => {
+          template.name = values.name;
+          commit("阶段模板名称已更新");
+          openSemesterTemplateLibrary();
+        });
+      }
+
+      if (action === "delete-semester-template" && confirm(`删除阶段模板“${template.name}”？`)) {
+        state.semesterTemplates = state.semesterTemplates.filter(entry => entry.id !== template.id);
+        commit("阶段模板已删除");
+        renderSemesterTemplateList();
+      }
+    });
+
+    els.editForm.addEventListener("submit", event => {
+      event.preventDefault();
+      if (!editContext) return;
+
+      const formData = new FormData(els.editForm);
+      const values = Object.fromEntries(formData.entries());
+      Object.keys(values).forEach(key => {
+        values[key] = values[key].trim();
+      });
+
+      const requiredNames = [...els.editForm.querySelectorAll("[required]")].map(field => field.name);
+      if (requiredNames.some(name => !values[name])) return;
+      editContext(values);
+      closeEditModal();
+    });
+
+    els.cancelEditBtn.addEventListener("click", closeEditModal);
+    els.editModal.addEventListener("click", event => {
+      if (event.target === els.editModal) closeEditModal();
+    });
+    els.closeTemplateBtn.addEventListener("click", closeTemplateLibrary);
+    els.closeTemplateFooterBtn.addEventListener("click", closeTemplateLibrary);
+    els.closeSemesterTemplateBtn.addEventListener("click", closeSemesterTemplateLibrary);
+    els.closeSemesterTemplateFooterBtn.addEventListener("click", closeSemesterTemplateLibrary);
+    els.templateModal.addEventListener("click", event => {
+      if (event.target === els.templateModal) closeTemplateLibrary();
+    });
+    els.semesterTemplateModal.addEventListener("click", event => {
+      if (event.target === els.semesterTemplateModal) closeSemesterTemplateLibrary();
+    });
+    els.welcomeForm.addEventListener("submit", event => {
+      event.preventDefault();
+      const ownerName = els.ownerName.value.trim();
+      if (!ownerName) return;
+      state.ownerName = ownerName;
+      closeWelcomeModal();
+      commit(`欢迎，${ownerName}`);
+    });
+    document.addEventListener("keydown", event => {
+      if (event.key === "Escape" && els.editModal.classList.contains("open")) {
+        closeEditModal();
+      }
+      if (event.key === "Escape" && els.templateModal.classList.contains("open")) {
+        closeTemplateLibrary();
+      }
+      if (event.ctrlKey && event.key.toLowerCase() === "z") {
+        event.preventDefault();
+        stepHistory(event.shiftKey ? 1 : -1);
+      }
+      if (event.ctrlKey && event.key.toLowerCase() === "y") {
+        event.preventDefault();
+        stepHistory(1);
+      }
+    });
+
+    window.studyTrackerBridge = {
+      getState: () => JSON.parse(JSON.stringify(state)),
+      replaceState(nextState, options = {}) {
+        state = normalizeState(nextState);
+        history = [JSON.stringify(state)];
+        historyIndex = 0;
+        if (options.persist !== false) saveState();
+        render();
+        if (state.ownerName) {
+          closeWelcomeModal();
+        } else if (!READ_ONLY_LINK) {
+          openWelcomeModal();
+        }
+      },
+      showToast,
+      render
+    };
+
+    window.dispatchEvent(new CustomEvent("study-tracker-ready"));
+    render();
+    if (!state.ownerName && !READ_ONLY_LINK) openWelcomeModal();
+  </script>
+</body>
+</html>
