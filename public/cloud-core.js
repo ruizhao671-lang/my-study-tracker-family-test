@@ -2,7 +2,11 @@ export function makeEmptyState() {
   return {
     ownerName: "",
     semesters: [],
-    courseTemplates: []
+    courseTemplates: [],
+    timer: {
+      sessions: [],
+      active: null
+    }
   };
 }
 

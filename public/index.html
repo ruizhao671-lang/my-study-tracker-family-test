@@ -194,6 +194,250 @@
       background: var(--panel);
     }
 
+    .app-switch {
+      display: inline-flex;
+      gap: 8px;
+      padding: 5px;
+      margin-bottom: 14px;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      background: var(--panel);
+      box-shadow: 0 2px 8px rgba(18, 38, 34, 0.04);
+    }
+
+    .panel-tab {
+      min-height: 40px;
+      border-radius: 6px;
+      padding: 0 16px;
+      color: var(--muted);
+      background: transparent;
+      font-weight: 700;
+    }
+
+    .panel-tab.active {
+      color: #fff;
+      background: var(--primary);
+    }
+
+    .timer-panel {
+      display: none;
+      gap: 16px;
+    }
+
+    body.timer-mode .study-system-section {
+      display: none;
+    }
+
+    body.timer-mode .timer-panel {
+      display: grid;
+    }
+
+    .timer-layout {
+      display: grid;
+      grid-template-columns: minmax(300px, 0.95fr) minmax(0, 1.45fr);
+      gap: 16px;
+      align-items: start;
+    }
+
+    .timer-card,
+    .timer-calendar,
+    .timer-day {
+      border: 1px solid var(--line-strong);
+      border-radius: 8px;
+      background: var(--panel);
+      box-shadow: var(--shadow);
+    }
+
+    .timer-card {
+      padding: 18px;
+    }
+
+    .timer-label {
+      margin: 0 0 8px;
+      color: var(--green);
+      font-weight: 800;
+    }
+
+    .timer-display {
+      margin: 0;
+      color: #102d29;
+      font-size: clamp(42px, 8vw, 76px);
+      line-height: 1;
+      font-weight: 800;
+      font-variant-numeric: tabular-nums;
+      letter-spacing: 0;
+    }
+
+    .timer-status {
+      min-height: 24px;
+      margin: 12px 0 0;
+      color: var(--muted);
+      font-weight: 700;
+    }
+
+    .timer-controls,
+    .timer-music {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px;
+      margin-top: 16px;
+    }
+
+    .timer-form {
+      display: grid;
+      gap: 12px;
+      margin-top: 18px;
+    }
+
+    .timer-form .field {
+      display: grid;
+      gap: 7px;
+    }
+
+    .timer-form .textarea {
+      min-height: 92px;
+    }
+
+    .timer-calendar {
+      padding: 14px;
+    }
+
+    .timer-calendar-header,
+    .timer-day-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 10px;
+      margin-bottom: 12px;
+    }
+
+    .timer-calendar-header h2,
+    .timer-day-header h2 {
+      margin: 0;
+      font-size: 22px;
+    }
+
+    .calendar-grid {
+      display: grid;
+      grid-template-columns: repeat(7, minmax(0, 1fr));
+      gap: 7px;
+    }
+
+    .calendar-weekday {
+      color: var(--muted);
+      font-size: 12px;
+      font-weight: 800;
+      text-align: center;
+    }
+
+    .calendar-day {
+      min-height: 76px;
+      padding: 8px;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      color: var(--text);
+      background: var(--panel-soft);
+      text-align: left;
+    }
+
+    .calendar-day.outside {
+      color: #91a39e;
+      background: #eef4f2;
+    }
+
+    .calendar-day.selected {
+      border-color: var(--primary);
+      box-shadow: 0 0 0 2px rgba(15, 118, 110, 0.14);
+    }
+
+    .calendar-day.today .day-number {
+      color: var(--primary-dark);
+      font-weight: 900;
+    }
+
+    .day-number,
+    .day-total {
+      display: block;
+    }
+
+    .day-total {
+      margin-top: 10px;
+      color: var(--primary-dark);
+      font-size: 13px;
+      font-weight: 800;
+    }
+
+    .timer-day {
+      overflow: hidden;
+    }
+
+    .timer-day-header {
+      padding: 14px 14px 0;
+    }
+
+    .day-summary {
+      margin: 0;
+      color: var(--muted);
+      font-weight: 700;
+    }
+
+    .day-timeline {
+      position: relative;
+      min-height: 580px;
+      margin: 0 14px 16px;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      background: linear-gradient(to bottom, transparent calc(100% - 1px), var(--line) calc(100% - 1px));
+      overflow: hidden;
+    }
+
+    .timeline-hour {
+      position: absolute;
+      left: 0;
+      right: 0;
+      border-top: 1px solid var(--line);
+      color: var(--muted);
+      font-size: 12px;
+      font-weight: 700;
+    }
+
+    .timeline-hour span {
+      display: inline-block;
+      width: 58px;
+      padding: 5px 8px;
+      background: rgba(247, 250, 249, 0.9);
+    }
+
+    .time-block {
+      position: absolute;
+      left: 66px;
+      right: 10px;
+      min-height: 34px;
+      padding: 8px 10px;
+      border: 1px solid #a8cac2;
+      border-left: 5px solid var(--primary);
+      border-radius: 8px;
+      background: #e9f5f2;
+      box-shadow: 0 6px 14px rgba(18, 38, 34, 0.08);
+      overflow: hidden;
+    }
+
+    .time-block strong {
+      display: block;
+      margin-bottom: 3px;
+    }
+
+    .time-block p {
+      margin: 3px 0 0;
+      color: var(--muted);
+      font-size: 13px;
+      line-height: 1.35;
+    }
+
+    .time-block .actions {
+      margin-top: 6px;
+    }
+
     .segment {
       min-height: 36px;
       border-radius: 6px;
@@ -1272,6 +1516,10 @@
         grid-template-columns: 1fr;
       }
 
+      .timer-layout {
+        grid-template-columns: 1fr;
+      }
+
       .toolbar #semesterName,
       .toolbar #stageKind {
         flex-basis: 100%;
@@ -1355,6 +1603,29 @@
       .template-item {
         grid-template-columns: 1fr;
       }
+
+      .app-switch {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+      }
+
+      .calendar-day {
+        min-height: 62px;
+        padding: 6px;
+      }
+
+      .day-total {
+        font-size: 12px;
+      }
+
+      .time-block {
+        left: 54px;
+        right: 7px;
+      }
+
+      .timeline-hour span {
+        width: 48px;
+      }
     }
   </style>
 </head>
@@ -1379,7 +1650,12 @@
       </aside>
     </section>
 
-    <section class="toolbar" aria-label="学习系统操作">
+    <nav class="app-switch" aria-label="板块切换">
+      <button class="panel-tab active" id="systemPanelBtn" type="button">学习系统记录</button>
+      <button class="panel-tab" id="timerPanelBtn" type="button">学习计时</button>
+    </nav>
+
+    <section class="toolbar study-system-section" aria-label="学习系统操作">
       <input class="input" id="semesterName" placeholder="输入新学习阶段，例如 我的第二学期">
       <select class="input" id="stageKind" title="学习阶段类型">
         <option value="semester">大学学期</option>
@@ -1395,7 +1671,7 @@
       <input id="importBackupInput" type="file" accept=".json,application/json" hidden>
     </section>
 
-    <section class="viewbar" aria-label="显示与历史操作">
+    <section class="viewbar study-system-section" aria-label="显示与历史操作">
       <div class="segmented" aria-label="显示形式">
         <button class="segment active" id="listViewBtn" type="button">列表</button>
         <button class="segment" id="chartViewBtn" type="button">饼状图</button>
@@ -1407,7 +1683,7 @@
       </div>
     </section>
 
-    <section class="stats" aria-label="学习统计">
+    <section class="stats study-system-section" aria-label="学习统计">
       <div class="stat">
         <span>学习阶段</span>
         <strong id="semesterCount">0</strong>
@@ -1430,7 +1706,62 @@
       </div>
     </section>
 
-    <section class="courses" id="courses"></section>
+    <section class="courses study-system-section" id="courses"></section>
+
+    <section class="timer-panel" id="timerPanel" aria-label="学习计时">
+      <div class="timer-layout">
+        <article class="timer-card">
+          <p class="timer-label">当前学习</p>
+          <p class="timer-display" id="timerDisplay">00:00:00</p>
+          <p class="timer-status" id="timerStatus">还没有开始计时</p>
+
+          <div class="timer-controls">
+            <button class="btn" id="timerStartBtn" type="button">开始</button>
+            <button class="btn secondary" id="timerPauseBtn" type="button">暂停</button>
+            <button class="btn secondary" id="timerFinishBtn" type="button">结束并保存</button>
+            <button class="btn secondary" id="timerCancelBtn" type="button">取消本次</button>
+          </div>
+
+          <form class="timer-form" id="timerForm">
+            <div class="field">
+              <label for="timerSemester">关联学习阶段（可选）</label>
+              <select class="input" id="timerSemester" name="semesterId"></select>
+            </div>
+            <div class="field">
+              <label for="timerCourse">关联课程（可选）</label>
+              <select class="input" id="timerCourse" name="courseId"></select>
+            </div>
+            <div class="field">
+              <label for="timerNote">备注</label>
+              <textarea class="textarea" id="timerNote" name="note" placeholder="例如：高数极限题、背单词、整理错题"></textarea>
+            </div>
+          </form>
+
+          <div class="timer-music">
+            <button class="btn secondary" id="timerNoiseBtn" type="button">背景白噪音：关</button>
+          </div>
+        </article>
+
+        <div class="timer-calendar">
+          <div class="timer-calendar-header">
+            <button class="btn secondary" id="timerPrevMonthBtn" type="button">上个月</button>
+            <h2 id="timerMonthTitle">本月记录</h2>
+            <button class="btn secondary" id="timerNextMonthBtn" type="button">下个月</button>
+          </div>
+          <div class="calendar-grid" id="timerCalendarGrid"></div>
+        </div>
+      </div>
+
+      <article class="timer-day">
+        <div class="timer-day-header">
+          <div>
+            <h2 id="timerSelectedDateTitle">今天</h2>
+            <p class="day-summary" id="timerDaySummary">总计 0 分钟</p>
+          </div>
+        </div>
+        <div class="day-timeline" id="timerDayTimeline"></div>
+      </article>
+    </section>
   </main>
 
   <div class="modal" id="editModal" role="dialog" aria-modal="true" aria-labelledby="modalTitle">
@@ -1528,13 +1859,38 @@
     let templatePlacementActive = false;
     let selectedTemplateId = null;
     let viewMode = "list";
+    let activePanel = localStorage.getItem("study-tracker-active-panel-v1") === "timer" ? "timer" : "system";
     let history = [JSON.stringify(state)];
     let historyIndex = 0;
+    let timerTick = null;
+    let timerAudio = null;
+    let timerNoiseOn = false;
 
     const els = {
       courses: document.querySelector("#courses"),
       appTitle: document.querySelector("#appTitle"),
       editOwnerBtn: document.querySelector("#editOwnerBtn"),
+      systemPanelBtn: document.querySelector("#systemPanelBtn"),
+      timerPanelBtn: document.querySelector("#timerPanelBtn"),
+      timerPanel: document.querySelector("#timerPanel"),
+      timerDisplay: document.querySelector("#timerDisplay"),
+      timerStatus: document.querySelector("#timerStatus"),
+      timerStartBtn: document.querySelector("#timerStartBtn"),
+      timerPauseBtn: document.querySelector("#timerPauseBtn"),
+      timerFinishBtn: document.querySelector("#timerFinishBtn"),
+      timerCancelBtn: document.querySelector("#timerCancelBtn"),
+      timerForm: document.querySelector("#timerForm"),
+      timerSemester: document.querySelector("#timerSemester"),
+      timerCourse: document.querySelector("#timerCourse"),
+      timerNote: document.querySelector("#timerNote"),
+      timerNoiseBtn: document.querySelector("#timerNoiseBtn"),
+      timerPrevMonthBtn: document.querySelector("#timerPrevMonthBtn"),
+      timerNextMonthBtn: document.querySelector("#timerNextMonthBtn"),
+      timerMonthTitle: document.querySelector("#timerMonthTitle"),
+      timerCalendarGrid: document.querySelector("#timerCalendarGrid"),
+      timerSelectedDateTitle: document.querySelector("#timerSelectedDateTitle"),
+      timerDaySummary: document.querySelector("#timerDaySummary"),
+      timerDayTimeline: document.querySelector("#timerDayTimeline"),
       semesterName: document.querySelector("#semesterName"),
       stageKind: document.querySelector("#stageKind"),
       semesterAmount: document.querySelector("#semesterAmount"),
@@ -1580,6 +1936,46 @@
 
     function uid() {
       return `${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 9)}`;
+    }
+
+    function dateKeyFromTime(time = Date.now()) {
+      const date = new Date(time);
+      return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}-${String(date.getDate()).padStart(2, "0")}`;
+    }
+
+    function monthKeyFromDate(date = new Date()) {
+      return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}`;
+    }
+
+    function normalizeTimer(timer = {}) {
+      const sessions = Array.isArray(timer.sessions) ? timer.sessions.map(session => ({
+        id: session.id || uid(),
+        startAt: Number(session.startAt || 0),
+        endAt: Number(session.endAt || 0),
+        durationMs: Math.max(0, Number(session.durationMs || 0)),
+        semesterId: session.semesterId || "",
+        semesterName: session.semesterName || "",
+        courseId: session.courseId || "",
+        courseName: session.courseName || "",
+        note: typeof session.note === "string" ? session.note : ""
+      })).filter(session => session.startAt && session.endAt && session.durationMs) : [];
+      const active = timer.active && typeof timer.active === "object" ? {
+        id: timer.active.id || uid(),
+        startedAt: Number(timer.active.startedAt || Date.now()),
+        elapsedMs: Math.max(0, Number(timer.active.elapsedMs || 0)),
+        resumedAt: timer.active.status === "running" ? Number(timer.active.resumedAt || Date.now()) : null,
+        status: timer.active.status === "running" ? "running" : "paused",
+        semesterId: timer.active.semesterId || "",
+        courseId: timer.active.courseId || "",
+        note: typeof timer.active.note === "string" ? timer.active.note : ""
+      } : null;
+      const today = dateKeyFromTime();
+      return {
+        sessions,
+        active,
+        selectedDate: /^\d{4}-\d{2}-\d{2}$/.test(timer.selectedDate || "") ? timer.selectedDate : today,
+        calendarMonth: /^\d{4}-\d{2}$/.test(timer.calendarMonth || "") ? timer.calendarMonth : monthKeyFromDate(new Date())
+      };
     }
 
     function loadState() {
@@ -1706,6 +2102,7 @@
         semesters,
         courseTemplates,
         semesterTemplates,
+        timer: normalizeTimer(savedState?.timer),
         onboardingSeeded: true,
         templateCatalogVersion: 3,
         starterContentVersion: 2
@@ -1901,11 +2298,204 @@
       };
     }
 
+    function setActivePanel(panel) {
+      activePanel = panel === "timer" ? "timer" : "system";
+      localStorage.setItem("study-tracker-active-panel-v1", activePanel);
+      document.body.classList.toggle("timer-mode", activePanel === "timer");
+      els.systemPanelBtn.classList.toggle("active", activePanel === "system");
+      els.timerPanelBtn.classList.toggle("active", activePanel === "timer");
+      if (activePanel === "timer") renderTimer();
+    }
+
+    function formatDuration(ms) {
+      const totalSeconds = Math.max(0, Math.floor(ms / 1000));
+      const hours = Math.floor(totalSeconds / 3600);
+      const minutes = Math.floor((totalSeconds % 3600) / 60);
+      const seconds = totalSeconds % 60;
+      return [hours, minutes, seconds].map(value => String(value).padStart(2, "0")).join(":");
+    }
+
+    function formatDurationShort(ms) {
+      const totalMinutes = Math.max(0, Math.round(ms / 60000));
+      const hours = Math.floor(totalMinutes / 60);
+      const minutes = totalMinutes % 60;
+      if (!hours) return `${minutes} 分钟`;
+      if (!minutes) return `${hours} 小时`;
+      return `${hours} 小时 ${minutes} 分钟`;
+    }
+
+    function formatClock(time) {
+      return new Date(time).toLocaleTimeString("zh-CN", { hour: "2-digit", minute: "2-digit" });
+    }
+
+    function formatDateLabel(dateKey) {
+      const [year, month, day] = dateKey.split("-").map(Number);
+      return new Date(year, month - 1, day).toLocaleDateString("zh-CN", {
+        year: "numeric",
+        month: "long",
+        day: "numeric",
+        weekday: "long"
+      });
+    }
+
+    function getActiveElapsed() {
+      const active = state.timer?.active;
+      if (!active) return 0;
+      const runningExtra = active.status === "running" && active.resumedAt ? Date.now() - active.resumedAt : 0;
+      return Math.max(0, Number(active.elapsedMs || 0) + runningExtra);
+    }
+
+    function updateTimerDisplay() {
+      const active = state.timer?.active;
+      els.timerDisplay.textContent = formatDuration(getActiveElapsed());
+      if (!active) {
+        els.timerStatus.textContent = "还没有开始计时";
+        els.timerStartBtn.textContent = "开始";
+        els.timerPauseBtn.disabled = true;
+        els.timerFinishBtn.disabled = true;
+        els.timerCancelBtn.disabled = true;
+        return;
+      }
+      const running = active.status === "running";
+      els.timerStatus.textContent = running ? "正在学习中" : "已暂停";
+      els.timerStartBtn.textContent = running ? "继续中" : "继续";
+      els.timerPauseBtn.disabled = !running;
+      els.timerFinishBtn.disabled = false;
+      els.timerCancelBtn.disabled = false;
+    }
+
+    function getTimerSelection() {
+      const semesterId = els.timerSemester.value || "";
+      const semester = semesterId ? findSemester(semesterId) : null;
+      const courseId = els.timerCourse.value || "";
+      const course = semester && courseId ? findCourse(semester, courseId) : null;
+      return {
+        semesterId,
+        semesterName: semester?.name || "",
+        courseId,
+        courseName: course?.name || "",
+        note: els.timerNote.value.trim()
+      };
+    }
+
+    function syncTimerFormToActive() {
+      if (!state.timer.active) return;
+      const selection = getTimerSelection();
+      state.timer.active.semesterId = selection.semesterId;
+      state.timer.active.courseId = selection.courseId;
+      state.timer.active.note = selection.note;
+      saveState();
+    }
+
+    function renderTimerFormOptions() {
+      const active = state.timer.active;
+      const selectedSemesterId = active?.semesterId || els.timerSemester.value || "";
+      const selectedCourseId = active?.courseId || els.timerCourse.value || "";
+      els.timerSemester.innerHTML = `<option value="">不关联学习阶段</option>${state.semesters.map(semester => `<option value="${semester.id}">${escapeHtml(semester.name)}</option>`).join("")}`;
+      els.timerSemester.value = state.semesters.some(semester => semester.id === selectedSemesterId) ? selectedSemesterId : "";
+      const semester = els.timerSemester.value ? findSemester(els.timerSemester.value) : null;
+      els.timerCourse.innerHTML = `<option value="">不关联课程</option>${(semester?.courses || []).map(course => `<option value="${course.id}">${escapeHtml(course.name)}</option>`).join("")}`;
+      els.timerCourse.value = semester?.courses?.some(course => course.id === selectedCourseId) ? selectedCourseId : "";
+      els.timerNote.value = active?.note || els.timerNote.value || "";
+    }
+
+    function sessionsForDate(dateKey) {
+      return (state.timer.sessions || [])
+        .filter(session => dateKeyFromTime(session.startAt) === dateKey)
+        .sort((left, right) => left.startAt - right.startAt);
+    }
+
+    function totalForDate(dateKey) {
+      return sessionsForDate(dateKey).reduce((total, session) => total + Number(session.durationMs || 0), 0);
+    }
+
+    function renderTimerCalendar() {
+      const [year, month] = state.timer.calendarMonth.split("-").map(Number);
+      const first = new Date(year, month - 1, 1);
+      els.timerMonthTitle.textContent = first.toLocaleDateString("zh-CN", { year: "numeric", month: "long" });
+      const startOffset = (first.getDay() + 6) % 7;
+      const gridStart = new Date(year, month - 1, 1 - startOffset);
+      const today = dateKeyFromTime();
+      const weekdays = ["一", "二", "三", "四", "五", "六", "日"];
+      const cells = weekdays.map(day => `<div class="calendar-weekday">${day}</div>`);
+      for (let index = 0; index < 42; index += 1) {
+        const date = new Date(gridStart);
+        date.setDate(gridStart.getDate() + index);
+        const key = dateKeyFromTime(date.getTime());
+        const outside = date.getMonth() !== month - 1;
+        const total = totalForDate(key);
+        cells.push(`
+          <button class="calendar-day ${outside ? "outside" : ""} ${key === today ? "today" : ""} ${key === state.timer.selectedDate ? "selected" : ""}" type="button" data-action="select-timer-date" data-date="${key}">
+            <span class="day-number">${date.getDate()}</span>
+            <span class="day-total">${total ? formatDurationShort(total) : ""}</span>
+          </button>
+        `);
+      }
+      els.timerCalendarGrid.innerHTML = cells.join("");
+    }
+
+    function renderTimerDay() {
+      const dateKey = state.timer.selectedDate;
+      const sessions = sessionsForDate(dateKey);
+      const total = totalForDate(dateKey);
+      els.timerSelectedDateTitle.textContent = formatDateLabel(dateKey);
+      els.timerDaySummary.textContent = `总计 ${formatDurationShort(total)}`;
+      const startHour = 6;
+      const endHour = 24;
+      const hourHeight = 58;
+      const dayMinutes = (endHour - startHour) * 60;
+      els.timerDayTimeline.style.height = `${(endHour - startHour) * hourHeight}px`;
+      const parts = [];
+      for (let hour = startHour; hour <= endHour; hour += 1) {
+        const top = (hour - startHour) * hourHeight;
+        parts.push(`<div class="timeline-hour" style="top:${top}px"><span>${String(hour).padStart(2, "0")}:00</span></div>`);
+      }
+      sessions.forEach(session => {
+        const start = new Date(session.startAt);
+        const end = new Date(session.endAt);
+        const startMinutes = start.getHours() * 60 + start.getMinutes();
+        const endMinutes = end.getHours() * 60 + end.getMinutes();
+        const topMinutes = Math.max(0, startMinutes - startHour * 60);
+        const blockMinutes = Math.max(15, Math.min(dayMinutes - topMinutes, endMinutes - startMinutes || Math.round(session.durationMs / 60000)));
+        const top = (topMinutes / 60) * hourHeight;
+        const height = Math.max(36, (blockMinutes / 60) * hourHeight - 4);
+        const title = session.courseName || session.semesterName || "未关联";
+        parts.push(`
+          <article class="time-block" style="top:${top}px;height:${height}px" data-session-id="${session.id}">
+            <strong>${escapeHtml(title)} · ${formatDurationShort(session.durationMs)}</strong>
+            <p>${formatClock(session.startAt)} - ${formatClock(session.endAt)}</p>
+            ${session.note ? `<p>${escapeHtml(session.note)}</p>` : ""}
+            <div class="actions">
+              <button class="btn secondary" type="button" data-action="edit-time-session">编辑备注</button>
+              <button class="btn icon" type="button" data-action="delete-time-session" title="删除">×</button>
+            </div>
+          </article>
+        `);
+      });
+      if (!sessions.length) {
+        parts.push(`<p class="empty" style="margin:18px 0 0 66px;">这一天还没有学习时间记录。</p>`);
+      }
+      els.timerDayTimeline.innerHTML = parts.join("");
+    }
+
+    function renderTimer() {
+      if (!state.timer) state.timer = normalizeTimer();
+      renderTimerFormOptions();
+      updateTimerDisplay();
+      renderTimerCalendar();
+      renderTimerDay();
+      clearInterval(timerTick);
+      if (state.timer.active?.status === "running") {
+        timerTick = setInterval(updateTimerDisplay, 1000);
+      }
+    }
+
     function render() {
       const pageTitle = state.ownerName ? `${state.ownerName}的学习系统` : "我的学习系统";
       els.appTitle.textContent = pageTitle;
       els.editOwnerBtn.hidden = !state.ownerName;
       document.title = "My Study Tracker";
+      setActivePanel(activePanel);
 
       const totals = getTotals();
       els.semesterCount.textContent = totals.semesters;
@@ -2744,6 +3334,148 @@
       commit(amount === 1 ? "学习阶段已添加" : `已添加 ${amount} 个学习阶段`);
     }
 
+    function commitTimer(message) {
+      saveState();
+      renderTimer();
+      if (message) showToast(message);
+    }
+
+    function startTimer() {
+      if (!state.timer.active) {
+        const selection = getTimerSelection();
+        state.timer.active = {
+          id: uid(),
+          startedAt: Date.now(),
+          elapsedMs: 0,
+          resumedAt: Date.now(),
+          status: "running",
+          semesterId: selection.semesterId,
+          courseId: selection.courseId,
+          note: selection.note
+        };
+        commitTimer("学习计时已开始");
+        return;
+      }
+      if (state.timer.active.status === "paused") {
+        state.timer.active.status = "running";
+        state.timer.active.resumedAt = Date.now();
+        syncTimerFormToActive();
+        commitTimer("学习计时已继续");
+      }
+    }
+
+    function pauseTimer() {
+      const active = state.timer.active;
+      if (!active || active.status !== "running") return;
+      active.elapsedMs = getActiveElapsed();
+      active.status = "paused";
+      active.resumedAt = null;
+      syncTimerFormToActive();
+      commitTimer("学习计时已暂停");
+    }
+
+    function finishTimer() {
+      const active = state.timer.active;
+      if (!active) return;
+      const durationMs = getActiveElapsed();
+      if (durationMs < 1000) {
+        state.timer.active = null;
+        commitTimer("本次计时太短，已取消");
+        return;
+      }
+      const selection = getTimerSelection();
+      const endAt = Date.now();
+      const session = {
+        id: active.id || uid(),
+        startAt: Number(active.startedAt || endAt - durationMs),
+        endAt,
+        durationMs,
+        semesterId: selection.semesterId,
+        semesterName: selection.semesterName,
+        courseId: selection.courseId,
+        courseName: selection.courseName,
+        note: selection.note
+      };
+      state.timer.sessions.push(session);
+      state.timer.selectedDate = dateKeyFromTime(session.startAt);
+      state.timer.calendarMonth = state.timer.selectedDate.slice(0, 7);
+      state.timer.active = null;
+      els.timerNote.value = "";
+      commitTimer("学习时间已保存");
+    }
+
+    function cancelTimer() {
+      if (!state.timer.active) return;
+      if (!confirm("取消这次正在进行的计时？不会保存记录。")) return;
+      state.timer.active = null;
+      commitTimer("本次计时已取消");
+    }
+
+    function shiftTimerMonth(direction) {
+      const [year, month] = state.timer.calendarMonth.split("-").map(Number);
+      const next = new Date(year, month - 1 + direction, 1);
+      state.timer.calendarMonth = monthKeyFromDate(next);
+      renderTimer();
+    }
+
+    function selectTimerDate(dateKey) {
+      state.timer.selectedDate = dateKey;
+      state.timer.calendarMonth = dateKey.slice(0, 7);
+      saveState();
+      renderTimer();
+    }
+
+    function findTimeSession(sessionId) {
+      return state.timer.sessions.find(session => session.id === sessionId);
+    }
+
+    function editTimeSession(session) {
+      openEditModal("编辑学习时间备注", [
+        { label: "备注", name: "note", value: session.note || "", required: false }
+      ], values => {
+        session.note = values.note;
+        commitTimer("学习时间备注已保存");
+      });
+    }
+
+    function deleteTimeSession(session) {
+      if (!confirm("删除这条学习时间记录？")) return;
+      state.timer.sessions = state.timer.sessions.filter(item => item.id !== session.id);
+      commitTimer("学习时间记录已删除");
+    }
+
+    function toggleTimerNoise() {
+      if (timerNoiseOn) {
+        timerAudio?.close?.();
+        timerAudio = null;
+        timerNoiseOn = false;
+        els.timerNoiseBtn.textContent = "背景白噪音：关";
+        return;
+      }
+      const AudioContext = window.AudioContext || window.webkitAudioContext;
+      if (!AudioContext) {
+        showToast("这个浏览器暂时不支持背景音");
+        return;
+      }
+      const audio = new AudioContext();
+      const bufferSize = 2 * audio.sampleRate;
+      const buffer = audio.createBuffer(1, bufferSize, audio.sampleRate);
+      const data = buffer.getChannelData(0);
+      for (let index = 0; index < bufferSize; index += 1) {
+        data[index] = (Math.random() * 2 - 1) * 0.16;
+      }
+      const source = audio.createBufferSource();
+      source.buffer = buffer;
+      source.loop = true;
+      const gain = audio.createGain();
+      gain.gain.value = 0.045;
+      source.connect(gain).connect(audio.destination);
+      source.start();
+      timerAudio = audio;
+      timerNoiseOn = true;
+      els.timerNoiseBtn.textContent = "背景白噪音：开";
+    }
+
     function renderTemplateList() {
       els.templateList.replaceChildren();
       if (!state.courseTemplates.length) {
@@ -3453,6 +4185,40 @@
         }
         commit(amount === 1 ? "任务已添加" : `已添加 ${amount} 个任务`);
       }
+    });
+
+    els.systemPanelBtn.addEventListener("click", () => setActivePanel("system"));
+    els.timerPanelBtn.addEventListener("click", () => setActivePanel("timer"));
+    els.timerStartBtn.addEventListener("click", startTimer);
+    els.timerPauseBtn.addEventListener("click", pauseTimer);
+    els.timerFinishBtn.addEventListener("click", finishTimer);
+    els.timerCancelBtn.addEventListener("click", cancelTimer);
+    els.timerPrevMonthBtn.addEventListener("click", () => shiftTimerMonth(-1));
+    els.timerNextMonthBtn.addEventListener("click", () => shiftTimerMonth(1));
+    els.timerNoiseBtn.addEventListener("click", toggleTimerNoise);
+    els.timerSemester.addEventListener("change", () => {
+      if (state.timer.active) {
+        state.timer.active.semesterId = els.timerSemester.value || "";
+        state.timer.active.courseId = "";
+      }
+      renderTimerFormOptions();
+      syncTimerFormToActive();
+    });
+    els.timerCourse.addEventListener("change", syncTimerFormToActive);
+    els.timerNote.addEventListener("input", syncTimerFormToActive);
+    els.timerCalendarGrid.addEventListener("click", event => {
+      const button = event.target.closest("[data-action='select-timer-date']");
+      if (!button) return;
+      selectTimerDate(button.dataset.date);
+    });
+    els.timerDayTimeline.addEventListener("click", event => {
+      const action = event.target.dataset.action;
+      if (!action) return;
+      const block = event.target.closest(".time-block");
+      const session = block ? findTimeSession(block.dataset.sessionId) : null;
+      if (!session) return;
+      if (action === "edit-time-session") editTimeSession(session);
+      if (action === "delete-time-session") deleteTimeSession(session);
     });
 
     els.courses.addEventListener("input", event => {
