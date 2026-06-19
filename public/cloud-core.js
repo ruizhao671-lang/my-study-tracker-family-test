@@ -34,6 +34,9 @@ export function makeSharedState(sourceState) {
           id: category.id,
           name: category.name || "",
           collapsed: Boolean(category.collapsed),
+          infoCollapsed: true,
+          note: "",
+          attachments: [],
           tasks: (category.tasks || []).map(task => ({
             id: task.id,
             title: task.title || "",

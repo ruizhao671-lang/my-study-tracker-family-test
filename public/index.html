@@ -300,6 +300,40 @@
       margin: 0;
     }
 
+    .timer-focus-plan {
+      display: grid;
+      gap: 12px;
+      margin-top: 14px;
+      padding: 12px;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      background: #f7fbfa;
+    }
+
+    .timer-focus-plan h3 {
+      margin: 0;
+      font-size: 16px;
+    }
+
+    .timer-focus-grid {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 10px;
+    }
+
+    .focus-summary {
+      margin: 0;
+      color: var(--primary-strong);
+      font-weight: 800;
+    }
+
+    .focus-hint {
+      margin: 0;
+      color: var(--muted);
+      font-size: 13px;
+      line-height: 1.45;
+    }
+
     .timer-form {
       display: grid;
       gap: 12px;
@@ -448,14 +482,14 @@
       position: absolute;
       left: 66px;
       right: 10px;
-      min-height: 34px;
+      min-height: 86px;
       padding: 8px 10px;
       border: 1px solid #a8cac2;
       border-left: 5px solid var(--primary);
       border-radius: 8px;
       background: #e9f5f2;
       box-shadow: 0 6px 14px rgba(18, 38, 34, 0.08);
-      overflow: hidden;
+      overflow: visible;
     }
 
     .time-block strong {
@@ -738,6 +772,7 @@
     .course.info-collapsed .course-extra,
     .category.collapsed .tasks,
     .category.collapsed .quick-add,
+    .category.info-collapsed .category-extra,
     .task.collapsed .task-extra {
       display: none;
     }
@@ -1774,18 +1809,42 @@
 
           <div class="timer-settings">
             <div class="field">
-              <label for="timerDayStart">课表开始时间</label>
+              <label for="timerDayStart">开启一天的时间</label>
               <input class="input" id="timerDayStart" type="time" value="06:00">
             </div>
             <div class="field">
-              <label for="timerDayEnd">休息提醒时间</label>
+              <label for="timerDayEnd">睡觉觉时间</label>
               <input class="input" id="timerDayEnd" type="time" value="23:00">
             </div>
             <div class="field">
               <label for="timerPauseLimit">暂停倒计时（分钟）</label>
               <select class="input" id="timerPauseLimit"></select>
             </div>
+            <div class="field">
+              <label for="focusDailyGoalHours">每天预计学习时长（小时）</label>
+              <input class="input" id="focusDailyGoalHours" type="number" min="0" step="0.25" placeholder="例如 4">
+            </div>
           </div>
+
+          <section class="timer-focus-plan" aria-label="专注学习计划">
+            <h3>专注学习计划</h3>
+            <div class="timer-focus-grid">
+              <div class="field">
+                <label for="focusSemester">统计哪个学习阶段</label>
+                <select class="input" id="focusSemester"></select>
+              </div>
+              <div class="field">
+                <label for="focusStartDate">学习阶段开始日期</label>
+                <input class="input" id="focusStartDate" type="date">
+              </div>
+              <div class="field">
+                <label for="focusEndDate">学习阶段结束日期</label>
+                <input class="input" id="focusEndDate" type="date">
+              </div>
+            </div>
+            <p class="focus-summary" id="focusSummary">本学习阶段你已经专注学习 0 天啦！</p>
+            <p class="focus-hint" id="focusHint">按自然日 00:00 到 24:00 统计；今天修改每日目标，只影响今天和未来。</p>
+          </section>
 
           <form class="timer-form" id="timerForm">
             <div class="field">
@@ -1996,6 +2055,12 @@
       timerDayStart: document.querySelector("#timerDayStart"),
       timerDayEnd: document.querySelector("#timerDayEnd"),
       timerPauseLimit: document.querySelector("#timerPauseLimit"),
+      focusDailyGoalHours: document.querySelector("#focusDailyGoalHours"),
+      focusSemester: document.querySelector("#focusSemester"),
+      focusStartDate: document.querySelector("#focusStartDate"),
+      focusEndDate: document.querySelector("#focusEndDate"),
+      focusSummary: document.querySelector("#focusSummary"),
+      focusHint: document.querySelector("#focusHint"),
       timerSemester: document.querySelector("#timerSemester"),
       timerCourse: document.querySelector("#timerCourse"),
       timerCategory: document.querySelector("#timerCategory"),
@@ -2094,6 +2159,48 @@
       return date.getHours() * 60 + date.getMinutes();
     }
 
+    function isDateKey(value) {
+      return /^\d{4}-\d{2}-\d{2}$/.test(String(value || ""));
+    }
+
+    function dateFromKey(dateKey) {
+      const [year, month, day] = String(dateKey || "").split("-").map(Number);
+      return new Date(year, month - 1, day);
+    }
+
+    function addDays(dateKey, amount) {
+      const date = dateFromKey(dateKey);
+      date.setDate(date.getDate() + amount);
+      return dateKeyFromTime(date.getTime());
+    }
+
+    function compareDateKeys(left, right) {
+      return String(left || "").localeCompare(String(right || ""));
+    }
+
+    function normalizeFocusPlans(rawPlans = {}) {
+      const plans = {};
+      if (!rawPlans || typeof rawPlans !== "object") return plans;
+      Object.entries(rawPlans).forEach(([semesterId, plan]) => {
+        if (!semesterId || !plan || typeof plan !== "object") return;
+        const history = Array.isArray(plan.targetHistory) ? plan.targetHistory
+          .map(entry => ({
+            fromDate: isDateKey(entry.fromDate) ? entry.fromDate : "",
+            minutes: Math.max(0, Math.round(Number(entry.minutes || 0)))
+          }))
+          .filter(entry => entry.fromDate && entry.minutes > 0)
+          .sort((left, right) => compareDateKeys(left.fromDate, right.fromDate)) : [];
+        plans[semesterId] = {
+          semesterId,
+          startDate: isDateKey(plan.startDate) ? plan.startDate : "",
+          endDate: isDateKey(plan.endDate) ? plan.endDate : "",
+          dailyGoalMinutes: Math.max(0, Math.round(Number(plan.dailyGoalMinutes || history.at(-1)?.minutes || 0))),
+          targetHistory: history
+        };
+      });
+      return plans;
+    }
+
     function normalizeTimer(timer = {}) {
       const sessions = Array.isArray(timer.sessions) ? timer.sessions.map(session => ({
         id: session.id || uid(),
@@ -2150,6 +2257,7 @@
         };
       })() : null;
       const today = dateKeyFromTime();
+      const focusPlans = normalizeFocusPlans(timer.focusPlans);
       return {
         sessions,
         active,
@@ -2158,6 +2266,8 @@
         pauseLimitMinutes: Math.min(60, Math.max(1, Number(timer.pauseLimitMinutes || 15))),
         dailyExtensions: timer.dailyExtensions && typeof timer.dailyExtensions === "object" ? timer.dailyExtensions : {},
         restAlertDateKey: timer.restAlertDateKey || "",
+        selectedFocusSemesterId: typeof timer.selectedFocusSemesterId === "string" ? timer.selectedFocusSemesterId : "",
+        focusPlans,
         selectedDate: /^\d{4}-\d{2}-\d{2}$/.test(timer.selectedDate || "") ? timer.selectedDate : today,
         calendarMonth: /^\d{4}-\d{2}$/.test(timer.calendarMonth || "") ? timer.calendarMonth : monthKeyFromDate(new Date()),
         dayOpen: Boolean(timer.dayOpen)
@@ -2224,7 +2334,9 @@
           course.categories = Array.isArray(course.categories) ? course.categories : [];
           course.categories.forEach(category => {
             category.collapsed = Boolean(category.collapsed);
+            category.infoCollapsed = category.infoCollapsed !== false;
             category.note = category.note || "";
+            category.attachments = Array.isArray(category.attachments) ? category.attachments : [];
             category.tasks = Array.isArray(category.tasks) ? category.tasks : [];
             category.tasks.forEach(task => {
               task.note = task.note || "";
@@ -2322,7 +2434,9 @@
           id: uid(),
           name: category.name,
           collapsed: false,
+          infoCollapsed: true,
           note: category.note || "",
+          attachments: (category.attachments || []).map(file => ({ ...file })),
           tasks: category.tasks.map(taskName => ({
             id: uid(),
             name: taskName,
@@ -2438,6 +2552,9 @@
           id: uid(),
           name: category.name || "未命名分类",
           collapsed: false,
+          infoCollapsed: true,
+          note: category.note || "",
+          attachments: (category.attachments || []).map(file => ({ ...file })),
           tasks: (category.tasks || []).map(copyTask)
         }))
       };
@@ -2772,6 +2889,118 @@
       return sessionsForDate(dateKey).reduce((total, session) => total + Number(session.durationMs || 0), 0);
     }
 
+    function totalForDateAndSemester(dateKey, semesterId) {
+      if (!semesterId) return 0;
+      return sessionsForDate(dateKey)
+        .filter(session => session.semesterId === semesterId)
+        .reduce((total, session) => total + Number(session.durationMs || 0), 0);
+    }
+
+    function ensureFocusPlan(semesterId) {
+      if (!state.timer.focusPlans) state.timer.focusPlans = {};
+      if (!state.timer.focusPlans[semesterId]) {
+        state.timer.focusPlans[semesterId] = {
+          semesterId,
+          startDate: dateKeyFromTime(),
+          endDate: "",
+          dailyGoalMinutes: 0,
+          targetHistory: []
+        };
+      }
+      return state.timer.focusPlans[semesterId];
+    }
+
+    function getTargetMinutesForDate(plan, dateKey) {
+      const history = Array.isArray(plan?.targetHistory) ? plan.targetHistory : [];
+      let target = 0;
+      history.forEach(entry => {
+        if (entry.fromDate && compareDateKeys(entry.fromDate, dateKey) <= 0) {
+          target = Number(entry.minutes || 0);
+        }
+      });
+      return Math.max(0, target);
+    }
+
+    function setFocusDailyGoal(plan, minutes, fromDate = dateKeyFromTime()) {
+      const nextMinutes = Math.max(0, Math.round(Number(minutes || 0)));
+      plan.dailyGoalMinutes = nextMinutes;
+      plan.targetHistory = Array.isArray(plan.targetHistory) ? plan.targetHistory : [];
+      plan.targetHistory = plan.targetHistory
+        .filter(entry => entry.fromDate && compareDateKeys(entry.fromDate, fromDate) < 0)
+        .concat(nextMinutes > 0 ? [{ fromDate, minutes: nextMinutes }] : [])
+        .sort((left, right) => compareDateKeys(left.fromDate, right.fromDate));
+    }
+
+    function countFocusedDays(semesterId, plan) {
+      if (!semesterId || !plan) return 0;
+      const today = dateKeyFromTime();
+      const firstTargetDate = plan.targetHistory?.[0]?.fromDate || today;
+      let cursor = plan.startDate || firstTargetDate;
+      const endDate = plan.endDate && compareDateKeys(plan.endDate, today) < 0 ? plan.endDate : today;
+      if (compareDateKeys(cursor, endDate) > 0) return 0;
+      let days = 0;
+      let guard = 0;
+      while (compareDateKeys(cursor, endDate) <= 0 && guard < 5000) {
+        const targetMinutes = getTargetMinutesForDate(plan, cursor);
+        if (targetMinutes > 0 && totalForDateAndSemester(cursor, semesterId) >= targetMinutes * 60000) {
+          days += 1;
+        }
+        cursor = addDays(cursor, 1);
+        guard += 1;
+      }
+      return days;
+    }
+
+    function formatHoursInput(minutes) {
+      if (!minutes) return "";
+      const hours = minutes / 60;
+      return Number.isInteger(hours) ? String(hours) : String(Math.round(hours * 100) / 100);
+    }
+
+    function renderFocusPlan() {
+      const firstSemesterId = state.semesters[0]?.id || "";
+      const selectedId = state.semesters.some(semester => semester.id === state.timer.selectedFocusSemesterId)
+        ? state.timer.selectedFocusSemesterId
+        : firstSemesterId;
+      state.timer.selectedFocusSemesterId = selectedId;
+      els.focusSemester.innerHTML = state.semesters.length
+        ? state.semesters.map(semester => `<option value="${semester.id}">${escapeHtml(semester.name)}</option>`).join("")
+        : `<option value="">${escapeHtml(t("暂无学习阶段"))}</option>`;
+      els.focusSemester.value = selectedId;
+      const hasSemester = Boolean(selectedId);
+      els.focusSemester.disabled = !hasSemester;
+      els.focusDailyGoalHours.disabled = !hasSemester;
+      els.focusStartDate.disabled = !hasSemester;
+      els.focusEndDate.disabled = !hasSemester;
+      if (!hasSemester) {
+        els.focusDailyGoalHours.value = "";
+        els.focusStartDate.value = "";
+        els.focusEndDate.value = "";
+        els.focusSummary.textContent = t("先创建一个学习阶段，再设置专注学习计划。");
+        els.focusHint.textContent = t("按自然日 00:00 到 24:00 统计；今天修改每日目标，只影响今天和未来。");
+        return;
+      }
+      const plan = ensureFocusPlan(selectedId);
+      els.focusDailyGoalHours.value = formatHoursInput(plan.dailyGoalMinutes);
+      els.focusStartDate.value = plan.startDate || dateKeyFromTime();
+      els.focusEndDate.value = plan.endDate || "";
+      const focusedDays = countFocusedDays(selectedId, plan);
+      els.focusSummary.textContent = `${t("本学习阶段你已经专注学习")} ${focusedDays} ${t("天啦！")}`;
+      const targetText = plan.dailyGoalMinutes ? formatDurationShort(plan.dailyGoalMinutes * 60000) : t("未设置");
+      els.focusHint.textContent = `${t("当前每日目标")}：${targetText}。${t("按自然日 00:00 到 24:00 统计；今天修改每日目标，只影响今天和未来。")}`;
+    }
+
+    function syncFocusPlanDates() {
+      const semesterId = els.focusSemester.value || state.timer.selectedFocusSemesterId || state.semesters[0]?.id || "";
+      if (!semesterId) return null;
+      const plan = ensureFocusPlan(semesterId);
+      const startDate = isDateKey(els.focusStartDate.value) ? els.focusStartDate.value : "";
+      const endDate = isDateKey(els.focusEndDate.value) ? els.focusEndDate.value : "";
+      plan.startDate = startDate || plan.startDate || dateKeyFromTime();
+      plan.endDate = endDate && compareDateKeys(endDate, plan.startDate) >= 0 ? endDate : "";
+      return plan;
+    }
+
     function renderTimerCalendar() {
       const [year, month] = state.timer.calendarMonth.split("-").map(Number);
       const first = new Date(year, month - 1, 1);
@@ -2820,7 +3049,7 @@
         const topMinutes = Math.max(0, startMinutes - range.startMinute);
         const blockMinutes = Math.max(15, Math.min(dayMinutes - topMinutes, endMinutes - startMinutes || Math.round(session.durationMs / 60000)));
         const top = (topMinutes / 60) * hourHeight;
-        const height = Math.max(36, (blockMinutes / 60) * hourHeight - 4);
+        const height = Math.max(94, (blockMinutes / 60) * hourHeight - 4);
         const title = session.taskName || session.courseName || session.semesterName || t("未关联");
         const path = [session.semesterName, session.courseName, session.categoryName].filter(Boolean).join(" / ");
         const partLabel = session.partTotal > 1 ? `${session.partIndex}/${session.partTotal}` : "";
@@ -2851,6 +3080,7 @@
       els.timerDayStart.value = minutesToTime(state.timer.scheduleStartMinute ?? 6 * 60);
       els.timerDayEnd.value = minutesToTime(state.timer.scheduleEndMinute ?? 23 * 60);
       els.timerPauseLimit.value = state.timer.pauseLimitMinutes ?? 15;
+      renderFocusPlan();
       renderTimerFormOptions();
       updateTimerDisplay();
       renderTimerCalendar();
@@ -2879,14 +3109,42 @@
       els.pauseExpiredOkBtn.focus();
     }
 
+    function getRestReminderState() {
+      const dateKey = dateKeyFromTime();
+      const startMinute = Number(state.timer.scheduleStartMinute ?? 6 * 60);
+      const scheduleEndMinute = Number(state.timer.scheduleEndMinute ?? 23 * 60);
+      const nowMinute = minutesOfDay();
+      const extension = state.timer.dailyExtensions?.[dateKey];
+
+      if (Number.isFinite(Number(extension))) {
+        const boundary = Number(extension);
+        let comparableNow = nowMinute;
+        if (boundary > 1440 && comparableNow < startMinute) comparableNow += 1440;
+        return {
+          isRestTime: comparableNow >= boundary,
+          alertKey: `${dateKey}-extension-${boundary}`
+        };
+      }
+
+      if (scheduleEndMinute > startMinute) {
+        const isBeforeStart = nowMinute < startMinute;
+        return {
+          isRestTime: nowMinute >= scheduleEndMinute || isBeforeStart,
+          alertKey: `${dateKey}-${startMinute}-${scheduleEndMinute}-${isBeforeStart ? "before-start" : "after-end"}`
+        };
+      }
+
+      return {
+        isRestTime: nowMinute >= scheduleEndMinute && nowMinute < startMinute,
+        alertKey: `${dateKey}-${startMinute}-${scheduleEndMinute}-${nowMinute < startMinute ? "after-midnight-end" : "before-start"}`
+      };
+    }
+
     function checkRestReminder() {
       const active = state.timer?.active;
       if (!active || active.status !== "running" || els.restModal.classList.contains("open")) return;
-      const dateKey = dateKeyFromTime();
-      const endMinute = Number(state.timer.dailyExtensions?.[dateKey] ?? state.timer.scheduleEndMinute ?? 23 * 60);
-      const nowMinute = minutesOfDay();
-      if (nowMinute < endMinute) return;
-      const alertKey = `${dateKey}-${endMinute}`;
+      const { isRestTime, alertKey } = getRestReminderState();
+      if (!isRestTime) return;
       if (state.timer.restAlertDateKey === alertKey) return;
       state.timer.restAlertDateKey = alertKey;
       saveState();
@@ -3321,7 +3579,7 @@
 
     function renderCategory(course, category) {
       const categoryEl = document.createElement("section");
-      categoryEl.className = `category${category.collapsed ? " collapsed" : ""}`;
+      categoryEl.className = `category${category.collapsed ? " collapsed" : ""}${category.infoCollapsed ? " info-collapsed" : ""}`;
       categoryEl.dataset.categoryId = category.id;
 
       const progress = getProgress(category.tasks);
@@ -3344,6 +3602,7 @@
           </div>
           <div class="actions">
             <button class="btn icon" type="button" data-action="toggle-category" title="收起或展开分类">${category.collapsed ? "▸" : "▾"}</button>
+            <button class="btn icon note-toggle" type="button" data-action="toggle-category-info" title="收起或展开备注与附件">备注/附件 ${category.infoCollapsed ? "▸" : "▾"}</button>
             <button class="btn icon" type="button" data-action="edit-category" title="编辑分类">✎</button>
             <button class="btn icon" type="button" data-action="copy-category" title="复制分类">⧉</button>
             <button class="btn icon" type="button" data-action="delete-category" title="删除分类">×</button>
@@ -3351,6 +3610,13 @@
         </header>
         <div class="category-extra entity-extra">
           <textarea class="textarea entity-note" data-action="update-category-note" placeholder="分类备注：重点、资料、练习安排"></textarea>
+          <div class="task-files">
+            <label class="btn secondary">
+              + 上传图片/PDF
+              <input type="file" data-action="add-category-attachment" accept="image/*,.pdf,application/pdf" multiple hidden>
+            </label>
+            <div class="attachments"></div>
+          </div>
         </div>
         <div class="tasks"></div>
       `;
@@ -3359,6 +3625,7 @@
       categoryEl.querySelector(".pill").textContent = `${progress.done}/${progress.total} · ${progress.percent}%`;
       categoryEl.querySelector(".progress-fill").style.width = `${progress.percent}%`;
       categoryEl.querySelector(".entity-note").value = category.note || "";
+      renderAttachments(categoryEl.querySelector(".attachments"), category, "category");
 
       const tasksEl = categoryEl.querySelector(".tasks");
       if (!category.tasks.length) {
@@ -3621,7 +3888,10 @@
       return {
         id: uid(),
         name: getCopyName(category.name, siblingCategories),
+        collapsed: false,
+        infoCollapsed: true,
         note: category.note || "",
+        attachments: (category.attachments || []).map(file => ({ ...file })),
         tasks: category.tasks.map(copyTask)
       };
     }
@@ -3630,7 +3900,10 @@
       const copiedCategories = course.categories.map(category => ({
         id: uid(),
         name: category.name,
+        collapsed: false,
+        infoCollapsed: true,
         note: category.note || "",
+        attachments: (category.attachments || []).map(file => ({ ...file })),
         tasks: category.tasks.map(copyTask)
       }));
 
@@ -3667,7 +3940,9 @@
             id: uid(),
             name: category.name,
             collapsed: false,
+            infoCollapsed: true,
             note: category.note || "",
+            attachments: (category.attachments || []).map(file => ({ ...file })),
             tasks: category.tasks.map(copyTask)
           }))
         }))
@@ -4574,7 +4849,15 @@
         if (!name) return;
         const amount = getAmount(form.elements.categoryAmount.value);
         const names = createNames(name, amount, course.categories);
-        course.categories.push(...names.map(categoryName => ({ id: uid(), name: categoryName, collapsed: false, tasks: [] })));
+        course.categories.push(...names.map(categoryName => ({
+          id: uid(),
+          name: categoryName,
+          collapsed: false,
+          infoCollapsed: true,
+          note: "",
+          attachments: [],
+          tasks: []
+        })));
         commit(amount === 1 ? "分类已添加" : `已添加 ${amount} 个分类`);
       }
 
@@ -4658,6 +4941,27 @@
         renderTimer();
       });
     });
+    els.focusSemester.addEventListener("change", () => {
+      state.timer.selectedFocusSemesterId = els.focusSemester.value || "";
+      if (state.timer.selectedFocusSemesterId) ensureFocusPlan(state.timer.selectedFocusSemesterId);
+      saveState();
+      renderTimer();
+    });
+    els.focusDailyGoalHours.addEventListener("change", () => {
+      const plan = syncFocusPlanDates();
+      if (!plan) return;
+      const minutes = Math.max(0, Math.round(Number(els.focusDailyGoalHours.value || 0) * 60));
+      setFocusDailyGoal(plan, minutes, dateKeyFromTime());
+      saveState();
+      renderTimer();
+    });
+    [els.focusStartDate, els.focusEndDate].forEach(input => {
+      input.addEventListener("change", () => {
+        syncFocusPlanDates();
+        saveState();
+        renderTimer();
+      });
+    });
     els.timerSemester.addEventListener("change", () => {
       if (state.timer.active) {
         state.timer.active.semesterId = els.timerSemester.value || "";
@@ -4726,7 +5030,7 @@
 
     els.courses.addEventListener("change", async event => {
       const action = event.target.dataset.action;
-      const { semester, course, task } = findFromEvent(event.target);
+      const { semester, course, category, task } = findFromEvent(event.target);
 
       if (action === "toggle-task" && task) {
         task.done = event.target.checked;
@@ -4757,6 +5061,7 @@
       const uploadEntity =
         action === "add-semester-attachment" ? semester :
         action === "add-course-attachment" ? course :
+        action === "add-category-attachment" ? category :
         action === "add-task-attachment" ? task : null;
 
       if (uploadEntity) {
@@ -4937,6 +5242,11 @@
         commitDisclosureChange();
       }
 
+      if (action === "toggle-category-info" && category) {
+        category.infoCollapsed = !category.infoCollapsed;
+        commit();
+      }
+
       if (action === "edit-category" && category) {
         openEditModal("编辑分类", [
           { label: "分类名称", name: "name", value: category.name }
@@ -4953,6 +5263,11 @@
 
       if (action === "copy-category" && course && category) {
         putClipboard("category", category);
+      }
+
+      if (action === "delete-category-attachment" && category) {
+        category.attachments = (category.attachments || []).filter((_, index) => index !== Number(event.target.dataset.index));
+        commit("附件已删除");
       }
 
       if (action === "paste-category-after" && course && category && appClipboard?.type === "category") {
