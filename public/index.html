@@ -239,8 +239,15 @@
       align-items: start;
     }
 
+    .timer-side {
+      display: grid;
+      gap: 16px;
+      align-items: start;
+    }
+
     .timer-card,
     .timer-calendar,
+    .timer-focus-plan,
     .timer-day {
       border: 1px solid var(--line-strong);
       border-radius: 8px;
@@ -303,11 +310,7 @@
     .timer-focus-plan {
       display: grid;
       gap: 12px;
-      margin-top: 14px;
-      padding: 12px;
-      border: 1px solid var(--line);
-      border-radius: 8px;
-      background: #f7fbfa;
+      padding: 16px;
     }
 
     .timer-focus-plan h3 {
@@ -324,7 +327,9 @@
     .focus-summary {
       margin: 0;
       color: var(--primary-strong);
-      font-weight: 800;
+      font-size: 24px;
+      line-height: 1.25;
+      font-weight: 900;
     }
 
     .focus-hint {
@@ -1820,31 +1825,7 @@
               <label for="timerPauseLimit">暂停倒计时（分钟）</label>
               <select class="input" id="timerPauseLimit"></select>
             </div>
-            <div class="field">
-              <label for="focusDailyGoalHours">每天预计学习时长（小时）</label>
-              <input class="input" id="focusDailyGoalHours" type="number" min="0" step="0.25" placeholder="例如 4">
-            </div>
           </div>
-
-          <section class="timer-focus-plan" aria-label="专注学习计划">
-            <h3>专注学习计划</h3>
-            <div class="timer-focus-grid">
-              <div class="field">
-                <label for="focusSemester">统计哪个学习阶段</label>
-                <select class="input" id="focusSemester"></select>
-              </div>
-              <div class="field">
-                <label for="focusStartDate">学习阶段开始日期</label>
-                <input class="input" id="focusStartDate" type="date">
-              </div>
-              <div class="field">
-                <label for="focusEndDate">学习阶段结束日期</label>
-                <input class="input" id="focusEndDate" type="date">
-              </div>
-            </div>
-            <p class="focus-summary" id="focusSummary">本学习阶段你已经专注学习 0 天啦！</p>
-            <p class="focus-hint" id="focusHint">按自然日 00:00 到 24:00 统计；今天修改每日目标，只影响今天和未来。</p>
-          </section>
 
           <form class="timer-form" id="timerForm">
             <div class="field">
@@ -1878,13 +1859,39 @@
           </div>
         </article>
 
-        <div class="timer-calendar">
-          <div class="timer-calendar-header">
-            <button class="btn secondary" id="timerPrevMonthBtn" type="button">上个月</button>
-            <h2 id="timerMonthTitle">本月记录</h2>
-            <button class="btn secondary" id="timerNextMonthBtn" type="button">下个月</button>
+        <div class="timer-side">
+          <div class="timer-calendar">
+            <div class="timer-calendar-header">
+              <button class="btn secondary" id="timerPrevMonthBtn" type="button">上个月</button>
+              <h2 id="timerMonthTitle">本月记录</h2>
+              <button class="btn secondary" id="timerNextMonthBtn" type="button">下个月</button>
+            </div>
+            <div class="calendar-grid" id="timerCalendarGrid"></div>
           </div>
-          <div class="calendar-grid" id="timerCalendarGrid"></div>
+
+          <section class="timer-focus-plan" aria-label="专注学习计划">
+            <h3>专注学习计划</h3>
+            <div class="timer-focus-grid">
+              <div class="field">
+                <label for="focusSemester">统计哪个学习阶段</label>
+                <select class="input" id="focusSemester"></select>
+              </div>
+              <div class="field">
+                <label for="focusDailyGoalHours">每天预计学习时长（小时）</label>
+                <input class="input" id="focusDailyGoalHours" type="number" min="0" step="0.25" placeholder="例如 4">
+              </div>
+              <div class="field">
+                <label for="focusStartDate">学习阶段开始日期</label>
+                <input class="input" id="focusStartDate" type="date">
+              </div>
+              <div class="field">
+                <label for="focusEndDate">学习阶段结束日期</label>
+                <input class="input" id="focusEndDate" type="date">
+              </div>
+            </div>
+            <p class="focus-summary" id="focusSummary">本学习阶段你已经专注学习 0 天啦！</p>
+            <p class="focus-hint" id="focusHint">按自然日 00:00 到 24:00 统计；今天修改每日目标，只影响今天和未来。</p>
+          </section>
         </div>
       </div>
 
@@ -2037,6 +2044,7 @@
     let timerTick = null;
     let timerAudio = null;
     let timerNoiseOn = false;
+    let pendingTimerStartAfterRest = false;
 
     const els = {
       courses: document.querySelector("#courses"),
@@ -3093,11 +3101,21 @@
 
     function closeRestModal() {
       els.restModal.classList.remove("open");
+      pendingTimerStartAfterRest = false;
     }
 
     function openRestModal() {
       els.restModal.classList.add("open");
       els.restExtendMinutes.focus();
+    }
+
+    function openPreStartRestModal() {
+      pendingTimerStartAfterRest = true;
+      openRestModal();
+    }
+
+    function closeRestModalAfterChoice() {
+      els.restModal.classList.remove("open");
     }
 
     function closePauseExpiredModal() {
@@ -4025,7 +4043,14 @@
       if (message) showToast(message);
     }
 
-    function startTimer() {
+    function startTimer(options = {}) {
+      if (!options.skipRestCheck) {
+        const { isRestTime } = getRestReminderState();
+        if (isRestTime && !els.restModal.classList.contains("open")) {
+          openPreStartRestModal();
+          return;
+        }
+      }
       if (!state.timer.active) {
         const selection = getTimerSelection();
         const now = Date.now();
@@ -4908,26 +4933,41 @@
     els.pauseExpiredCloseBtn.addEventListener("click", closePauseExpiredModal);
     els.pauseExpiredOkBtn.addEventListener("click", closePauseExpiredModal);
     els.restSleepBtn.addEventListener("click", () => {
-      finishTimer();
+      const shouldOnlyClose = pendingTimerStartAfterRest || !state.timer.active;
+      pendingTimerStartAfterRest = false;
+      closeRestModalAfterChoice();
+      if (!shouldOnlyClose) finishTimer();
     });
     els.restExtendBtn.addEventListener("click", () => {
+      const shouldStartTimer = pendingTimerStartAfterRest;
       const dateKey = dateKeyFromTime();
       const minutes = Math.min(240, Math.max(5, Number(els.restExtendMinutes.value || 30)));
       if (!state.timer.dailyExtensions) state.timer.dailyExtensions = {};
       state.timer.dailyExtensions[dateKey] = minutesOfDay() + minutes;
       state.timer.restAlertDateKey = "";
-      closeRestModal();
+      pendingTimerStartAfterRest = false;
+      closeRestModalAfterChoice();
       saveState();
-      renderTimer();
+      if (shouldStartTimer) {
+        startTimer({ skipRestCheck: true });
+      } else {
+        renderTimer();
+      }
     });
     els.restExceptionBtn.addEventListener("click", () => {
+      const shouldStartTimer = pendingTimerStartAfterRest;
       const dateKey = dateKeyFromTime();
       if (!state.timer.dailyExtensions) state.timer.dailyExtensions = {};
       state.timer.dailyExtensions[dateKey] = Math.max(minutesOfDay() + 24 * 60, Number(state.timer.scheduleEndMinute || 23 * 60) + 24 * 60);
       state.timer.restAlertDateKey = "";
-      closeRestModal();
+      pendingTimerStartAfterRest = false;
+      closeRestModalAfterChoice();
       saveState();
-      renderTimer();
+      if (shouldStartTimer) {
+        startTimer({ skipRestCheck: true });
+      } else {
+        renderTimer();
+      }
     });
     [els.timerDayStart, els.timerDayEnd, els.timerPauseLimit].forEach(input => {
       input.addEventListener("change", () => {
