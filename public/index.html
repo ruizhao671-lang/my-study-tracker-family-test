@@ -283,6 +283,23 @@
       margin-top: 16px;
     }
 
+    .timer-settings {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 10px;
+      margin-top: 14px;
+      padding: 10px;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      background: #f6fbf9;
+    }
+
+    .timer-settings .field {
+      display: grid;
+      gap: 7px;
+      margin: 0;
+    }
+
     .timer-form {
       display: grid;
       gap: 12px;
@@ -444,6 +461,20 @@
     .time-block strong {
       display: block;
       margin-bottom: 3px;
+    }
+
+    .time-part {
+      display: inline-flex;
+      align-items: center;
+      min-height: 18px;
+      padding: 1px 6px;
+      border-radius: 999px;
+      background: #d6ece7;
+      color: #0f766e;
+      font-size: 11px;
+      font-weight: 800;
+      line-height: 1;
+      vertical-align: 1px;
     }
 
     .time-block p {
@@ -1670,7 +1701,7 @@
     </section>
 
     <nav class="app-switch" aria-label="板块切换">
-      <button class="panel-tab active" id="systemPanelBtn" type="button">学习系统记录</button>
+      <button class="panel-tab active" id="systemPanelBtn" type="button">学习进度记录</button>
       <button class="panel-tab" id="timerPanelBtn" type="button">学习计时</button>
     </nav>
 
@@ -1739,6 +1770,21 @@
             <button class="btn secondary" id="timerPauseBtn" type="button">暂停</button>
             <button class="btn secondary" id="timerFinishBtn" type="button">结束并保存</button>
             <button class="btn secondary" id="timerCancelBtn" type="button">取消本次</button>
+          </div>
+
+          <div class="timer-settings">
+            <div class="field">
+              <label for="timerDayStart">课表开始时间</label>
+              <input class="input" id="timerDayStart" type="time" value="06:00">
+            </div>
+            <div class="field">
+              <label for="timerDayEnd">休息提醒时间</label>
+              <input class="input" id="timerDayEnd" type="time" value="23:00">
+            </div>
+            <div class="field">
+              <label for="timerPauseLimit">暂停倒计时（分钟）</label>
+              <select class="input" id="timerPauseLimit"></select>
+            </div>
           </div>
 
           <form class="timer-form" id="timerForm">
@@ -1858,6 +1904,41 @@
     </form>
   </div>
 
+  <div class="modal" id="restModal" role="dialog" aria-modal="true" aria-labelledby="restModalTitle">
+    <section class="dialog rest-dialog">
+      <div class="dialog-header">
+        <h2 id="restModalTitle">现在是休息时间哦</h2>
+      </div>
+      <div class="dialog-body">
+        <p class="muted">今天的学习已经超过你设定的作息时间。你可以现在结束，也可以临时延长今天的课表。</p>
+        <div class="field">
+          <label for="restExtendMinutes">再学多少分钟</label>
+          <input class="input" id="restExtendMinutes" type="number" min="5" max="240" step="5" value="30">
+        </div>
+      </div>
+      <div class="dialog-footer">
+        <button class="btn secondary" type="button" id="restSleepBtn">好的，这就去睡</button>
+        <button class="btn secondary" type="button" id="restExtendBtn">再学一会儿</button>
+        <button class="btn" type="button" id="restExceptionBtn">今天破例熬夜</button>
+      </div>
+    </section>
+  </div>
+
+  <div class="modal" id="pauseExpiredModal" role="dialog" aria-modal="true" aria-labelledby="pauseExpiredTitle">
+    <section class="dialog">
+      <div class="dialog-header">
+        <h2 id="pauseExpiredTitle">Oops，离开时间太久啦</h2>
+        <button class="btn icon" type="button" id="pauseExpiredCloseBtn" title="关闭">×</button>
+      </div>
+      <div class="dialog-body">
+        <p class="muted">本次计时已自动结束并保存。因为你没有在暂停倒计时结束前回来继续，关联任务不会被自动标记完成，下次再来完成它吧。</p>
+      </div>
+      <div class="dialog-footer">
+        <button class="btn" type="button" id="pauseExpiredOkBtn">好的</button>
+      </div>
+    </section>
+  </div>
+
   <div class="toast" id="toast" role="status"></div>
 
   <script src="cloud-bootstrap.js"></script>
@@ -1912,6 +1993,9 @@
       timerFinishBtn: document.querySelector("#timerFinishBtn"),
       timerCancelBtn: document.querySelector("#timerCancelBtn"),
       timerForm: document.querySelector("#timerForm"),
+      timerDayStart: document.querySelector("#timerDayStart"),
+      timerDayEnd: document.querySelector("#timerDayEnd"),
+      timerPauseLimit: document.querySelector("#timerPauseLimit"),
       timerSemester: document.querySelector("#timerSemester"),
       timerCourse: document.querySelector("#timerCourse"),
       timerCategory: document.querySelector("#timerCategory"),
@@ -1967,6 +2051,14 @@
       welcomeForm: document.querySelector("#welcomeForm"),
       welcomeImportBtn: document.querySelector("#welcomeImportBtn"),
       ownerName: document.querySelector("#ownerName"),
+      restModal: document.querySelector("#restModal"),
+      restExtendMinutes: document.querySelector("#restExtendMinutes"),
+      restSleepBtn: document.querySelector("#restSleepBtn"),
+      restExtendBtn: document.querySelector("#restExtendBtn"),
+      restExceptionBtn: document.querySelector("#restExceptionBtn"),
+      pauseExpiredModal: document.querySelector("#pauseExpiredModal"),
+      pauseExpiredCloseBtn: document.querySelector("#pauseExpiredCloseBtn"),
+      pauseExpiredOkBtn: document.querySelector("#pauseExpiredOkBtn"),
       toast: document.querySelector("#toast")
     };
 
@@ -1983,6 +2075,25 @@
       return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}`;
     }
 
+    function parseTimeToMinutes(value, fallback) {
+      const match = /^(\d{1,2}):(\d{2})$/.exec(String(value || ""));
+      if (!match) return fallback;
+      const hours = Number(match[1]);
+      const minutes = Number(match[2]);
+      if (hours < 0 || hours > 23 || minutes < 0 || minutes > 59) return fallback;
+      return hours * 60 + minutes;
+    }
+
+    function minutesToTime(value) {
+      const minutes = ((Math.round(Number(value || 0)) % 1440) + 1440) % 1440;
+      return `${String(Math.floor(minutes / 60)).padStart(2, "0")}:${String(minutes % 60).padStart(2, "0")}`;
+    }
+
+    function minutesOfDay(time = Date.now()) {
+      const date = new Date(time);
+      return date.getHours() * 60 + date.getMinutes();
+    }
+
     function normalizeTimer(timer = {}) {
       const sessions = Array.isArray(timer.sessions) ? timer.sessions.map(session => ({
         id: session.id || uid(),
@@ -1997,26 +2108,56 @@
         categoryName: session.categoryName || "",
         taskId: session.taskId || "",
         taskName: session.taskName || "",
+        groupId: session.groupId || session.id || uid(),
+        partIndex: Math.max(1, Number(session.partIndex || 1)),
+        partTotal: Math.max(1, Number(session.partTotal || 1)),
+        segments: Array.isArray(session.segments) ? session.segments.map(segment => ({
+          startAt: Number(segment.startAt || 0),
+          endAt: Number(segment.endAt || 0)
+        })).filter(segment => segment.startAt && segment.endAt && segment.endAt >= segment.startAt) : [],
         markTaskDone: Boolean(session.markTaskDone),
         note: typeof session.note === "string" ? session.note : ""
       })).filter(session => session.startAt && session.endAt && session.durationMs) : [];
-      const active = timer.active && typeof timer.active === "object" ? {
-        id: timer.active.id || uid(),
-        startedAt: Number(timer.active.startedAt || Date.now()),
-        elapsedMs: Math.max(0, Number(timer.active.elapsedMs || 0)),
-        resumedAt: timer.active.status === "running" ? Number(timer.active.resumedAt || Date.now()) : null,
-        status: timer.active.status === "running" ? "running" : "paused",
-        semesterId: timer.active.semesterId || "",
-        courseId: timer.active.courseId || "",
-        categoryId: timer.active.categoryId || "",
-        taskId: timer.active.taskId || "",
-        markTaskDone: Boolean(timer.active.markTaskDone),
-        note: typeof timer.active.note === "string" ? timer.active.note : ""
-      } : null;
+      const active = timer.active && typeof timer.active === "object" ? (() => {
+        const startedAt = Number(timer.active.startedAt || Date.now());
+        const elapsedMs = Math.max(0, Number(timer.active.elapsedMs || 0));
+        const status = timer.active.status === "running" ? "running" : "paused";
+        let segments = Array.isArray(timer.active.segments) ? timer.active.segments.map(segment => ({
+          startAt: Number(segment.startAt || 0),
+          endAt: segment.endAt ? Number(segment.endAt) : null
+        })).filter(segment => segment.startAt) : [];
+        if (!segments.length) {
+          if (status === "running") {
+            segments = [{ startAt: Number(timer.active.resumedAt || startedAt), endAt: null }];
+          } else if (elapsedMs) {
+            segments = [{ startAt: startedAt, endAt: startedAt + elapsedMs }];
+          }
+        }
+        return {
+          id: timer.active.id || uid(),
+          startedAt,
+          elapsedMs,
+          resumedAt: status === "running" ? Number(timer.active.resumedAt || Date.now()) : null,
+          status,
+          segments,
+          pauseDeadlineAt: timer.active.pauseDeadlineAt ? Number(timer.active.pauseDeadlineAt) : null,
+          semesterId: timer.active.semesterId || "",
+          courseId: timer.active.courseId || "",
+          categoryId: timer.active.categoryId || "",
+          taskId: timer.active.taskId || "",
+          markTaskDone: Boolean(timer.active.markTaskDone),
+          note: typeof timer.active.note === "string" ? timer.active.note : ""
+        };
+      })() : null;
       const today = dateKeyFromTime();
       return {
         sessions,
         active,
+        scheduleStartMinute: parseTimeToMinutes(timer.scheduleStart || (Number.isFinite(Number(timer.scheduleStartMinute)) ? minutesToTime(timer.scheduleStartMinute) : ""), 6 * 60),
+        scheduleEndMinute: parseTimeToMinutes(timer.scheduleEnd || (Number.isFinite(Number(timer.scheduleEndMinute)) ? minutesToTime(timer.scheduleEndMinute) : ""), 23 * 60),
+        pauseLimitMinutes: Math.min(60, Math.max(1, Number(timer.pauseLimitMinutes || 15))),
+        dailyExtensions: timer.dailyExtensions && typeof timer.dailyExtensions === "object" ? timer.dailyExtensions : {},
+        restAlertDateKey: timer.restAlertDateKey || "",
         selectedDate: /^\d{4}-\d{2}-\d{2}$/.test(timer.selectedDate || "") ? timer.selectedDate : today,
         calendarMonth: /^\d{4}-\d{2}$/.test(timer.calendarMonth || "") ? timer.calendarMonth : monthKeyFromDate(new Date()),
         dayOpen: Boolean(timer.dayOpen)
@@ -2083,6 +2224,7 @@
           course.categories = Array.isArray(course.categories) ? course.categories : [];
           course.categories.forEach(category => {
             category.collapsed = Boolean(category.collapsed);
+            category.note = category.note || "";
             category.tasks = Array.isArray(category.tasks) ? category.tasks : [];
             category.tasks.forEach(task => {
               task.note = task.note || "";
@@ -2180,6 +2322,7 @@
           id: uid(),
           name: category.name,
           collapsed: false,
+          note: category.note || "",
           tasks: category.tasks.map(taskName => ({
             id: uid(),
             name: taskName,
@@ -2360,15 +2503,30 @@
       return [hours, minutes, seconds].map(value => String(value).padStart(2, "0")).join(":");
     }
 
+    function t(text) {
+      return window.studyI18n?.translateText?.(text) || text;
+    }
+
+    function setupTimerPauseLimitOptions() {
+      els.timerPauseLimit.innerHTML = Array.from({ length: 60 }, (_, index) => {
+        const minutes = index + 1;
+        return `<option value="${minutes}">${minutes} 分钟</option>`;
+      }).join("");
+    }
+
+    function currentLocale() {
+      return window.studyI18n?.getLanguage?.() === "en" ? "en-US" : "zh-CN";
+    }
+
     function formatDurationShort(ms) {
       const totalSeconds = Math.max(0, Math.ceil(ms / 1000));
-      if (totalSeconds < 60) return `${totalSeconds} 秒`;
+      if (totalSeconds < 60) return t(`${totalSeconds} 秒`);
       const totalMinutes = Math.floor(totalSeconds / 60);
       const hours = Math.floor(totalMinutes / 60);
       const minutes = totalMinutes % 60;
-      if (!hours) return `${minutes} 分钟`;
-      if (!minutes) return `${hours} 小时`;
-      return `${hours} 小时 ${minutes} 分钟`;
+      if (!hours) return t(`${minutes} 分钟`);
+      if (!minutes) return t(`${hours} 小时`);
+      return t(`${hours} 小时 ${minutes} 分钟`);
     }
 
     function formatDurationWithSeconds(ms) {
@@ -2377,19 +2535,19 @@
       const minutes = Math.floor((totalSeconds % 3600) / 60);
       const seconds = totalSeconds % 60;
       const parts = [];
-      if (hours) parts.push(`${hours} 小时`);
-      if (minutes) parts.push(`${minutes} 分钟`);
-      if (seconds || !parts.length) parts.push(`${seconds} 秒`);
+      if (hours) parts.push(t(`${hours} 小时`));
+      if (minutes) parts.push(t(`${minutes} 分钟`));
+      if (seconds || !parts.length) parts.push(t(`${seconds} 秒`));
       return parts.join(" ");
     }
 
     function formatClock(time) {
-      return new Date(time).toLocaleTimeString("zh-CN", { hour: "2-digit", minute: "2-digit", second: "2-digit" });
+      return new Date(time).toLocaleTimeString(currentLocale(), { hour: "2-digit", minute: "2-digit", second: "2-digit" });
     }
 
     function formatDateLabel(dateKey) {
       const [year, month, day] = dateKey.split("-").map(Number);
-      return new Date(year, month - 1, day).toLocaleDateString("zh-CN", {
+      return new Date(year, month - 1, day).toLocaleDateString(currentLocale(), {
         year: "numeric",
         month: "long",
         day: "numeric",
@@ -2397,9 +2555,114 @@
       });
     }
 
+    function sumSegments(segments, fallbackEnd = Date.now()) {
+      return (segments || []).reduce((total, segment) => {
+        const startAt = Number(segment.startAt || 0);
+        const endAt = Number(segment.endAt || fallbackEnd);
+        return startAt && endAt > startAt ? total + endAt - startAt : total;
+      }, 0);
+    }
+
+    function closeActiveSegment(active, endAt = Date.now()) {
+      if (!active.segments) active.segments = [];
+      const open = active.segments.find(segment => !segment.endAt);
+      if (open) {
+        open.endAt = Math.max(endAt, open.startAt + 1);
+      }
+      active.elapsedMs = sumSegments(active.segments, endAt);
+    }
+
+    function splitSegmentByDay(segment) {
+      const pieces = [];
+      let cursor = Number(segment.startAt || 0);
+      const finalEnd = Number(segment.endAt || 0);
+      while (cursor && finalEnd && cursor < finalEnd) {
+        const cursorDate = new Date(cursor);
+        const midnight = new Date(cursorDate.getFullYear(), cursorDate.getMonth(), cursorDate.getDate() + 1).getTime();
+        const endAt = Math.min(finalEnd, midnight);
+        pieces.push({ startAt: cursor, endAt, dateKey: dateKeyFromTime(cursor) });
+        cursor = endAt;
+      }
+      return pieces;
+    }
+
+    function buildTimerSessions(active, selection, endAt) {
+      const baseSegments = (active.segments || [])
+        .map(segment => ({
+          startAt: Number(segment.startAt || 0),
+          endAt: Number(segment.endAt || endAt)
+        }))
+        .filter(segment => segment.startAt && segment.endAt && segment.endAt > segment.startAt);
+      const dayBuckets = new Map();
+      baseSegments.flatMap(splitSegmentByDay).forEach(piece => {
+        if (!dayBuckets.has(piece.dateKey)) dayBuckets.set(piece.dateKey, []);
+        dayBuckets.get(piece.dateKey).push({ startAt: piece.startAt, endAt: piece.endAt });
+      });
+      const sortedEntries = [...dayBuckets.entries()].sort(([left], [right]) => left.localeCompare(right));
+      const totalParts = sortedEntries.length || 1;
+      return sortedEntries.map(([dateKey, segments], index) => {
+        const startAt = Math.min(...segments.map(segment => segment.startAt));
+        const endAtForPart = Math.max(...segments.map(segment => segment.endAt));
+        return {
+          id: totalParts > 1 ? `${active.id || uid()}-${index + 1}` : active.id || uid(),
+          groupId: active.id || uid(),
+          partIndex: index + 1,
+          partTotal: totalParts,
+          startAt,
+          endAt: endAtForPart,
+          durationMs: Math.max(1, sumSegments(segments, endAtForPart)),
+          semesterId: selection.semesterId,
+          semesterName: selection.semesterName,
+          courseId: selection.courseId,
+          courseName: selection.courseName,
+          categoryId: selection.categoryId,
+          categoryName: selection.categoryName,
+          taskId: selection.taskId,
+          taskName: selection.taskName,
+          markTaskDone: selection.markTaskDone,
+          note: selection.note,
+          segments
+        };
+      });
+    }
+
+    function formatSegmentRanges(session) {
+      const segments = Array.isArray(session.segments) ? session.segments : [];
+      if (segments.length <= 1) return "";
+      return segments
+        .map(segment => `${formatClock(segment.startAt)} - ${formatClock(segment.endAt)}`)
+        .join("；");
+    }
+
+    function minuteWithinDate(time, dateKey, isEnd = false) {
+      const minute = minutesOfDay(time);
+      if (isEnd && dateKeyFromTime(time) !== dateKey && minute === 0) return 1440;
+      return minute;
+    }
+
+    function getTimerDayRange(dateKey, sessions) {
+      const scheduleStart = Number(state.timer.scheduleStartMinute ?? 6 * 60);
+      let scheduleEnd = Number(state.timer.dailyExtensions?.[dateKey] ?? state.timer.scheduleEndMinute ?? 23 * 60);
+      if (scheduleEnd <= scheduleStart) scheduleEnd += 1440;
+      const sessionStarts = sessions.map(session => minuteWithinDate(session.startAt, dateKey));
+      const sessionEnds = sessions.map(session => minuteWithinDate(session.endAt, dateKey, true));
+      const minMinute = sessionStarts.length ? Math.min(scheduleStart, ...sessionStarts) : scheduleStart;
+      const maxMinute = sessionEnds.length ? Math.max(scheduleEnd, ...sessionEnds) : scheduleEnd;
+      const startMinute = Math.max(0, Math.floor(minMinute / 60) * 60);
+      const endMinute = Math.max(startMinute + 60, Math.ceil(maxMinute / 60) * 60);
+      return { startMinute, endMinute };
+    }
+
+    function formatTimelineHour(totalMinutes) {
+      return `${String(Math.floor(totalMinutes / 60)).padStart(2, "0")}:00`;
+    }
+
     function getActiveElapsed() {
       const active = state.timer?.active;
       if (!active) return 0;
+      if (Array.isArray(active.segments) && active.segments.length) {
+        return Math.max(0, sumSegments(active.segments));
+      }
       const runningExtra = active.status === "running" && active.resumedAt ? Date.now() - active.resumedAt : 0;
       return Math.max(0, Number(active.elapsedMs || 0) + runningExtra);
     }
@@ -2408,19 +2671,32 @@
       const active = state.timer?.active;
       els.timerDisplay.textContent = formatDuration(getActiveElapsed());
       if (!active) {
-        els.timerStatus.textContent = "还没有开始计时";
-        els.timerStartBtn.textContent = "开始";
+        els.timerStatus.textContent = t("还没有开始计时");
+        els.timerStartBtn.textContent = t("开始");
         els.timerPauseBtn.disabled = true;
         els.timerFinishBtn.disabled = true;
         els.timerCancelBtn.disabled = true;
         return;
       }
       const running = active.status === "running";
-      els.timerStatus.textContent = running ? "正在学习中" : "已暂停";
-      els.timerStartBtn.textContent = running ? "继续中" : "继续";
+      if (running) {
+        els.timerStatus.textContent = t("正在学习中");
+      } else {
+        const pauseDeadline = Number(active.pauseDeadlineAt || 0);
+        const pauseRemaining = pauseDeadline ? pauseDeadline - Date.now() : null;
+        if (pauseRemaining !== null && pauseRemaining <= 0) {
+          finishTimer({ autoEndedByPause: true });
+          return;
+        }
+        els.timerStatus.textContent = pauseRemaining === null
+          ? t("已暂停")
+          : `${t("已暂停 · 暂停倒计时")} ${formatDuration(Math.max(0, pauseRemaining))}`;
+      }
+      els.timerStartBtn.textContent = running ? t("继续中") : t("继续");
       els.timerPauseBtn.disabled = !running;
       els.timerFinishBtn.disabled = false;
       els.timerCancelBtn.disabled = false;
+      if (running) checkRestReminder();
     }
 
     function getTimerSelection() {
@@ -2465,17 +2741,17 @@
       const selectedCourseId = active?.courseId || els.timerCourse.value || "";
       const selectedCategoryId = active?.categoryId || els.timerCategory.value || "";
       const selectedTaskId = active?.taskId || els.timerTask.value || "";
-      els.timerSemester.innerHTML = `<option value="">不关联学习阶段</option>${state.semesters.map(semester => `<option value="${semester.id}">${escapeHtml(semester.name)}</option>`).join("")}`;
+      els.timerSemester.innerHTML = `<option value="">${escapeHtml(t("不关联学习阶段"))}</option>${state.semesters.map(semester => `<option value="${semester.id}">${escapeHtml(semester.name)}</option>`).join("")}`;
       els.timerSemester.value = state.semesters.some(semester => semester.id === selectedSemesterId) ? selectedSemesterId : "";
       const semester = els.timerSemester.value ? findSemester(els.timerSemester.value) : null;
-      els.timerCourse.innerHTML = `<option value="">不关联课程</option>${(semester?.courses || []).map(course => `<option value="${course.id}">${escapeHtml(course.name)}</option>`).join("")}`;
+      els.timerCourse.innerHTML = `<option value="">${escapeHtml(t("不关联课程"))}</option>${(semester?.courses || []).map(course => `<option value="${course.id}">${escapeHtml(course.name)}</option>`).join("")}`;
       els.timerCourse.value = semester?.courses?.some(course => course.id === selectedCourseId) ? selectedCourseId : "";
       const course = semester && els.timerCourse.value ? findCourse(semester, els.timerCourse.value) : null;
-      els.timerCategory.innerHTML = `<option value="">不关联分类</option>${(course?.categories || []).map(category => `<option value="${category.id}">${escapeHtml(category.name)}</option>`).join("")}`;
+      els.timerCategory.innerHTML = `<option value="">${escapeHtml(t("不关联分类"))}</option>${(course?.categories || []).map(category => `<option value="${category.id}">${escapeHtml(category.name)}</option>`).join("")}`;
       els.timerCategory.disabled = !course;
       els.timerCategory.value = course?.categories?.some(category => category.id === selectedCategoryId) ? selectedCategoryId : "";
       const category = course && els.timerCategory.value ? findCategory(course, els.timerCategory.value) : null;
-      els.timerTask.innerHTML = `<option value="">不关联任务</option>${(category?.tasks || []).map(task => {
+      els.timerTask.innerHTML = `<option value="">${escapeHtml(t("不关联任务"))}</option>${(category?.tasks || []).map(task => {
         const label = task.detail ? `${task.title || task.name} ${task.detail}` : task.title || task.name || "";
         return `<option value="${task.id}">${escapeHtml(label)}</option>`;
       }).join("")}`;
@@ -2499,12 +2775,12 @@
     function renderTimerCalendar() {
       const [year, month] = state.timer.calendarMonth.split("-").map(Number);
       const first = new Date(year, month - 1, 1);
-      els.timerMonthTitle.textContent = first.toLocaleDateString("zh-CN", { year: "numeric", month: "long" });
+      els.timerMonthTitle.textContent = first.toLocaleDateString(currentLocale(), { year: "numeric", month: "long" });
       const startOffset = (first.getDay() + 6) % 7;
       const gridStart = new Date(year, month - 1, 1 - startOffset);
       const today = dateKeyFromTime();
       const weekdays = ["一", "二", "三", "四", "五", "六", "日"];
-      const cells = weekdays.map(day => `<div class="calendar-weekday">${day}</div>`);
+      const cells = weekdays.map(day => `<div class="calendar-weekday">${t(day)}</div>`);
       for (let index = 0; index < 42; index += 1) {
         const date = new Date(gridStart);
         date.setDate(gridStart.getDate() + index);
@@ -2528,58 +2804,93 @@
       const sessions = sessionsForDate(dateKey);
       const total = totalForDate(dateKey);
       els.timerSelectedDateTitle.textContent = formatDateLabel(dateKey);
-      els.timerDaySummary.textContent = `总计 ${formatDurationShort(total)}`;
-      const startHour = 6;
-      const endHour = 24;
+      els.timerDaySummary.textContent = `${t("总计")} ${formatDurationShort(total)}`;
       const hourHeight = 58;
-      const dayMinutes = (endHour - startHour) * 60;
-      els.timerDayTimeline.style.height = `${(endHour - startHour) * hourHeight}px`;
+      const range = getTimerDayRange(dateKey, sessions);
+      const dayMinutes = range.endMinute - range.startMinute;
+      els.timerDayTimeline.style.height = `${(dayMinutes / 60) * hourHeight}px`;
       const parts = [];
-      for (let hour = startHour; hour <= endHour; hour += 1) {
-        const top = (hour - startHour) * hourHeight;
-        parts.push(`<div class="timeline-hour" style="top:${top}px"><span>${String(hour).padStart(2, "0")}:00</span></div>`);
+      for (let minute = range.startMinute; minute <= range.endMinute; minute += 60) {
+        const top = ((minute - range.startMinute) / 60) * hourHeight;
+        parts.push(`<div class="timeline-hour" style="top:${top}px"><span>${formatTimelineHour(minute)}</span></div>`);
       }
       sessions.forEach(session => {
-        const start = new Date(session.startAt);
-        const end = new Date(session.endAt);
-        const startMinutes = start.getHours() * 60 + start.getMinutes();
-        const endMinutes = end.getHours() * 60 + end.getMinutes();
-        const topMinutes = Math.max(0, startMinutes - startHour * 60);
+        const startMinutes = minuteWithinDate(session.startAt, dateKey);
+        const endMinutes = minuteWithinDate(session.endAt, dateKey, true);
+        const topMinutes = Math.max(0, startMinutes - range.startMinute);
         const blockMinutes = Math.max(15, Math.min(dayMinutes - topMinutes, endMinutes - startMinutes || Math.round(session.durationMs / 60000)));
         const top = (topMinutes / 60) * hourHeight;
         const height = Math.max(36, (blockMinutes / 60) * hourHeight - 4);
-        const title = session.taskName || session.courseName || session.semesterName || "未关联";
+        const title = session.taskName || session.courseName || session.semesterName || t("未关联");
         const path = [session.semesterName, session.courseName, session.categoryName].filter(Boolean).join(" / ");
+        const partLabel = session.partTotal > 1 ? `${session.partIndex}/${session.partTotal}` : "";
+        const segmentRanges = formatSegmentRanges(session);
         parts.push(`
           <article class="time-block" style="top:${top}px;height:${height}px" data-session-id="${session.id}">
-            <strong>${escapeHtml(title)} · ${formatDurationWithSeconds(session.durationMs)}</strong>
+            <strong>${partLabel ? `<span class="time-part">${escapeHtml(partLabel)}</span> ` : ""}${escapeHtml(title)} · ${formatDurationWithSeconds(session.durationMs)}</strong>
             <p>${formatClock(session.startAt)} - ${formatClock(session.endAt)}</p>
+            ${segmentRanges ? `<p>${t("学习段")}：${escapeHtml(segmentRanges)}</p>` : ""}
             ${path ? `<p>${escapeHtml(path)}</p>` : ""}
-            ${session.markTaskDone ? `<p>已同步标记任务完成</p>` : ""}
+            ${session.markTaskDone ? `<p>${t("已同步标记任务完成")}</p>` : ""}
             ${session.note ? `<p>${escapeHtml(session.note)}</p>` : ""}
             <div class="actions">
-              <button class="btn secondary" type="button" data-action="edit-time-session">编辑备注</button>
-              <button class="btn icon" type="button" data-action="delete-time-session" title="删除">×</button>
+              <button class="btn secondary" type="button" data-action="edit-time-session">${t("编辑备注")}</button>
+              <button class="btn icon" type="button" data-action="delete-time-session" title="${t("删除")}">×</button>
             </div>
           </article>
         `);
       });
       if (!sessions.length) {
-        parts.push(`<p class="empty" style="margin:18px 0 0 66px;">这一天还没有学习时间记录。</p>`);
+        parts.push(`<p class="empty" style="margin:18px 0 0 66px;">${t("这一天还没有学习时间记录。")}</p>`);
       }
       els.timerDayTimeline.innerHTML = parts.join("");
     }
 
     function renderTimer() {
       if (!state.timer) state.timer = normalizeTimer();
+      els.timerDayStart.value = minutesToTime(state.timer.scheduleStartMinute ?? 6 * 60);
+      els.timerDayEnd.value = minutesToTime(state.timer.scheduleEndMinute ?? 23 * 60);
+      els.timerPauseLimit.value = state.timer.pauseLimitMinutes ?? 15;
       renderTimerFormOptions();
       updateTimerDisplay();
       renderTimerCalendar();
       renderTimerDay();
       clearInterval(timerTick);
-      if (state.timer.active?.status === "running") {
+      if (state.timer.active) {
         timerTick = setInterval(updateTimerDisplay, 1000);
       }
+    }
+
+    function closeRestModal() {
+      els.restModal.classList.remove("open");
+    }
+
+    function openRestModal() {
+      els.restModal.classList.add("open");
+      els.restExtendMinutes.focus();
+    }
+
+    function closePauseExpiredModal() {
+      els.pauseExpiredModal.classList.remove("open");
+    }
+
+    function openPauseExpiredModal() {
+      els.pauseExpiredModal.classList.add("open");
+      els.pauseExpiredOkBtn.focus();
+    }
+
+    function checkRestReminder() {
+      const active = state.timer?.active;
+      if (!active || active.status !== "running" || els.restModal.classList.contains("open")) return;
+      const dateKey = dateKeyFromTime();
+      const endMinute = Number(state.timer.dailyExtensions?.[dateKey] ?? state.timer.scheduleEndMinute ?? 23 * 60);
+      const nowMinute = minutesOfDay();
+      if (nowMinute < endMinute) return;
+      const alertKey = `${dateKey}-${endMinute}`;
+      if (state.timer.restAlertDateKey === alertKey) return;
+      state.timer.restAlertDateKey = alertKey;
+      saveState();
+      openRestModal();
     }
 
     function render() {
@@ -2615,7 +2926,7 @@
       }
 
       if (viewMode === "chart") {
-        els.courses.className = "courses";
+        els.courses.className = "courses study-system-section";
         state.semesters.forEach(semester => {
           els.courses.appendChild(renderChartSemester(semester));
         });
@@ -2623,14 +2934,14 @@
       }
 
       if (viewMode === "garden") {
-        els.courses.className = "courses";
+        els.courses.className = "courses study-system-section";
         state.semesters.forEach(semester => {
           els.courses.appendChild(renderGardenSemester(semester));
         });
         return;
       }
 
-      els.courses.className = "courses";
+      els.courses.className = "courses study-system-section";
 
       state.semesters.forEach(semester => {
         const wrap = document.createElement("div");
@@ -2788,7 +3099,7 @@
             </div>
             <form class="course-add" data-action="add-course">
               <input class="input" name="courseName" placeholder="新课程，例如 Systemtheorie">
-              <input class="input" name="courseLabel" placeholder="课程标签（可选），例如专业课">
+              <input class="input" name="courseLabel" placeholder="课程标签（可选），例如专业课" title="课程标签（可选），例如专业课">
               <input class="input amount-input" name="courseAmount" type="number" min="1" max="100" value="1" title="添加数量">
               <button class="btn secondary" type="submit">+ 添加课程</button>
             </form>
@@ -3038,12 +3349,16 @@
             <button class="btn icon" type="button" data-action="delete-category" title="删除分类">×</button>
           </div>
         </header>
+        <div class="category-extra entity-extra">
+          <textarea class="textarea entity-note" data-action="update-category-note" placeholder="分类备注：重点、资料、练习安排"></textarea>
+        </div>
         <div class="tasks"></div>
       `;
 
       categoryEl.querySelector("h3").textContent = category.name;
       categoryEl.querySelector(".pill").textContent = `${progress.done}/${progress.total} · ${progress.percent}%`;
       categoryEl.querySelector(".progress-fill").style.width = `${progress.percent}%`;
+      categoryEl.querySelector(".entity-note").value = category.note || "";
 
       const tasksEl = categoryEl.querySelector(".tasks");
       if (!category.tasks.length) {
@@ -3230,7 +3545,7 @@
     }
 
     function showToast(message) {
-      els.toast.textContent = message;
+      els.toast.textContent = t(message);
       els.toast.classList.add("show");
       clearTimeout(showToast.timer);
       showToast.timer = setTimeout(() => {
@@ -3306,6 +3621,7 @@
       return {
         id: uid(),
         name: getCopyName(category.name, siblingCategories),
+        note: category.note || "",
         tasks: category.tasks.map(copyTask)
       };
     }
@@ -3314,6 +3630,7 @@
       const copiedCategories = course.categories.map(category => ({
         id: uid(),
         name: category.name,
+        note: category.note || "",
         tasks: category.tasks.map(copyTask)
       }));
 
@@ -3350,6 +3667,7 @@
             id: uid(),
             name: category.name,
             collapsed: false,
+            note: category.note || "",
             tasks: category.tasks.map(copyTask)
           }))
         }))
@@ -3435,25 +3753,32 @@
     function startTimer() {
       if (!state.timer.active) {
         const selection = getTimerSelection();
+        const now = Date.now();
         state.timer.active = {
           id: uid(),
-          startedAt: Date.now(),
+          startedAt: now,
           elapsedMs: 0,
-          resumedAt: Date.now(),
-        status: "running",
-        semesterId: selection.semesterId,
-        courseId: selection.courseId,
-        categoryId: selection.categoryId,
-        taskId: selection.taskId,
-        markTaskDone: selection.markTaskDone,
-        note: selection.note
-      };
+          resumedAt: now,
+          status: "running",
+          segments: [{ startAt: now, endAt: null }],
+          pauseDeadlineAt: null,
+          semesterId: selection.semesterId,
+          courseId: selection.courseId,
+          categoryId: selection.categoryId,
+          taskId: selection.taskId,
+          markTaskDone: selection.markTaskDone,
+          note: selection.note
+        };
         commitTimer("学习计时已开始");
         return;
       }
       if (state.timer.active.status === "paused") {
+        const now = Date.now();
         state.timer.active.status = "running";
-        state.timer.active.resumedAt = Date.now();
+        state.timer.active.resumedAt = now;
+        state.timer.active.pauseDeadlineAt = null;
+        if (!Array.isArray(state.timer.active.segments)) state.timer.active.segments = [];
+        state.timer.active.segments.push({ startAt: now, endAt: null });
         syncTimerFormToActive();
         commitTimer("学习计时已继续");
       }
@@ -3462,51 +3787,45 @@
     function pauseTimer() {
       const active = state.timer.active;
       if (!active || active.status !== "running") return;
-      active.elapsedMs = getActiveElapsed();
+      closeActiveSegment(active);
       active.status = "paused";
       active.resumedAt = null;
+      active.pauseDeadlineAt = Date.now() + Number(state.timer.pauseLimitMinutes || 15) * 60000;
       syncTimerFormToActive();
       commitTimer("学习计时已暂停");
     }
 
-    function finishTimer() {
+    function finishTimer(options = {}) {
       const active = state.timer.active;
       if (!active) return;
-      const durationMs = Math.max(1, getActiveElapsed());
       const selection = getTimerSelection();
+      const autoEndedByPause = Boolean(options.autoEndedByPause);
+      if (autoEndedByPause) {
+        selection.markTaskDone = false;
+      }
       const endAt = Date.now();
-      const session = {
-        id: active.id || uid(),
-        startAt: Number(active.startedAt || endAt - durationMs),
-        endAt,
-        durationMs,
-        semesterId: selection.semesterId,
-        semesterName: selection.semesterName,
-        courseId: selection.courseId,
-        courseName: selection.courseName,
-        categoryId: selection.categoryId,
-        categoryName: selection.categoryName,
-        taskId: selection.taskId,
-        taskName: selection.taskName,
-        markTaskDone: selection.markTaskDone,
-        note: selection.note
-      };
-      if (selection.markTaskDone && selection.task) {
+      if (active.status === "running") closeActiveSegment(active, endAt);
+      const sessions = buildTimerSessions(active, selection, endAt);
+      if (!sessions.length) return;
+      if (!autoEndedByPause && selection.markTaskDone && selection.task) {
         selection.task.done = true;
       }
-      state.timer.sessions.push(session);
-      state.timer.selectedDate = dateKeyFromTime(session.startAt);
+      state.timer.sessions.push(...sessions);
+      state.timer.selectedDate = dateKeyFromTime(sessions[0].startAt);
       state.timer.calendarMonth = state.timer.selectedDate.slice(0, 7);
       state.timer.dayOpen = true;
       state.timer.active = null;
+      closeRestModal();
       els.timerNote.value = "";
-      commitTimer("学习时间已保存");
+      commitTimer(autoEndedByPause ? "暂停超时，计时已自动保存" : "学习时间已保存");
+      if (autoEndedByPause) openPauseExpiredModal();
     }
 
     function cancelTimer() {
       if (!state.timer.active) return;
       if (!confirm("取消这次正在进行的计时？不会保存记录。")) return;
       state.timer.active = null;
+      closeRestModal();
       commitTimer("本次计时已取消");
     }
 
@@ -3555,7 +3874,7 @@
         timerAudio?.close?.();
         timerAudio = null;
         timerNoiseOn = false;
-        els.timerNoiseBtn.textContent = "背景白噪音：关";
+        els.timerNoiseBtn.textContent = t("背景白噪音：关");
         return;
       }
       const AudioContext = window.AudioContext || window.webkitAudioContext;
@@ -3579,7 +3898,7 @@
       source.start();
       timerAudio = audio;
       timerNoiseOn = true;
-      els.timerNoiseBtn.textContent = "背景白噪音：开";
+      els.timerNoiseBtn.textContent = t("背景白噪音：开");
     }
 
     function renderTemplateList() {
@@ -4303,6 +4622,42 @@
     els.timerNextMonthBtn.addEventListener("click", () => shiftTimerMonth(1));
     els.timerCloseDayBtn.addEventListener("click", closeTimerDay);
     els.timerNoiseBtn.addEventListener("click", toggleTimerNoise);
+    els.pauseExpiredCloseBtn.addEventListener("click", closePauseExpiredModal);
+    els.pauseExpiredOkBtn.addEventListener("click", closePauseExpiredModal);
+    els.restSleepBtn.addEventListener("click", () => {
+      finishTimer();
+    });
+    els.restExtendBtn.addEventListener("click", () => {
+      const dateKey = dateKeyFromTime();
+      const minutes = Math.min(240, Math.max(5, Number(els.restExtendMinutes.value || 30)));
+      if (!state.timer.dailyExtensions) state.timer.dailyExtensions = {};
+      state.timer.dailyExtensions[dateKey] = minutesOfDay() + minutes;
+      state.timer.restAlertDateKey = "";
+      closeRestModal();
+      saveState();
+      renderTimer();
+    });
+    els.restExceptionBtn.addEventListener("click", () => {
+      const dateKey = dateKeyFromTime();
+      if (!state.timer.dailyExtensions) state.timer.dailyExtensions = {};
+      state.timer.dailyExtensions[dateKey] = Math.max(minutesOfDay() + 24 * 60, Number(state.timer.scheduleEndMinute || 23 * 60) + 24 * 60);
+      state.timer.restAlertDateKey = "";
+      closeRestModal();
+      saveState();
+      renderTimer();
+    });
+    [els.timerDayStart, els.timerDayEnd, els.timerPauseLimit].forEach(input => {
+      input.addEventListener("change", () => {
+        state.timer.scheduleStartMinute = parseTimeToMinutes(els.timerDayStart.value, 6 * 60);
+        state.timer.scheduleEndMinute = parseTimeToMinutes(els.timerDayEnd.value, 23 * 60);
+        state.timer.pauseLimitMinutes = Math.min(60, Math.max(1, Number(els.timerPauseLimit.value || 15)));
+        if (state.timer.active?.status === "paused") {
+          state.timer.active.pauseDeadlineAt = Date.now() + state.timer.pauseLimitMinutes * 60000;
+        }
+        saveState();
+        renderTimer();
+      });
+    });
     els.timerSemester.addEventListener("change", () => {
       if (state.timer.active) {
         state.timer.active.semesterId = els.timerSemester.value || "";
@@ -4360,11 +4715,12 @@
 
     els.courses.addEventListener("input", event => {
       const action = event.target.dataset.action;
-      const { semester, course, task } = findFromEvent(event.target);
+      const { semester, course, category, task } = findFromEvent(event.target);
       if (action === "update-semester-note" && semester) semester.note = event.target.value;
       if (action === "update-course-note" && course) course.note = event.target.value;
+      if (action === "update-category-note" && category) category.note = event.target.value;
       if (action === "update-task-note" && task) task.note = event.target.value;
-      if (!["update-semester-note", "update-course-note", "update-task-note"].includes(action)) return;
+      if (!["update-semester-note", "update-course-note", "update-category-note", "update-task-note"].includes(action)) return;
       saveState();
     });
 
@@ -4679,6 +5035,15 @@
       showToast("已取消放置课程模板");
     });
 
+    document.addEventListener("click", event => {
+      if (!appClipboard) return;
+      if (event instanceof MouseEvent && event.button !== 0) return;
+      const action = event.target.closest("[data-action]")?.dataset.action || "";
+      if (action.startsWith("copy-")) return;
+      appClipboard = null;
+      render();
+    });
+
     els.templateList.addEventListener("click", event => {
       const action = event.target.dataset.action;
       if (!action) return;
@@ -4785,6 +5150,9 @@
       if (event.key === "Escape" && els.templateModal.classList.contains("open")) {
         closeTemplateLibrary();
       }
+      if (event.key === "Escape" && els.pauseExpiredModal.classList.contains("open")) {
+        closePauseExpiredModal();
+      }
       if (event.ctrlKey && event.key.toLowerCase() === "z") {
         event.preventDefault();
         stepHistory(event.shiftKey ? 1 : -1);
@@ -4814,6 +5182,7 @@
     };
 
     window.dispatchEvent(new CustomEvent("study-tracker-ready"));
+    setupTimerPauseLimitOptions();
     render();
     if (!state.ownerName && !READ_ONLY_LINK) openWelcomeModal();
   </script>
