@@ -91,10 +91,13 @@ try {
 
     const remainingPrivateKeys = await page.evaluate(() => Object.keys(localStorage).filter(key =>
       key === "study-tracker-api-session-v1"
+      || key === "study-tracker-online-guest-v1"
       || key.includes("study-tracker-online-account-v1:")
       || key.includes("study-tracker-online-sync-meta-v1:")
     ));
-    assert.deepEqual(remainingPrivateKeys, [], "Clear-device logout should remove the current account's local data");
+    assert.deepEqual(remainingPrivateKeys, [], "Clear-device logout should remove the current account and guest local data");
+    assert.equal(await page.locator("#appTitle").textContent(), "My Study Tracker", "Clear-device logout should not keep the old account name in guest mode");
+    assert.ok(await page.locator("#welcomeModal.open").count(), "Clear-device logout should return to the welcome/create-space screen");
 
     await page.locator(".cloud-auth-btn").click();
     await page.locator("#cloudEmail").fill(testEmail);

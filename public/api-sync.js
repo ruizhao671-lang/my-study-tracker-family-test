@@ -108,7 +108,12 @@ async function handleAuthChange(user, options = {}) {
     }
     previousUserId = null;
     window.studyCloud.setActiveUser?.(null);
-    bridge.replaceState(loadGuestState());
+    if (options.clearDeviceData) {
+      clearGuestLocalData();
+      bridge.replaceState(makeEmptyState());
+    } else {
+      bridge.replaceState(loadGuestState());
+    }
     workspaceMeta = null;
     const guestState = bridge.getState();
     const hasGuestContent = Boolean(guestState.ownerName || guestState.semesters?.length);
@@ -721,6 +726,10 @@ function loadAccountState(userId) {
 function clearAccountLocalData(userId) {
   localStorage.removeItem(getAccountCacheKey(userId));
   localStorage.removeItem(getAccountMetaKey(userId));
+}
+
+function clearGuestLocalData() {
+  localStorage.removeItem(GUEST_CACHE_KEY);
 }
 
 function loadGuestState() {

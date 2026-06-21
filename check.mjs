@@ -60,6 +60,7 @@ const checks = [
   ["延迟同步绑定原账号，避免切换账号后串写", files.cloud.includes("expectedUserId") && files.cloud.includes("currentUser?.uid !== expectedUserId") && files.cloud.includes("authEpoch")],
   ["退出登录前立即保存最后修改", files.cloud.includes("signOutSafely") && files.cloud.includes("await saveCloudState(bridge.getState(), true, userId)")],
   ["退出时可选择保留或清除当前账号本机缓存", files.cloud.includes("退出并清除此设备数据") && files.cloud.includes("clearAccountLocalData(previousUserId)") && files.cloud.includes("handleAuthChange(null, { clearDeviceData })")],
+  ["清除设备数据退出会同时清空访客缓存并回到全新测试空间", files.cloud.includes("function clearGuestLocalData()") && files.cloud.includes("clearGuestLocalData();") && files.cloud.includes("bridge.replaceState(makeEmptyState())")],
   ["注册账号默认不导入访客数据且支持明确选择导入", files.cloud.includes('name="importGuest"') && files.cloud.includes("ui.authForm.elements.importGuest.checked")],
   ["联网版内联脚本可以解析", inlineScriptsParse],
   ["联网版静态 HTML 没有重复 ID", duplicateIds.length === 0],
