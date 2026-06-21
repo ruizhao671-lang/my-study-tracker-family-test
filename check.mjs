@@ -61,6 +61,7 @@ const checks = [
   ["退出登录前立即保存最后修改", files.cloud.includes("signOutSafely") && files.cloud.includes("await saveCloudState(bridge.getState(), true, userId)")],
   ["退出时可选择保留或清除当前账号本机缓存", files.cloud.includes("退出并清除此设备数据") && files.cloud.includes("clearAccountLocalData(previousUserId)") && files.cloud.includes("handleAuthChange(null, { clearDeviceData })")],
   ["清除设备数据退出会同时清空访客缓存并回到全新测试空间", files.cloud.includes("function clearGuestLocalData()") && files.cloud.includes("clearGuestLocalData();") && files.cloud.includes("bridge.replaceState(makeEmptyState())")],
+  ["清除设备数据退出后语言恢复中文优先", files.cloud.includes('const LANGUAGE_KEY = "study-tracker-language-v1"') && files.cloud.includes("function resetLanguagePreferenceToChinese()") && files.cloud.includes('setLanguage?.("zh-CN")')],
   ["注册账号默认不导入访客数据且支持明确选择导入", files.cloud.includes('name="importGuest"') && files.cloud.includes("ui.authForm.elements.importGuest.checked")],
   ["联网版内联脚本可以解析", inlineScriptsParse],
   ["联网版静态 HTML 没有重复 ID", duplicateIds.length === 0],

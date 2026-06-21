@@ -8,6 +8,7 @@ import {
 const API_SAFE_BYTES = 2 * 1024 * 1024;
 const GUEST_CACHE_KEY = "study-tracker-online-guest-v1";
 const SESSION_KEY = "study-tracker-api-session-v1";
+const LANGUAGE_KEY = "study-tracker-language-v1";
 const viewShareToken = new URLSearchParams(location.search).get("view");
 const readOnly = Boolean(viewShareToken);
 
@@ -111,6 +112,7 @@ async function handleAuthChange(user, options = {}) {
     if (options.clearDeviceData) {
       clearGuestLocalData();
       bridge.replaceState(makeEmptyState());
+      resetLanguagePreferenceToChinese();
     } else {
       bridge.replaceState(loadGuestState());
     }
@@ -730,6 +732,11 @@ function clearAccountLocalData(userId) {
 
 function clearGuestLocalData() {
   localStorage.removeItem(GUEST_CACHE_KEY);
+}
+
+function resetLanguagePreferenceToChinese() {
+  localStorage.removeItem(LANGUAGE_KEY);
+  window.studyI18n?.setLanguage?.("zh-CN");
 }
 
 function loadGuestState() {

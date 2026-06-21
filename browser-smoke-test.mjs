@@ -96,7 +96,9 @@ try {
       || key.includes("study-tracker-online-sync-meta-v1:")
     ));
     assert.deepEqual(remainingPrivateKeys, [], "Clear-device logout should remove the current account and guest local data");
-    assert.equal(await page.locator("#appTitle").textContent(), "My Study Tracker", "Clear-device logout should not keep the old account name in guest mode");
+    assert.equal(await page.evaluate(() => localStorage.getItem("study-tracker-language-v1")), "zh-CN", "Clear-device logout should restore Chinese as the preferred language");
+    assert.equal(await page.locator("#appTitle").textContent(), "我的学习系统", "Clear-device logout should restore Chinese and not keep the old account name in guest mode");
+    assert.equal(await page.locator("#welcomeLanguage").inputValue(), "zh-CN", "Welcome language selector should return to Chinese after clearing device data");
     assert.ok(await page.locator("#welcomeModal.open").count(), "Clear-device logout should return to the welcome/create-space screen");
 
     await page.locator(".cloud-auth-btn").click();
