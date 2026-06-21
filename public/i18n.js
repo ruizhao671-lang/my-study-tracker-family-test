@@ -123,6 +123,8 @@
     "第二栏，例如 Fourier": "Second field, e.g. Fourier",
     "欢迎使用学习系统": "Welcome to My Study Tracker",
     "这是一个全新的联网测试空间。我们准备了“我的第一学期”和“考研备考模块”，可以直接修改或删除；切换列表、饼状图和菜地，就能快速看懂它的构建方式。": "This is a new online test space. We prepared “My first semester” and “Postgraduate entrance exam preparation” for you to edit or delete. Switch between list, charts, and garden views to explore how it works.",
+    "请选择语言": "Choose language",
+    "中文": "Chinese",
     "你的名字": "Your name",
     "例如：小林": "For example: Alex",
     "导入原版备份": "Import previous backup",
@@ -585,11 +587,33 @@
     }
   }
 
+  function syncLanguageSelectors(root = document) {
+    const selectors = [
+      ...(root.matches?.("[data-language-select]") ? [root] : []),
+      ...(root.querySelectorAll?.("[data-language-select]") || [])
+    ];
+    selectors.forEach(select => {
+      if (select.value !== language) select.value = language;
+    });
+  }
+
+  function setLanguage(nextLanguage) {
+    language = nextLanguage === "en" ? "en" : "zh-CN";
+    localStorage.setItem(LANGUAGE_KEY, language);
+    syncLanguageSelectors(document);
+    translateElement(document);
+    window.studyTrackerBridge?.render?.();
+    queueMicrotask(() => {
+      syncLanguageSelectors(document);
+      translateElement(document);
+    });
+  }
+
   function createSelector() {
     if (document.querySelector(".language-switcher")) return;
     const wrapper = document.createElement("label");
     wrapper.className = "language-switcher";
-    wrapper.innerHTML = `<span>语言</span><select aria-label="语言"><option value="zh-CN">中文</option><option value="en">English</option></select>`;
+    wrapper.innerHTML = `<span>语言</span><select aria-label="语言" data-language-select><option value="zh-CN">中文</option><option value="en">English</option></select>`;
     const style = document.createElement("style");
     style.textContent = `
       .language-switcher { display:inline-flex; align-items:center; gap:7px; margin-left:auto; font-size:13px; font-weight:700; color:#35594f; }
@@ -601,13 +625,7 @@
     target.appendChild(wrapper);
     const select = wrapper.querySelector("select");
     select.value = language;
-    select.addEventListener("change", () => {
-      language = select.value;
-      localStorage.setItem(LANGUAGE_KEY, language);
-      translateElement(document);
-      window.studyTrackerBridge?.render?.();
-      queueMicrotask(() => translateElement(document));
-    });
+    select.addEventListener("change", () => setLanguage(select.value));
   }
 
   function translateDocument(targetDocument) {
@@ -633,6 +651,7 @@
 
   window.studyI18n = {
     getLanguage: () => language,
+    setLanguage,
     translateText,
     translateElement,
     translateDocument

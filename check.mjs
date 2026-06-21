@@ -28,6 +28,7 @@ const checks = [
   ["联网版启动不回退读取旧通用缓存", !files.online.includes("const saved = localStorage.getItem(STORAGE_KEY)")],
   ["联网版加载 FastAPI 适配层", files.online.includes('type="module" src="api-sync.js"')],
   ["联网版提供中文优先与 English 切换", files.online.includes('src="i18n.js"') && files.i18n.includes('option value="en">English') && files.i18n.includes('LANGUAGE_KEY')],
+  ["首次欢迎窗口支持创建前切换语言", files.online.includes('id="welcomeLanguage"') && files.online.includes("data-language-select") && files.i18n.includes("function setLanguage") && files.i18n.includes('"请选择语言": "Choose language"')],
   ["语言切换不修改用户数据并支持动态界面", files.i18n.includes("MutationObserver") && files.i18n.includes("translateElement(document)")],
   ["语言切换只在翻译确实变化时改写选项并防止无限循环", files.i18n.includes('if (translated !== value) element.textContent = translated;') && files.i18n.includes("finally {")],
   ["英文只读分享窗口不再残留中文说明", files.i18n.includes('"只有拿到链接的人可以查看。家人不能修改内容，你也可以随时撤回链接。": "Only people with the link can view it.')],
