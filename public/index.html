@@ -1956,7 +1956,7 @@
   </div>
 
   <div class="modal" id="welcomeModal" role="dialog" aria-modal="true" aria-labelledby="welcomeTitle">
-    <form class="dialog welcome-dialog" id="welcomeForm">
+    <form class="dialog welcome-dialog" id="welcomeForm" autocomplete="off">
       <div class="dialog-header">
         <h2 id="welcomeTitle">欢迎使用学习系统</h2>
       </div>
@@ -1971,7 +1971,7 @@
         <p class="welcome-copy">这是一个全新的联网测试空间。我们准备了“我的第一学期”和“考研备考模块”，可以直接修改或删除；切换列表、饼状图和菜地，就能快速看懂它的构建方式。</p>
         <div class="field">
           <label for="ownerName">你的名字</label>
-          <input class="input" id="ownerName" name="ownerName" maxlength="30" placeholder="例如：小林" required>
+          <input class="input" id="ownerName" name="studySpaceLabel" maxlength="30" placeholder="例如：小林" autocomplete="new-password" autocapitalize="none" spellcheck="false" required>
         </div>
       </div>
       <div class="dialog-footer">

@@ -31,6 +31,10 @@ try {
   await page.waitForSelector(".language-switcher select");
 
   if (await page.locator("#welcomeModal.open").count()) {
+    assert.equal(await page.locator("#welcomeForm").getAttribute("autocomplete"), "off");
+    assert.equal(await page.locator("#ownerName").getAttribute("name"), "studySpaceLabel");
+    assert.equal(await page.locator("#ownerName").getAttribute("autocomplete"), "new-password");
+
     await page.selectOption("#welcomeLanguage", "en");
     await page.waitForFunction(() => document.documentElement.lang === "en");
     assert.equal(await page.locator("#welcomeTitle").textContent(), "Welcome to My Study Tracker");
