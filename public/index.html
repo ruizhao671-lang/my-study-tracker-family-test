@@ -2811,12 +2811,20 @@
     function updateTimerDisplay() {
       const active = state.timer?.active;
       els.timerDisplay.textContent = formatDuration(getActiveElapsed());
+      const setTimerPrimaryAction = button => {
+        [els.timerStartBtn, els.timerPauseBtn, els.timerFinishBtn, els.timerCancelBtn].forEach(item => {
+          item.classList.toggle("secondary", item !== button);
+        });
+      };
       if (!active) {
         els.timerStatus.textContent = t("还没有开始计时");
         els.timerStartBtn.textContent = t("开始");
+        els.timerStartBtn.disabled = false;
+        els.timerPauseBtn.textContent = t("暂停");
         els.timerPauseBtn.disabled = true;
         els.timerFinishBtn.disabled = true;
         els.timerCancelBtn.disabled = true;
+        setTimerPrimaryAction(els.timerStartBtn);
         return;
       }
       const running = active.status === "running";
@@ -2834,9 +2842,12 @@
           : `${t("已暂停 · 暂停倒计时")} ${formatDuration(Math.max(0, pauseRemaining))}`;
       }
       els.timerStartBtn.textContent = running ? t("继续中") : t("继续");
+      els.timerStartBtn.disabled = running;
+      els.timerPauseBtn.textContent = t("暂停");
       els.timerPauseBtn.disabled = !running;
       els.timerFinishBtn.disabled = false;
       els.timerCancelBtn.disabled = false;
+      setTimerPrimaryAction(running ? els.timerPauseBtn : els.timerStartBtn);
       if (running) checkRestReminder();
     }
 
