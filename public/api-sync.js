@@ -273,11 +273,22 @@ function enableReadOnlyMode(ownerName) {
   ui.shell.dataset.mode = "readonly";
 
   const apply = () => {
-    const allowedIds = new Set(["listViewBtn", "chartViewBtn", "gardenViewBtn"]);
+    const allowedIds = new Set([
+      "listViewBtn",
+      "chartViewBtn",
+      "gardenViewBtn",
+      "systemPanelBtn",
+      "timerPanelBtn",
+      "timerPrevMonthBtn",
+      "timerNextMonthBtn",
+      "timerCloseDayBtn"
+    ]);
     const allowedActions = new Set([
       "toggle-semester",
       "toggle-course",
-      "toggle-category"
+      "toggle-category",
+      "select-timer-date",
+      "select-calendar-item"
     ]);
 
     document.querySelectorAll("button, input, textarea, select").forEach(control => {
@@ -364,6 +375,15 @@ function createCloudUI() {
     .cloud-readonly .paste-zone,
     .cloud-readonly .actions button {
       display: none !important;
+    }
+    .cloud-readonly .timer-card,
+    .cloud-readonly .timer-focus-plan,
+    .cloud-readonly .timer-calendar-actions,
+    .cloud-readonly #addManualSessionBtn {
+      display: none !important;
+    }
+    .cloud-readonly .timer-layout {
+      grid-template-columns: minmax(0, 1fr);
     }
     .cloud-readonly .actions button[data-action="toggle-semester"],
     .cloud-readonly .actions button[data-action="toggle-course"],

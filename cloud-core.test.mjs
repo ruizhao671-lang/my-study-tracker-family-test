@@ -11,6 +11,25 @@ const privateState = {
   ownerName: "小林",
   futurePrivateField: "未来新增的私人字段",
   courseTemplates: [{ id: "template-1", name: "秘密模板" }],
+  timer: {
+    sessions: [{ id: "private-session", note: "私人计时备注" }],
+    active: { id: "private-active" },
+    calendarItems: [{
+      id: "exam-1",
+      type: "exam",
+      title: "高等数学",
+      date: "2026-07-01",
+      startTime: "09:00",
+      endTime: "11:00",
+      semesterId: "semester-1",
+      semesterName: "第四学期",
+      courseId: "course-1",
+      courseName: "数学",
+      location: "主楼 101",
+      requirements: "可携带公式表",
+      details: ""
+    }]
+  },
   semesters: [{
     id: "semester-1",
     name: "第四学期",
@@ -46,6 +65,10 @@ const shared = makeSharedState(privateState);
 assert.notStrictEqual(shared, privateState);
 assert.equal(privateState.semesters[0].note, "私人学期备注", "生成分享副本不能修改私人源数据");
 assert.deepEqual(shared.courseTemplates, [], "分享副本不能包含课程模板");
+assert.deepEqual(shared.timer.sessions, [], "分享副本不能包含私人计时记录");
+assert.equal(shared.timer.active, null, "分享副本不能包含正在进行的计时");
+assert.equal(shared.timer.calendarItems[0].title, "高等数学", "分享副本需要包含考试与普通事项");
+assert.equal(shared.timer.calendarItems[0].location, "主楼 101", "家人只读分享暂时包含考试详情");
 assert.equal(shared.semesters[0].note, "", "分享副本不能包含学期备注");
 assert.equal(shared.semesters[0].kind, "semester", "分享副本需要保留学习阶段类型");
 assert.deepEqual(shared.semesters[0].attachments, [], "分享副本不能包含学期附件");
@@ -65,6 +88,6 @@ assert.equal(shouldUploadLocal({ userId: "a", updatedAt: 10 }, "a", 20), false);
 assert.equal(shouldUploadLocal({ userId: "a", updatedAt: 20 }, "b", 10), false, "不能把其他账号缓存上传到当前账号");
 assert.notEqual(getAccountCacheKey("a"), getAccountCacheKey("b"), "不同账号必须使用不同本地缓存");
 assert.notEqual(getAccountMetaKey("a"), getAccountMetaKey("b"), "不同账号必须使用不同同步时间记录");
-assert.deepEqual(makeEmptyState(), { ownerName: "", semesters: [], courseTemplates: [], timer: { sessions: [], active: null } });
+assert.deepEqual(makeEmptyState(), { ownerName: "", semesters: [], courseTemplates: [], timer: { sessions: [], active: null, calendarItems: [] } });
 
 console.log("PASS cloud-core privacy, account isolation, and conflict tests");

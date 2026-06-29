@@ -210,7 +210,12 @@ def current_user(authorization: str | None = Header(default=None)) -> Any:
 
 
 def empty_state() -> dict[str, Any]:
-    return {"ownerName": "", "semesters": [], "courseTemplates": []}
+    return {
+        "ownerName": "",
+        "semesters": [],
+        "courseTemplates": [],
+        "timer": {"sessions": [], "active": None, "calendarItems": []},
+    }
 
 
 def shared_state(source: dict[str, Any]) -> dict[str, Any]:
@@ -262,6 +267,28 @@ def shared_state(source: dict[str, Any]) -> dict[str, Any]:
             }
             for semester in source.get("semesters", [])
         ],
+        "timer": {
+            "sessions": [],
+            "active": None,
+            "calendarItems": [
+                {
+                    "id": item.get("id"),
+                    "type": "reminder" if item.get("type") == "reminder" else "exam",
+                    "title": item.get("title", ""),
+                    "date": item.get("date", ""),
+                    "startTime": item.get("startTime", ""),
+                    "endTime": item.get("endTime", ""),
+                    "semesterId": item.get("semesterId", ""),
+                    "semesterName": item.get("semesterName", ""),
+                    "courseId": item.get("courseId", ""),
+                    "courseName": item.get("courseName", ""),
+                    "location": item.get("location", ""),
+                    "requirements": item.get("requirements", ""),
+                    "details": item.get("details", ""),
+                }
+                for item in source.get("timer", {}).get("calendarItems", [])
+            ],
+        },
     }
 
 

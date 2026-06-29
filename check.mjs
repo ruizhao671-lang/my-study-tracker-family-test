@@ -22,6 +22,33 @@ try {
   inlineScriptsParse = false;
 }
 
+function extractNamedFunction(source, name) {
+  const start = source.indexOf(`function ${name}(`);
+  if (start < 0) return "";
+  const braceStart = source.indexOf("{", start);
+  let depth = 0;
+  for (let index = braceStart; index < source.length; index += 1) {
+    if (source[index] === "{") depth += 1;
+    if (source[index] === "}") depth -= 1;
+    if (depth === 0) return source.slice(start, index + 1);
+  }
+  return "";
+}
+
+const restFunctionSource = extractNamedFunction(files.online, "getRestReminderState");
+const createRestFunction = restFunctionSource
+  ? new Function("state", "dateKeyFromTime", "minutesOfDay", `${restFunctionSource}; return getRestReminderState;`)
+  : null;
+function restStateAt(nowMinute, startMinute, endMinute, extension) {
+  if (!createRestFunction) return null;
+  const timer = {
+    scheduleStartMinute: startMinute,
+    scheduleEndMinute: endMinute,
+    dailyExtensions: extension === undefined ? {} : { "2026-06-29": extension }
+  };
+  return createRestFunction({ timer }, () => "2026-06-29", () => nowMinute)();
+}
+
 const checks = [
   ["稳定版仍使用原存储键", files.stable.includes('const STORAGE_KEY = "study-tracker-state-v2"')],
   ["联网版使用独立存储键", files.online.includes('const STORAGE_KEY = "study-tracker-online-state-v1"')],
@@ -31,6 +58,7 @@ const checks = [
   ["首次欢迎窗口支持创建前切换语言", files.online.includes('id="welcomeLanguage"') && files.online.includes("data-language-select") && files.i18n.includes("function setLanguage") && files.i18n.includes('"请选择语言": "Choose language"')],
   ["首次欢迎窗口姓名输入不触发浏览器真实姓名自动填充", files.online.includes('id="welcomeForm" autocomplete="off"') && files.online.includes('name="studySpaceLabel"') && files.online.includes('autocomplete="new-password"') && !files.online.includes('id="ownerName" name="ownerName"')],
   ["语言切换不修改用户数据并支持动态界面", files.i18n.includes("MutationObserver") && files.i18n.includes("translateElement(document)")],
+  ["记住 English 后首次加载会重新渲染动态内容", files.i18n.includes("function start()") && files.i18n.includes("window.studyTrackerBridge?.render?.()") && files.i18n.includes("queueMicrotask(() => translateElement(document))")],
   ["语言切换只在翻译确实变化时改写选项并防止无限循环", files.i18n.includes('if (translated !== value) element.textContent = translated;') && files.i18n.includes("finally {")],
   ["英文只读分享窗口不再残留中文说明", files.i18n.includes('"只有拿到链接的人可以查看。家人不能修改内容，你也可以随时撤回链接。": "Only people with the link can view it.')],
   ["顶部阶段工具栏支持英文长文案自动换行", files.online.includes(".toolbar {") && files.online.includes("flex-wrap: wrap;") && files.online.includes(".toolbar #semesterName")],
@@ -75,6 +103,15 @@ const checks = [
   ["学习计时支持开始暂停结束保存和备注", files.online.includes("function startTimer(") && files.online.includes("function pauseTimer()") && files.online.includes("function finishTimer(") && files.online.includes('id="timerNote"')],
   ["学习计时绿色按钮表示下一步可操作动作而不是当前 Running 状态", files.online.includes("function updateTimerDisplay()") && files.online.includes("setTimerPrimaryAction(running ? els.timerPauseBtn : els.timerStartBtn)") && files.online.includes("els.timerStartBtn.disabled = running")],
   ["学习计时提供月历和当天课表式时间轴", files.online.includes('id="timerCalendarGrid"') && files.online.includes('id="timerDayTimeline"') && files.online.includes("function renderTimerCalendar()") && files.online.includes("function renderTimerDay()")],
+  ["学习时段可以手动添加并复用跨天与秒级累计逻辑", files.online.includes('id="addManualSessionBtn"') && files.online.includes("function openManualSessionModal") && files.online.includes('source: "manual"') && files.online.includes("buildTimerSessions({")],
+  ["手动学习时段支持完整编辑删除与可选任务关联", files.online.includes('"编辑手动学习时段"') && files.online.includes("session.source === \"manual\"") && files.online.includes("manualTaskId") && files.online.includes("manualMarkTaskDone")],
+  ["日历考试显示简短名称并在时间轴展示完整信息", files.online.includes('id="addExamBtn"') && files.online.includes("calendar-exam-name") && files.online.includes('"考试地点"') && files.online.includes('"考试要求"') && files.online.includes("exam-block")],
+  ["普通事项在月历中显示可悬浮和选中的圆点", files.online.includes('id="addReminderBtn"') && files.online.includes("reminder-dot") && files.online.includes("data-tooltip") && files.online.includes("selectedCalendarItemId")],
+  ["考试与事项可关联学习阶段和课程并可编辑删除", files.online.includes("openCalendarItemModal") && files.online.includes("calendarSemesterId") && files.online.includes("calendarCourseId") && files.online.includes("deleteCalendarItem")],
+  ["考试与事项进入云端状态和备份兼容结构", files.online.includes("calendarItems: normalizeCalendarItems") && files.core.includes("calendarItems: (sourceState?.timer?.calendarItems") && files.backend.includes('"calendarItems": [')],
+  ["家人分享包含考试事项但不暴露学习计时记录", files.core.includes("sessions: []") && files.core.includes("active: null") && files.core.includes("calendarItems: (sourceState?.timer?.calendarItems") && files.backend.includes('"sessions": []') && files.cloud.includes('"timerPanelBtn"')],
+  ["新增计时与日历功能具有同步英文文案", files.i18n.includes('"备注/附件": "Notes/attachments"') && files.i18n.includes('"手动添加学习时段": "Add study period manually"') && files.i18n.includes('"考试要求": "Exam requirements"') && files.i18n.includes('"事项内容": "Item details"')],
+  ["普通事项没有通知能力时英文不误称 Reminder", files.i18n.includes('"+ 添加事项": "+ Add calendar item"') && files.i18n.includes('"编辑事项": "Edit calendar item"') && !files.i18n.includes('"事项内容": "Reminder details"')],
   ["学习计时可以可选关联到具体任务并同步完成状态", files.online.includes('id="timerCategory"') && files.online.includes('id="timerTask"') && files.online.includes('id="timerCompleteTask"') && files.online.includes("selection.task.done = true")],
   ["学习计时当天课表可收起并通过点击日期展开", files.online.includes('id="timerCloseDayBtn"') && files.online.includes("function closeTimerDay()") && files.online.includes("state.timer.dayOpen = true") && files.online.includes("timer-day\").hidden")],
   ["学习计时跨过 24 点的时间轴显示为次日而不是 25 点", files.online.includes("function formatTimelineHour") && files.online.includes("totalMinutes) / 1440") && files.online.includes("minuteOfDay") && files.online.includes('t("次日")') && files.i18n.includes('"次日": "Next day"')],
@@ -95,6 +132,13 @@ const checks = [
   ["学习计时支持作息时间、休息提醒和临时延长", files.online.includes('id="timerDayStart"') && files.online.includes('id="restModal"') && files.online.includes("function checkRestReminder()") && files.online.includes("dailyExtensions")],
   ["学习计时作息标签使用开启一天和睡觉觉文案", files.online.includes("开启一天的时间") && files.online.includes("睡觉觉时间") && !files.online.includes(">课表开始时间</label>") && !files.online.includes(">休息提醒时间</label>")],
   ["休息提醒会覆盖结束时间之后和开始时间之前", files.online.includes("function getRestReminderState()") && files.online.includes("nowMinute >= scheduleEndMinute || isBeforeStart") && files.online.includes('"before-start"')],
+  ["零点睡觉时间保留为合法的 0 分钟边界", files.online.includes("state.timer.scheduleEndMinute ?? 23 * 60") && !files.online.includes("state.timer.scheduleEndMinute || 23 * 60")],
+  ["修改作息会清除当天旧的临时延长和提醒状态", files.online.includes("const scheduleChanged = input === els.timerDayStart || input === els.timerDayEnd") && files.online.includes("delete state.timer.dailyExtensions[dateKey]") && files.online.includes('state.timer.restAlertDateKey = ""')],
+  ["开始和结束时间相同时不会落入零点循环", files.online.includes("if (scheduleEndMinute === startMinute)") && files.online.includes("same-time")],
+  ["06:00 到 00:00 在 23:00 不提醒休息", restStateAt(23 * 60, 6 * 60, 0)?.isRestTime === false],
+  ["06:00 到 00:00 在 01:00 提醒休息", restStateAt(1 * 60, 6 * 60, 0)?.isRestTime === true],
+  ["普通白天作息在学习时间内不提醒", restStateAt(12 * 60, 6 * 60, 23 * 60)?.isRestTime === false],
+  ["00:00 到 00:00 不会形成全天提醒循环", restStateAt(12 * 60, 0, 0)?.isRestTime === false],
   ["学习计时支持按学习阶段设置每日目标和专注学习天数", files.online.includes('id="focusDailyGoalHours"') && files.online.includes('id="focusSemester"') && files.online.includes('id="focusStartDate"') && files.online.includes('id="focusEndDate"') && files.online.includes("function countFocusedDays")],
   ["专注学习计划位于日历侧栏并突出展示专注天数", files.online.includes('class="timer-side"') && files.online.indexOf('class="timer-calendar"') < files.online.indexOf('class="timer-focus-plan"') && files.online.includes("font-size: 24px") && files.online.indexOf('id="timerPauseLimit"') < files.online.indexOf('id="focusDailyGoalHours"')],
   ["每日学习目标使用目标历史，今天修改只影响今天和未来", files.online.includes("targetHistory") && files.online.includes("function setFocusDailyGoal") && files.online.includes("compareDateKeys(entry.fromDate, fromDate) < 0")],

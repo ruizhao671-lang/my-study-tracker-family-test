@@ -388,6 +388,18 @@
       font-size: 22px;
     }
 
+    .timer-calendar-actions,
+    .timer-day-actions {
+      display: flex;
+      flex-wrap: wrap;
+      justify-content: flex-end;
+      gap: 8px;
+    }
+
+    .timer-calendar-actions {
+      margin: -2px 0 12px;
+    }
+
     .calendar-grid {
       display: grid;
       grid-template-columns: repeat(7, minmax(0, 1fr));
@@ -402,13 +414,19 @@
     }
 
     .calendar-day {
-      min-height: 76px;
-      padding: 8px;
+      position: relative;
+      display: grid;
+      grid-template-rows: auto minmax(0, 1fr) auto;
+      gap: 4px;
+      min-width: 0;
+      min-height: 92px;
+      padding: 7px;
       border: 1px solid var(--line);
       border-radius: 8px;
       color: var(--text);
       background: var(--panel-soft);
       text-align: left;
+      overflow: visible;
     }
 
     .calendar-day.outside {
@@ -426,13 +444,114 @@
       font-weight: 900;
     }
 
+    .calendar-day-main {
+      width: 100%;
+      min-width: 0;
+      padding: 0;
+      border: 0;
+      color: inherit;
+      background: transparent;
+      text-align: left;
+    }
+
+    .calendar-exams {
+      display: grid;
+      align-content: start;
+      gap: 3px;
+      min-width: 0;
+    }
+
+    .calendar-exam-name {
+      display: -webkit-box;
+      width: 100%;
+      min-width: 0;
+      max-height: 34px;
+      padding: 3px 4px;
+      border: 1px solid #b8d1e4;
+      border-radius: 5px;
+      color: #234e70;
+      background: #e6f0f8;
+      font-size: 11px;
+      line-height: 1.2;
+      font-weight: 800;
+      text-align: left;
+      overflow: hidden;
+      overflow-wrap: anywhere;
+      -webkit-box-orient: vertical;
+      -webkit-line-clamp: 2;
+    }
+
+    .calendar-exam-name.compact {
+      font-size: 10px;
+    }
+
+    .calendar-exam-name.tiny {
+      font-size: 9px;
+    }
+
+    .calendar-reminders {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      gap: 5px;
+      min-height: 12px;
+    }
+
+    .reminder-dot {
+      position: relative;
+      width: 10px;
+      height: 10px;
+      min-width: 10px;
+      padding: 0;
+      border: 1px solid #477a91;
+      border-radius: 50%;
+      background: #8db8c9;
+    }
+
+    .reminder-dot:hover,
+    .reminder-dot:focus-visible,
+    .reminder-dot.selected {
+      border-color: #174f67;
+      background: #174f67;
+      transform: scale(1.15);
+    }
+
+    .reminder-dot::after {
+      content: attr(data-tooltip);
+      position: absolute;
+      left: 50%;
+      bottom: calc(100% + 7px);
+      z-index: 15;
+      width: max-content;
+      max-width: 190px;
+      padding: 5px 7px;
+      border: 1px solid #bdd2da;
+      border-radius: 5px;
+      color: #183d4a;
+      background: #fff;
+      box-shadow: 0 8px 20px rgba(18, 38, 34, 0.14);
+      font-size: 11px;
+      line-height: 1.35;
+      font-weight: 700;
+      pointer-events: none;
+      opacity: 0;
+      transform: translate(-50%, 3px);
+      transition: opacity 120ms ease, transform 120ms ease;
+    }
+
+    .reminder-dot:hover::after,
+    .reminder-dot:focus-visible::after {
+      opacity: 1;
+      transform: translate(-50%, 0);
+    }
+
     .day-number,
     .day-total {
       display: block;
     }
 
     .day-total {
-      margin-top: 10px;
+      margin-top: 2px;
       color: var(--primary-dark);
       font-size: 13px;
       font-weight: 800;
@@ -454,6 +573,46 @@
       margin: 0;
       color: var(--muted);
       font-weight: 700;
+    }
+
+    .day-all-day-items {
+      display: grid;
+      gap: 8px;
+      margin: 0 14px 12px;
+    }
+
+    .day-all-day-items:empty {
+      display: none;
+    }
+
+    .day-item-card {
+      padding: 10px 12px;
+      border: 1px solid #bdd2da;
+      border-left: 5px solid #477a91;
+      border-radius: 7px;
+      background: #f0f7fa;
+    }
+
+    .day-item-card.exam {
+      border-color: #b8d1e4;
+      border-left-color: #3d6f98;
+      background: #edf4fa;
+    }
+
+    .day-item-card.selected {
+      box-shadow: 0 0 0 3px rgba(71, 122, 145, 0.18);
+    }
+
+    .day-item-card strong {
+      display: block;
+      margin-bottom: 4px;
+    }
+
+    .day-item-card p {
+      margin: 3px 0 0;
+      color: var(--muted);
+      font-size: 13px;
+      line-height: 1.4;
     }
 
     .day-timeline {
@@ -495,6 +654,35 @@
       background: #e9f5f2;
       box-shadow: 0 6px 14px rgba(18, 38, 34, 0.08);
       overflow: visible;
+    }
+
+    .time-block.exam-block {
+      border-color: #a9c6dd;
+      border-left-color: #3d6f98;
+      background: #e9f2f9;
+    }
+
+    .time-block.reminder-block {
+      border-color: #bdd2da;
+      border-left-color: #477a91;
+      background: #eef7f9;
+    }
+
+    .time-block.selected {
+      z-index: 3;
+      box-shadow: 0 0 0 3px rgba(71, 122, 145, 0.2), 0 8px 18px rgba(18, 38, 34, 0.12);
+    }
+
+    .record-source {
+      display: inline-flex;
+      margin-left: 6px;
+      padding: 1px 5px;
+      border-radius: 4px;
+      color: #42655c;
+      background: #dfece8;
+      font-size: 10px;
+      font-weight: 800;
+      vertical-align: 1px;
     }
 
     .time-block strong {
@@ -1474,10 +1662,14 @@
     }
 
     .dialog {
+      display: grid;
+      grid-template-rows: auto minmax(0, 1fr) auto;
       width: min(520px, 100%);
+      max-height: calc(100vh - 40px);
       border-radius: 8px;
       background: #fff;
       box-shadow: 0 28px 70px rgba(15, 23, 42, 0.28);
+      overflow: hidden;
     }
 
     .template-dialog {
@@ -1506,6 +1698,11 @@
     .dialog-body {
       display: grid;
       gap: 12px;
+      overflow-y: auto;
+    }
+
+    #editModal .textarea {
+      min-height: 110px;
     }
 
     .field {
@@ -1704,12 +1901,20 @@
       }
 
       .calendar-day {
-        min-height: 62px;
-        padding: 6px;
+        min-height: 82px;
+        padding: 5px;
       }
 
       .day-total {
         font-size: 12px;
+      }
+
+      .calendar-exam-name {
+        font-size: 9px;
+      }
+
+      .timer-day-header {
+        align-items: flex-start;
       }
 
       .time-block {
@@ -1870,6 +2075,10 @@
               <h2 id="timerMonthTitle">本月记录</h2>
               <button class="btn secondary" id="timerNextMonthBtn" type="button">下个月</button>
             </div>
+            <div class="timer-calendar-actions">
+              <button class="btn secondary" id="addExamBtn" type="button">+ 添加考试</button>
+              <button class="btn secondary" id="addReminderBtn" type="button">+ 添加事项</button>
+            </div>
             <div class="calendar-grid" id="timerCalendarGrid"></div>
           </div>
 
@@ -1905,8 +2114,12 @@
             <h2 id="timerSelectedDateTitle">今天</h2>
             <p class="day-summary" id="timerDaySummary">总计 0 分钟</p>
           </div>
-          <button class="btn secondary" id="timerCloseDayBtn" type="button">收起</button>
+          <div class="timer-day-actions">
+            <button class="btn secondary" id="addManualSessionBtn" type="button">+ 手动添加学习时段</button>
+            <button class="btn secondary" id="timerCloseDayBtn" type="button">收起</button>
+          </div>
         </div>
+        <div class="day-all-day-items" id="timerDayItems"></div>
         <div class="day-timeline" id="timerDayTimeline"></div>
       </article>
     </section>
@@ -2056,6 +2269,7 @@
     let timerAudio = null;
     let timerNoiseOn = false;
     let pendingTimerStartAfterRest = false;
+    let selectedCalendarItemId = "";
 
     const els = {
       courses: document.querySelector("#courses"),
@@ -2091,9 +2305,13 @@
       timerNextMonthBtn: document.querySelector("#timerNextMonthBtn"),
       timerMonthTitle: document.querySelector("#timerMonthTitle"),
       timerCalendarGrid: document.querySelector("#timerCalendarGrid"),
+      addExamBtn: document.querySelector("#addExamBtn"),
+      addReminderBtn: document.querySelector("#addReminderBtn"),
       timerSelectedDateTitle: document.querySelector("#timerSelectedDateTitle"),
       timerDaySummary: document.querySelector("#timerDaySummary"),
+      timerDayItems: document.querySelector("#timerDayItems"),
       timerDayTimeline: document.querySelector("#timerDayTimeline"),
+      addManualSessionBtn: document.querySelector("#addManualSessionBtn"),
       timerCloseDayBtn: document.querySelector("#timerCloseDayBtn"),
       semesterName: document.querySelector("#semesterName"),
       stageKind: document.querySelector("#stageKind"),
@@ -2221,6 +2439,25 @@
       return plans;
     }
 
+    function normalizeCalendarItems(rawItems = []) {
+      if (!Array.isArray(rawItems)) return [];
+      return rawItems.map(item => ({
+        id: item?.id || uid(),
+        type: item?.type === "reminder" ? "reminder" : "exam",
+        title: typeof item?.title === "string" ? item.title.trim() : "",
+        date: isDateKey(item?.date) ? item.date : "",
+        startTime: /^\d{2}:\d{2}$/.test(item?.startTime || "") ? item.startTime : "",
+        endTime: /^\d{2}:\d{2}$/.test(item?.endTime || "") ? item.endTime : "",
+        semesterId: typeof item?.semesterId === "string" ? item.semesterId : "",
+        semesterName: typeof item?.semesterName === "string" ? item.semesterName : "",
+        courseId: typeof item?.courseId === "string" ? item.courseId : "",
+        courseName: typeof item?.courseName === "string" ? item.courseName : "",
+        location: typeof item?.location === "string" ? item.location : "",
+        requirements: typeof item?.requirements === "string" ? item.requirements : "",
+        details: typeof item?.details === "string" ? item.details : ""
+      })).filter(item => item.title && item.date);
+    }
+
     function normalizeTimer(timer = {}) {
       const sessions = Array.isArray(timer.sessions) ? timer.sessions.map(session => ({
         id: session.id || uid(),
@@ -2242,6 +2479,7 @@
           startAt: Number(segment.startAt || 0),
           endAt: Number(segment.endAt || 0)
         })).filter(segment => segment.startAt && segment.endAt && segment.endAt >= segment.startAt) : [],
+        source: session.source === "manual" ? "manual" : "timer",
         markTaskDone: Boolean(session.markTaskDone),
         note: typeof session.note === "string" ? session.note : ""
       })).filter(session => session.startAt && session.endAt && session.durationMs) : [];
@@ -2281,6 +2519,7 @@
       return {
         sessions,
         active,
+        calendarItems: normalizeCalendarItems(timer.calendarItems),
         scheduleStartMinute: parseTimeToMinutes(timer.scheduleStart || (Number.isFinite(Number(timer.scheduleStartMinute)) ? minutesToTime(timer.scheduleStartMinute) : ""), 6 * 60),
         scheduleEndMinute: parseTimeToMinutes(timer.scheduleEnd || (Number.isFinite(Number(timer.scheduleEndMinute)) ? minutesToTime(timer.scheduleEndMinute) : ""), 23 * 60),
         pauseLimitMinutes: Math.min(60, Math.max(1, Number(timer.pauseLimitMinutes || 15))),
@@ -2756,6 +2995,7 @@
           categoryName: selection.categoryName,
           taskId: selection.taskId,
           taskName: selection.taskName,
+          source: active.source === "manual" ? "manual" : "timer",
           markTaskDone: selection.markTaskDone,
           note: selection.note,
           segments
@@ -2777,14 +3017,27 @@
       return minute;
     }
 
-    function getTimerDayRange(dateKey, sessions) {
+    function calendarItemMinute(item, end = false) {
+      const value = end ? item.endTime : item.startTime;
+      if (!/^\d{2}:\d{2}$/.test(value || "")) return null;
+      const [hours, minutes] = value.split(":").map(Number);
+      return hours * 60 + minutes;
+    }
+
+    function getTimerDayRange(dateKey, sessions, calendarItems = []) {
       const scheduleStart = Number(state.timer.scheduleStartMinute ?? 6 * 60);
       let scheduleEnd = Number(state.timer.dailyExtensions?.[dateKey] ?? state.timer.scheduleEndMinute ?? 23 * 60);
       if (scheduleEnd <= scheduleStart) scheduleEnd += 1440;
       const sessionStarts = sessions.map(session => minuteWithinDate(session.startAt, dateKey));
       const sessionEnds = sessions.map(session => minuteWithinDate(session.endAt, dateKey, true));
-      const minMinute = sessionStarts.length ? Math.min(scheduleStart, ...sessionStarts) : scheduleStart;
-      const maxMinute = sessionEnds.length ? Math.max(scheduleEnd, ...sessionEnds) : scheduleEnd;
+      const itemStarts = calendarItems.map(item => calendarItemMinute(item)).filter(Number.isFinite);
+      const itemEnds = calendarItems.map(item => calendarItemMinute(item, true) ?? (
+        Number.isFinite(calendarItemMinute(item)) ? calendarItemMinute(item) + 60 : null
+      )).filter(Number.isFinite);
+      const allStarts = [...sessionStarts, ...itemStarts];
+      const allEnds = [...sessionEnds, ...itemEnds];
+      const minMinute = allStarts.length ? Math.min(scheduleStart, ...allStarts) : scheduleStart;
+      const maxMinute = allEnds.length ? Math.max(scheduleEnd, ...allEnds) : scheduleEnd;
       const startMinute = Math.max(0, Math.floor(minMinute / 60) * 60);
       const endMinute = Math.max(startMinute + 60, Math.ceil(maxMinute / 60) * 60);
       return { startMinute, endMinute };
@@ -2912,6 +3165,248 @@
       els.timerCompleteTask.disabled = !els.timerTask.value;
       els.timerCompleteTask.checked = Boolean(els.timerTask.value && active?.markTaskDone);
       els.timerNote.value = active?.note || els.timerNote.value || "";
+    }
+
+    function getSelectionByIds({ semesterId = "", courseId = "", categoryId = "", taskId = "", markTaskDone = false, note = "" } = {}) {
+      const semester = semesterId ? findSemester(semesterId) : null;
+      const course = semester && courseId ? findCourse(semester, courseId) : null;
+      const category = course && categoryId ? findCategory(course, categoryId) : null;
+      const task = category && taskId ? category.tasks.find(item => item.id === taskId) : null;
+      return {
+        semesterId: semester?.id || "",
+        semesterName: semester?.name || "",
+        courseId: course?.id || "",
+        courseName: course?.name || "",
+        categoryId: category?.id || "",
+        categoryName: category?.name || "",
+        taskId: task?.id || "",
+        taskName: task ? (task.detail ? `${task.title || task.name} ${task.detail}` : task.title || task.name || "") : "",
+        task,
+        markTaskDone: Boolean(task && markTaskDone),
+        note
+      };
+    }
+
+    function selectOptions(items, emptyLabel, getLabel = item => item.name) {
+      return [
+        { value: "", label: t(emptyLabel) },
+        ...items.map(item => ({ value: item.id, label: getLabel(item) }))
+      ];
+    }
+
+    function replaceSelectOptions(select, options, selectedValue = "") {
+      select.replaceChildren(...options.map(option => {
+        const element = document.createElement("option");
+        element.value = option.value;
+        element.textContent = option.label;
+        return element;
+      }));
+      select.value = options.some(option => option.value === selectedValue) ? selectedValue : "";
+    }
+
+    function setupModalAssociations(prefix, initial = {}, includeTask = false) {
+      const semesterSelect = els.editForm.elements[`${prefix}SemesterId`];
+      const courseSelect = els.editForm.elements[`${prefix}CourseId`];
+      const categorySelect = includeTask ? els.editForm.elements[`${prefix}CategoryId`] : null;
+      const taskSelect = includeTask ? els.editForm.elements[`${prefix}TaskId`] : null;
+      if (!semesterSelect || !courseSelect) return;
+
+      const refreshCourses = selectedCourseId => {
+        const semester = semesterSelect.value ? findSemester(semesterSelect.value) : null;
+        replaceSelectOptions(courseSelect, selectOptions(semester?.courses || [], "不关联课程"), selectedCourseId);
+        courseSelect.disabled = !semester;
+        refreshCategories(initial.categoryId);
+      };
+      const refreshCategories = selectedCategoryId => {
+        if (!includeTask || !categorySelect) return;
+        const semester = semesterSelect.value ? findSemester(semesterSelect.value) : null;
+        const course = semester && courseSelect.value ? findCourse(semester, courseSelect.value) : null;
+        replaceSelectOptions(categorySelect, selectOptions(course?.categories || [], "不关联分类"), selectedCategoryId);
+        categorySelect.disabled = !course;
+        refreshTasks(initial.taskId);
+      };
+      const refreshTasks = selectedTaskId => {
+        if (!includeTask || !taskSelect) return;
+        const semester = semesterSelect.value ? findSemester(semesterSelect.value) : null;
+        const course = semester && courseSelect.value ? findCourse(semester, courseSelect.value) : null;
+        const category = course && categorySelect.value ? findCategory(course, categorySelect.value) : null;
+        replaceSelectOptions(taskSelect, selectOptions(category?.tasks || [], "不关联任务", task => (
+          task.detail ? `${task.title || task.name} ${task.detail}` : task.title || task.name || ""
+        )), selectedTaskId);
+        taskSelect.disabled = !category;
+      };
+
+      semesterSelect.addEventListener("change", () => {
+        initial.courseId = "";
+        initial.categoryId = "";
+        initial.taskId = "";
+        refreshCourses("");
+      });
+      courseSelect.addEventListener("change", () => {
+        initial.categoryId = "";
+        initial.taskId = "";
+        refreshCategories("");
+      });
+      categorySelect?.addEventListener("change", () => {
+        initial.taskId = "";
+        refreshTasks("");
+      });
+      refreshCourses(initial.courseId);
+    }
+
+    function dateTimeLocalValue(time) {
+      const date = new Date(time);
+      const local = new Date(date.getTime() - date.getTimezoneOffset() * 60000);
+      return local.toISOString().slice(0, 16);
+    }
+
+    function defaultManualSessionTimes(dateKey = state.timer.selectedDate) {
+      const now = new Date();
+      let start;
+      if (dateKey === dateKeyFromTime(now.getTime())) {
+        now.setSeconds(0, 0);
+        start = now.getTime();
+      } else {
+        const [year, month, day] = dateKey.split("-").map(Number);
+        start = new Date(year, month - 1, day, 9, 0, 0, 0).getTime();
+      }
+      return { start, end: start + 60 * 60000 };
+    }
+
+    function openManualSessionModal(session = null) {
+      const group = session
+        ? state.timer.sessions.filter(item => item.groupId === session.groupId)
+        : [];
+      const segments = group.flatMap(item => item.segments || []);
+      const defaults = defaultManualSessionTimes();
+      const startAt = segments.length ? Math.min(...segments.map(segment => segment.startAt)) : defaults.start;
+      const endAt = segments.length ? Math.max(...segments.map(segment => segment.endAt)) : defaults.end;
+      const initial = {
+        semesterId: session?.semesterId || "",
+        courseId: session?.courseId || "",
+        categoryId: session?.categoryId || "",
+        taskId: session?.taskId || ""
+      };
+      openEditModal(session ? "编辑手动学习时段" : "手动添加学习时段", [
+        { label: "开始时间", name: "manualStartAt", value: dateTimeLocalValue(startAt), type: "datetime-local" },
+        { label: "结束时间", name: "manualEndAt", value: dateTimeLocalValue(endAt), type: "datetime-local" },
+        { label: "关联学习阶段（可选）", name: "manualSemesterId", value: initial.semesterId, required: false, options: selectOptions(state.semesters, "不关联学习阶段") },
+        { label: "关联课程（可选）", name: "manualCourseId", value: initial.courseId, required: false, options: [{ value: "", label: t("不关联课程") }] },
+        { label: "关联分类（可选）", name: "manualCategoryId", value: initial.categoryId, required: false, options: [{ value: "", label: t("不关联分类") }] },
+        { label: "关联任务（可选）", name: "manualTaskId", value: initial.taskId, required: false, options: [{ value: "", label: t("不关联任务") }] },
+        { label: "任务状态", name: "manualMarkTaskDone", value: session?.markTaskDone ? "yes" : "no", options: [
+          { value: "no", label: t("不修改任务完成状态") },
+          { value: "yes", label: t("保存后同时标记这个任务完成") }
+        ] },
+        { label: "备注", name: "manualNote", value: session?.note || "", required: false, multiline: true, placeholder: "例如：线下自习、课堂学习、纸质练习" }
+      ], values => {
+        const parsedStartAt = new Date(values.manualStartAt).getTime();
+        const parsedEndAt = new Date(values.manualEndAt).getTime();
+        if (!parsedStartAt || !parsedEndAt || parsedEndAt <= parsedStartAt) {
+          showToast("结束时间必须晚于开始时间");
+          return false;
+        }
+        const selection = getSelectionByIds({
+          semesterId: values.manualSemesterId,
+          courseId: values.manualCourseId,
+          categoryId: values.manualCategoryId,
+          taskId: values.manualTaskId,
+          markTaskDone: values.manualMarkTaskDone === "yes",
+          note: values.manualNote
+        });
+        const groupId = session?.groupId || uid();
+        const nextSessions = buildTimerSessions({
+          id: groupId,
+          source: "manual",
+          segments: [{ startAt: parsedStartAt, endAt: parsedEndAt }]
+        }, selection, parsedEndAt);
+        if (!nextSessions.length) {
+          showToast("无法保存这个学习时段");
+          return false;
+        }
+        if (session) {
+          state.timer.sessions = state.timer.sessions.filter(item => item.groupId !== session.groupId);
+        }
+        state.timer.sessions.push(...nextSessions);
+        if (selection.markTaskDone && selection.task) selection.task.done = true;
+        state.timer.selectedDate = dateKeyFromTime(parsedStartAt);
+        state.timer.calendarMonth = state.timer.selectedDate.slice(0, 7);
+        state.timer.dayOpen = true;
+        commitTimer(session ? "手动学习时段已更新" : "手动学习时段已保存");
+      });
+      setupModalAssociations("manual", initial, true);
+    }
+
+    function calendarItemsForDate(dateKey) {
+      return (state.timer.calendarItems || [])
+        .filter(item => item.date === dateKey)
+        .sort((left, right) => (left.startTime || "00:00").localeCompare(right.startTime || "00:00"));
+    }
+
+    function findCalendarItem(itemId) {
+      return (state.timer.calendarItems || []).find(item => item.id === itemId);
+    }
+
+    function openCalendarItemModal(type, item = null) {
+      const isExam = type === "exam";
+      const initial = {
+        semesterId: item?.semesterId || "",
+        courseId: item?.courseId || ""
+      };
+      const fields = [
+        { label: isExam ? "科目名称" : "事项名称", name: "calendarTitle", value: item?.title || "", placeholder: isExam ? "例如：高等数学" : "例如：提交报名材料" },
+        { label: "日期", name: "calendarDate", value: item?.date || state.timer.selectedDate || dateKeyFromTime(), type: "date" },
+        { label: isExam ? "考试开始时间" : "事项时间（可选）", name: "calendarStartTime", value: item?.startTime || "", type: "time", required: isExam },
+        ...(isExam ? [{ label: "考试结束时间", name: "calendarEndTime", value: item?.endTime || "", type: "time" }] : []),
+        { label: "关联学习阶段（可选）", name: "calendarSemesterId", value: initial.semesterId, required: false, options: selectOptions(state.semesters, "不关联学习阶段") },
+        { label: "关联课程（可选）", name: "calendarCourseId", value: initial.courseId, required: false, options: [{ value: "", label: t("不关联课程") }] },
+        ...(isExam ? [
+          { label: "考试地点", name: "calendarLocation", value: item?.location || "", required: false, placeholder: "例如：教室、考场或线上平台" },
+          { label: "考试要求", name: "calendarRequirements", value: item?.requirements || "", required: false, multiline: true, placeholder: "例如：可携带公式表；闭卷；包含口试和笔试" }
+        ] : [
+          { label: "事项内容", name: "calendarDetails", value: item?.details || "", required: false, multiline: true, placeholder: "记录这件事需要注意的内容" }
+        ])
+      ];
+      openEditModal(item ? (isExam ? "编辑考试" : "编辑事项") : (isExam ? "添加考试" : "添加事项"), fields, values => {
+        if (isExam && values.calendarEndTime <= values.calendarStartTime) {
+          showToast("考试结束时间必须晚于开始时间");
+          return false;
+        }
+        const selection = getSelectionByIds({
+          semesterId: values.calendarSemesterId,
+          courseId: values.calendarCourseId
+        });
+        const nextItem = {
+          id: item?.id || uid(),
+          type: isExam ? "exam" : "reminder",
+          title: values.calendarTitle,
+          date: values.calendarDate,
+          startTime: values.calendarStartTime || "",
+          endTime: isExam ? values.calendarEndTime : "",
+          semesterId: selection.semesterId,
+          semesterName: selection.semesterName,
+          courseId: selection.courseId,
+          courseName: selection.courseName,
+          location: isExam ? values.calendarLocation : "",
+          requirements: isExam ? values.calendarRequirements : "",
+          details: isExam ? "" : values.calendarDetails
+        };
+        if (item) Object.assign(item, nextItem);
+        else state.timer.calendarItems.push(nextItem);
+        selectedCalendarItemId = nextItem.id;
+        state.timer.selectedDate = nextItem.date;
+        state.timer.calendarMonth = nextItem.date.slice(0, 7);
+        state.timer.dayOpen = true;
+        commitTimer(item ? (isExam ? "考试已更新" : "事项已更新") : (isExam ? "考试已添加" : "事项已添加"));
+      });
+      setupModalAssociations("calendar", initial, false);
+    }
+
+    function deleteCalendarItem(item) {
+      if (!confirm(t(item.type === "exam" ? "删除这场考试？" : "删除这个事项？"))) return;
+      state.timer.calendarItems = state.timer.calendarItems.filter(entry => entry.id !== item.id);
+      if (selectedCalendarItemId === item.id) selectedCalendarItemId = "";
+      commitTimer(item.type === "exam" ? "考试已删除" : "事项已删除");
     }
 
     function sessionsForDate(dateKey) {
@@ -3051,14 +3546,64 @@
         const key = dateKeyFromTime(date.getTime());
         const outside = date.getMonth() !== month - 1;
         const total = totalForDate(key);
+        const items = calendarItemsForDate(key);
+        const exams = items.filter(item => item.type === "exam");
+        const reminders = items.filter(item => item.type === "reminder");
+        const visibleExams = exams.slice(0, 2);
+        const examNames = visibleExams.map(item => {
+          const sizeClass = item.title.length > 18 ? "tiny" : item.title.length > 10 ? "compact" : "";
+          return `<button class="calendar-exam-name ${sizeClass}" type="button" data-action="select-calendar-item" data-item-id="${item.id}" data-date="${key}" title="${escapeHtml(item.title)}">${escapeHtml(item.title)}</button>`;
+        }).join("");
+        const moreExams = exams.length > visibleExams.length
+          ? `<button class="calendar-exam-name compact" type="button" data-action="select-timer-date" data-date="${key}" title="${escapeHtml(exams.slice(2).map(item => item.title).join("、"))}">+${exams.length - visibleExams.length}</button>`
+          : "";
+        const reminderDots = reminders.map(item => `
+          <button
+            class="reminder-dot ${item.id === selectedCalendarItemId ? "selected" : ""}"
+            type="button"
+            data-action="select-calendar-item"
+            data-item-id="${item.id}"
+            data-date="${key}"
+            data-tooltip="${escapeHtml(item.title)}"
+            aria-label="${escapeHtml(item.title)}"
+          ></button>
+        `).join("");
         cells.push(`
-          <button class="calendar-day ${outside ? "outside" : ""} ${key === today ? "today" : ""} ${key === state.timer.selectedDate ? "selected" : ""}" type="button" data-action="select-timer-date" data-date="${key}">
-            <span class="day-number">${date.getDate()}</span>
-            <span class="day-total">${total ? formatDurationShort(total) : ""}</span>
-          </button>
+          <div class="calendar-day ${outside ? "outside" : ""} ${key === today ? "today" : ""} ${key === state.timer.selectedDate ? "selected" : ""}">
+            <button class="calendar-day-main" type="button" data-action="select-timer-date" data-date="${key}" aria-label="${escapeHtml(formatDateLabel(key))}">
+              <span class="day-number">${date.getDate()}</span>
+              <span class="day-total">${total ? formatDurationShort(total) : ""}</span>
+            </button>
+            <div class="calendar-exams">${examNames}${moreExams}</div>
+            <div class="calendar-reminders">${reminderDots}</div>
+          </div>
         `);
       }
       els.timerCalendarGrid.innerHTML = cells.join("");
+    }
+
+    function calendarItemDetailsHtml(item, includeActions = true) {
+      const path = [item.semesterName, item.courseName].filter(Boolean).join(" / ");
+      const separator = currentLocale() === "en-US" ? ": " : "：";
+      const timeText = item.startTime
+        ? item.endTime
+          ? `${item.startTime} - ${item.endTime}`
+          : item.startTime
+        : t("全天事项");
+      return `
+        <strong>${escapeHtml(item.title)}</strong>
+        <p>${t(item.type === "exam" ? "考试时间" : "事项时间")}${separator}${escapeHtml(timeText)}</p>
+        ${path ? `<p>${t("关联课程")}${separator}${escapeHtml(path)}</p>` : ""}
+        ${item.type === "exam" && item.location ? `<p>${t("考试地点")}${separator}${escapeHtml(item.location)}</p>` : ""}
+        ${item.type === "exam" && item.requirements ? `<p>${t("考试要求")}${separator}${escapeHtml(item.requirements)}</p>` : ""}
+        ${item.type === "reminder" && item.details ? `<p>${t("事项内容")}${separator}${escapeHtml(item.details)}</p>` : ""}
+        ${includeActions ? `
+          <div class="actions">
+            <button class="btn secondary" type="button" data-action="edit-calendar-item">${t("编辑")}</button>
+            <button class="btn icon" type="button" data-action="delete-calendar-item" title="${t("删除")}">×</button>
+          </div>
+        ` : ""}
+      `;
     }
 
     function renderTimerDay() {
@@ -3066,11 +3611,19 @@
       if (!state.timer.dayOpen) return;
       const dateKey = state.timer.selectedDate;
       const sessions = sessionsForDate(dateKey);
+      const calendarItems = calendarItemsForDate(dateKey);
+      const timedItems = calendarItems.filter(item => item.startTime);
+      const allDayItems = calendarItems.filter(item => !item.startTime);
       const total = totalForDate(dateKey);
       els.timerSelectedDateTitle.textContent = formatDateLabel(dateKey);
       els.timerDaySummary.textContent = `${t("总计")} ${formatDurationShort(total)}`;
+      els.timerDayItems.innerHTML = allDayItems.map(item => `
+        <article class="day-item-card ${item.type} ${item.id === selectedCalendarItemId ? "selected" : ""}" data-calendar-item-id="${item.id}">
+          ${calendarItemDetailsHtml(item)}
+        </article>
+      `).join("");
       const hourHeight = 58;
-      const range = getTimerDayRange(dateKey, sessions);
+      const range = getTimerDayRange(dateKey, sessions, timedItems);
       const dayMinutes = range.endMinute - range.startMinute;
       els.timerDayTimeline.style.height = `${(dayMinutes / 60) * hourHeight}px`;
       const parts = [];
@@ -3091,20 +3644,34 @@
         const segmentRanges = formatSegmentRanges(session);
         parts.push(`
           <article class="time-block" style="top:${top}px;height:${height}px" data-session-id="${session.id}">
-            <strong>${partLabel ? `<span class="time-part">${escapeHtml(partLabel)}</span> ` : ""}${escapeHtml(title)} · ${formatDurationWithSeconds(session.durationMs)}</strong>
+            <strong>${partLabel ? `<span class="time-part">${escapeHtml(partLabel)}</span> ` : ""}${escapeHtml(title)} · ${formatDurationWithSeconds(session.durationMs)}${session.source === "manual" ? `<span class="record-source">${t("手动记录")}</span>` : ""}</strong>
             <p>${formatClock(session.startAt)} - ${formatClock(session.endAt)}</p>
             ${segmentRanges ? `<p>${t("学习段")}：${escapeHtml(segmentRanges)}</p>` : ""}
             ${path ? `<p>${escapeHtml(path)}</p>` : ""}
             ${session.markTaskDone ? `<p>${t("已同步标记任务完成")}</p>` : ""}
             ${session.note ? `<p>${escapeHtml(session.note)}</p>` : ""}
             <div class="actions">
-              <button class="btn secondary" type="button" data-action="edit-time-session">${t("编辑备注")}</button>
+              <button class="btn secondary" type="button" data-action="edit-time-session">${t(session.source === "manual" ? "编辑记录" : "编辑备注")}</button>
               <button class="btn icon" type="button" data-action="delete-time-session" title="${t("删除")}">×</button>
             </div>
           </article>
         `);
       });
-      if (!sessions.length) {
+      timedItems.forEach(item => {
+        const startMinute = calendarItemMinute(item);
+        const endMinute = calendarItemMinute(item, true) ?? startMinute + 60;
+        const topMinutes = Math.max(0, startMinute - range.startMinute);
+        const blockMinutes = Math.max(30, endMinute - startMinute);
+        const top = (topMinutes / 60) * hourHeight;
+        const minHeight = item.type === "exam" ? 156 : 112;
+        const height = Math.max(minHeight, (blockMinutes / 60) * hourHeight - 4);
+        parts.push(`
+          <article class="time-block ${item.type}-block ${item.id === selectedCalendarItemId ? "selected" : ""}" style="top:${top}px;height:${height}px" data-calendar-item-id="${item.id}">
+            ${calendarItemDetailsHtml(item)}
+          </article>
+        `);
+      });
+      if (!sessions.length && !timedItems.length) {
         parts.push(`<p class="empty" style="margin:18px 0 0 66px;">${t("这一天还没有学习时间记录。")}</p>`);
       }
       els.timerDayTimeline.innerHTML = parts.join("");
@@ -3168,6 +3735,13 @@
         return {
           isRestTime: comparableNow >= boundary,
           alertKey: `${dateKey}-extension-${boundary}`
+        };
+      }
+
+      if (scheduleEndMinute === startMinute) {
+        return {
+          isRestTime: false,
+          alertKey: `${dateKey}-${startMinute}-${scheduleEndMinute}-same-time`
         };
       }
 
@@ -3419,7 +3993,7 @@
           </div>
           <div class="actions">
             <button class="btn icon" type="button" data-action="toggle-semester" title="收起或展开学期">${semester.collapsed ? "▸" : "▾"}</button>
-            <button class="btn icon note-toggle" type="button" data-action="toggle-semester-info" title="收起或展开备注与附件">备注/附件 ${semester.infoCollapsed ? "▸" : "▾"}</button>
+            <button class="btn icon note-toggle" type="button" data-action="toggle-semester-info" title="${t("收起或展开备注与附件")}">${t("备注/附件")} ${semester.infoCollapsed ? "▸" : "▾"}</button>
             <button class="btn icon template-toggle" type="button" data-action="save-semester-template" title="将当前学期保存为模板">存为模板</button>
             <button class="btn icon" type="button" data-action="edit-semester" title="编辑学期">✎</button>
             <button class="btn icon" type="button" data-action="copy-semester" title="复制学习阶段">⧉</button>
@@ -3576,7 +4150,7 @@
           </div>
           <div class="actions">
             <button class="btn icon" type="button" data-action="toggle-course" title="收起或展开课程">${course.collapsed ? "▸" : "▾"}</button>
-            <button class="btn icon note-toggle" type="button" data-action="toggle-course-info" title="收起或展开备注与附件">备注/附件 ${course.infoCollapsed ? "▸" : "▾"}</button>
+            <button class="btn icon note-toggle" type="button" data-action="toggle-course-info" title="${t("收起或展开备注与附件")}">${t("备注/附件")} ${course.infoCollapsed ? "▸" : "▾"}</button>
             <button class="btn icon template-toggle" type="button" data-action="save-course-template" title="将当前课程保存为模板">${linkedTemplate ? "更新模板" : "存为模板"}</button>
             <button class="btn icon" type="button" data-action="edit-course" title="编辑课程">✎</button>
             <button class="btn icon" type="button" data-action="copy-course" title="复制课程">⧉</button>
@@ -3647,7 +4221,7 @@
           </div>
           <div class="actions">
             <button class="btn icon" type="button" data-action="toggle-category" title="收起或展开分类">${category.collapsed ? "▸" : "▾"}</button>
-            <button class="btn icon note-toggle" type="button" data-action="toggle-category-info" title="收起或展开备注与附件">备注/附件 ${category.infoCollapsed ? "▸" : "▾"}</button>
+            <button class="btn icon note-toggle" type="button" data-action="toggle-category-info" title="${t("收起或展开备注与附件")}">${t("备注/附件")} ${category.infoCollapsed ? "▸" : "▾"}</button>
             <button class="btn icon" type="button" data-action="edit-category" title="编辑分类">✎</button>
             <button class="btn icon" type="button" data-action="copy-category" title="复制分类">⧉</button>
             <button class="btn icon" type="button" data-action="delete-category" title="删除分类">×</button>
@@ -3708,7 +4282,7 @@
         <input type="checkbox" data-action="toggle-task">
         <span class="task-name"></span>
         <div class="actions">
-          <button class="btn icon note-toggle" type="button" data-action="toggle-task-details" title="收起或展开备注与附件">备注/附件 ${collapsed ? "▸" : "▾"}</button>
+          <button class="btn icon note-toggle" type="button" data-action="toggle-task-details" title="${t("收起或展开备注与附件")}">${t("备注/附件")} ${collapsed ? "▸" : "▾"}</button>
           <button class="btn icon" type="button" data-action="move-task-up" title="上移任务">↑</button>
           <button class="btn icon" type="button" data-action="move-task-down" title="下移任务">↓</button>
           <button class="btn icon" type="button" data-action="edit-task" title="编辑任务">✎</button>
@@ -4018,20 +4592,40 @@
         label.setAttribute("for", field.name);
         label.textContent = field.label;
 
-        const input = document.createElement(field.multiline ? "textarea" : "input");
+        const input = document.createElement(field.options ? "select" : field.multiline ? "textarea" : "input");
         input.className = field.multiline ? "textarea" : "input";
         input.id = field.name;
         input.name = field.name;
-        input.value = field.value;
+        if (field.options) {
+          field.options.forEach(option => {
+            const element = document.createElement("option");
+            element.value = option.value;
+            element.textContent = option.label;
+            input.appendChild(element);
+          });
+        } else if (!field.multiline) {
+          input.type = field.type || "text";
+        }
+        input.value = field.value ?? "";
         input.required = field.required !== false;
+        if (field.min !== undefined) input.min = field.min;
+        if (field.max !== undefined) input.max = field.max;
+        if (field.step !== undefined) input.step = field.step;
+        if (field.checked !== undefined && input.type === "checkbox") input.checked = Boolean(field.checked);
         if (field.placeholder) input.placeholder = field.placeholder;
 
         wrap.append(label, input);
+        if (field.help) {
+          const help = document.createElement("small");
+          help.className = "focus-hint";
+          help.textContent = field.help;
+          wrap.appendChild(help);
+        }
         els.modalBody.appendChild(wrap);
       });
 
       els.editModal.classList.add("open");
-      const firstInput = els.modalBody.querySelector("input, textarea");
+      const firstInput = els.modalBody.querySelector("input, textarea, select");
       if (firstInput) firstInput.focus();
     }
 
@@ -4151,7 +4745,7 @@
 
     function cancelTimer() {
       if (!state.timer.active) return;
-      if (!confirm("取消这次正在进行的计时？不会保存记录。")) return;
+      if (!confirm(t("取消这次正在进行的计时？不会保存记录。"))) return;
       state.timer.active = null;
       closeRestModal();
       commitTimer("本次计时已取消");
@@ -4164,12 +4758,20 @@
       renderTimer();
     }
 
-    function selectTimerDate(dateKey) {
+    function selectTimerDate(dateKey, options = {}) {
+      if (!options.preserveCalendarItem) selectedCalendarItemId = "";
       state.timer.selectedDate = dateKey;
       state.timer.calendarMonth = dateKey.slice(0, 7);
       state.timer.dayOpen = true;
       saveState();
       renderTimer();
+    }
+
+    function selectCalendarItem(itemId) {
+      const item = findCalendarItem(itemId);
+      if (!item) return;
+      selectedCalendarItemId = item.id;
+      selectTimerDate(item.date, { preserveCalendarItem: true });
     }
 
     function closeTimerDay() {
@@ -4183,6 +4785,10 @@
     }
 
     function editTimeSession(session) {
+      if (session.source === "manual") {
+        openManualSessionModal(session);
+        return;
+      }
       openEditModal("编辑学习时间备注", [
         { label: "备注", name: "note", value: session.note || "", required: false }
       ], values => {
@@ -4192,8 +4798,10 @@
     }
 
     function deleteTimeSession(session) {
-      if (!confirm("删除这条学习时间记录？")) return;
-      state.timer.sessions = state.timer.sessions.filter(item => item.id !== session.id);
+      if (!confirm(t("删除这条学习时间记录？"))) return;
+      state.timer.sessions = session.source === "manual"
+        ? state.timer.sessions.filter(item => item.groupId !== session.groupId)
+        : state.timer.sessions.filter(item => item.id !== session.id);
       commitTimer("学习时间记录已删除");
     }
 
@@ -4956,6 +5564,9 @@
     els.timerCancelBtn.addEventListener("click", cancelTimer);
     els.timerPrevMonthBtn.addEventListener("click", () => shiftTimerMonth(-1));
     els.timerNextMonthBtn.addEventListener("click", () => shiftTimerMonth(1));
+    els.addExamBtn.addEventListener("click", () => openCalendarItemModal("exam"));
+    els.addReminderBtn.addEventListener("click", () => openCalendarItemModal("reminder"));
+    els.addManualSessionBtn.addEventListener("click", () => openManualSessionModal());
     els.timerCloseDayBtn.addEventListener("click", closeTimerDay);
     els.timerNoiseBtn.addEventListener("click", toggleTimerNoise);
     els.pauseExpiredCloseBtn.addEventListener("click", closePauseExpiredModal);
@@ -4986,7 +5597,7 @@
       const shouldStartTimer = pendingTimerStartAfterRest;
       const dateKey = dateKeyFromTime();
       if (!state.timer.dailyExtensions) state.timer.dailyExtensions = {};
-      state.timer.dailyExtensions[dateKey] = Math.max(minutesOfDay() + 24 * 60, Number(state.timer.scheduleEndMinute || 23 * 60) + 24 * 60);
+      state.timer.dailyExtensions[dateKey] = Math.max(minutesOfDay() + 24 * 60, Number(state.timer.scheduleEndMinute ?? 23 * 60) + 24 * 60);
       state.timer.restAlertDateKey = "";
       pendingTimerStartAfterRest = false;
       closeRestModalAfterChoice();
@@ -4999,9 +5610,15 @@
     });
     [els.timerDayStart, els.timerDayEnd, els.timerPauseLimit].forEach(input => {
       input.addEventListener("change", () => {
+        const scheduleChanged = input === els.timerDayStart || input === els.timerDayEnd;
         state.timer.scheduleStartMinute = parseTimeToMinutes(els.timerDayStart.value, 6 * 60);
         state.timer.scheduleEndMinute = parseTimeToMinutes(els.timerDayEnd.value, 23 * 60);
         state.timer.pauseLimitMinutes = Math.min(60, Math.max(1, Number(els.timerPauseLimit.value || 15)));
+        if (scheduleChanged) {
+          const dateKey = dateKeyFromTime();
+          if (state.timer.dailyExtensions) delete state.timer.dailyExtensions[dateKey];
+          state.timer.restAlertDateKey = "";
+        }
         if (state.timer.active?.status === "paused") {
           state.timer.active.pauseDeadlineAt = Date.now() + state.timer.pauseLimitMinutes * 60000;
         }
@@ -5071,6 +5688,11 @@
     els.timerCompleteTask.addEventListener("change", syncTimerFormToActive);
     els.timerNote.addEventListener("input", syncTimerFormToActive);
     els.timerCalendarGrid.addEventListener("click", event => {
+      const itemButton = event.target.closest("[data-action='select-calendar-item']");
+      if (itemButton) {
+        selectCalendarItem(itemButton.dataset.itemId);
+        return;
+      }
       const button = event.target.closest("[data-action='select-timer-date']");
       if (!button) return;
       selectTimerDate(button.dataset.date);
@@ -5078,11 +5700,27 @@
     els.timerDayTimeline.addEventListener("click", event => {
       const action = event.target.dataset.action;
       if (!action) return;
+      const itemBlock = event.target.closest("[data-calendar-item-id]");
+      const calendarItem = itemBlock ? findCalendarItem(itemBlock.dataset.calendarItemId) : null;
+      if (calendarItem) {
+        if (action === "edit-calendar-item") openCalendarItemModal(calendarItem.type, calendarItem);
+        if (action === "delete-calendar-item") deleteCalendarItem(calendarItem);
+        return;
+      }
       const block = event.target.closest(".time-block");
       const session = block ? findTimeSession(block.dataset.sessionId) : null;
       if (!session) return;
       if (action === "edit-time-session") editTimeSession(session);
       if (action === "delete-time-session") deleteTimeSession(session);
+    });
+    els.timerDayItems.addEventListener("click", event => {
+      const action = event.target.dataset.action;
+      if (!action) return;
+      const itemBlock = event.target.closest("[data-calendar-item-id]");
+      const calendarItem = itemBlock ? findCalendarItem(itemBlock.dataset.calendarItemId) : null;
+      if (!calendarItem) return;
+      if (action === "edit-calendar-item") openCalendarItemModal(calendarItem.type, calendarItem);
+      if (action === "delete-calendar-item") deleteCalendarItem(calendarItem);
     });
 
     els.courses.addEventListener("input", event => {
@@ -5427,6 +6065,14 @@
       render();
     });
 
+    document.addEventListener("click", event => {
+      if (!selectedCalendarItemId) return;
+      if (event instanceof MouseEvent && event.button !== 0) return;
+      if (event.target.closest("[data-action='select-calendar-item']")) return;
+      selectedCalendarItemId = "";
+      if (activePanel === "timer") renderTimer();
+    });
+
     els.templateList.addEventListener("click", event => {
       const action = event.target.dataset.action;
       if (!action) return;
@@ -5494,13 +6140,16 @@
 
       const formData = new FormData(els.editForm);
       const values = Object.fromEntries(formData.entries());
+      els.editForm.querySelectorAll('input[type="checkbox"][name]').forEach(input => {
+        values[input.name] = input.checked;
+      });
       Object.keys(values).forEach(key => {
-        values[key] = values[key].trim();
+        if (typeof values[key] === "string") values[key] = values[key].trim();
       });
 
       const requiredNames = [...els.editForm.querySelectorAll("[required]")].map(field => field.name);
       if (requiredNames.some(name => !values[name])) return;
-      editContext(values);
+      if (editContext(values) === false) return;
       closeEditModal();
     });
 

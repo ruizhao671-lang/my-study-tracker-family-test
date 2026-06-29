@@ -5,7 +5,8 @@ export function makeEmptyState() {
     courseTemplates: [],
     timer: {
       sessions: [],
-      active: null
+      active: null,
+      calendarItems: []
     }
   };
 }
@@ -49,7 +50,26 @@ export function makeSharedState(sourceState) {
           }))
         }))
       }))
-    }))
+    })),
+    timer: {
+      sessions: [],
+      active: null,
+      calendarItems: (sourceState?.timer?.calendarItems || []).map(item => ({
+        id: item.id,
+        type: item.type === "reminder" ? "reminder" : "exam",
+        title: item.title || "",
+        date: item.date || "",
+        startTime: item.startTime || "",
+        endTime: item.endTime || "",
+        semesterId: item.semesterId || "",
+        semesterName: item.semesterName || "",
+        courseId: item.courseId || "",
+        courseName: item.courseName || "",
+        location: item.location || "",
+        requirements: item.requirements || "",
+        details: item.details || ""
+      }))
+    }
   };
 }
 
