@@ -2233,6 +2233,7 @@
 
   <script src="cloud-bootstrap.js"></script>
   <script type="module" src="api-sync.js"></script>
+  <script src="i18n.js"></script>
   <script>
     const STORAGE_KEY = "study-tracker-online-state-v1";
     const READ_ONLY_LINK = Boolean(new URLSearchParams(location.search).get("view"));
@@ -3785,7 +3786,7 @@
       els.doneCount.textContent = totals.done;
       els.globalPercent.textContent = `${totals.percent}%`;
       els.globalBar.style.width = `${totals.percent}%`;
-      els.globalText.textContent = `总体进度：${totals.done}/${totals.tasks}`;
+      els.globalText.textContent = t(`总体进度：${totals.done}/${totals.tasks}`);
       els.listViewBtn.classList.toggle("active", viewMode === "list");
       els.chartViewBtn.classList.toggle("active", viewMode === "chart");
       els.gardenViewBtn.classList.toggle("active", viewMode === "garden");
@@ -3797,7 +3798,7 @@
       if (!state.semesters.length) {
         const empty = document.createElement("div");
         empty.className = "empty";
-        empty.textContent = "还没有学习阶段。可以添加大学学期或备考模块。";
+        empty.textContent = t("还没有学习阶段。可以添加大学学期或备考模块。");
         els.courses.appendChild(empty);
         return;
       }
@@ -3840,7 +3841,7 @@
       button.className = "paste-zone";
       button.type = "button";
       button.dataset.action = action;
-      button.textContent = label;
+      button.textContent = t(label);
       return button;
     }
 
@@ -4581,7 +4582,7 @@
 
     function openEditModal(title, fields, onSave) {
       editContext = onSave;
-      els.modalTitle.textContent = title;
+      els.modalTitle.textContent = t(title);
       els.modalBody.replaceChildren();
 
       fields.forEach(field => {
@@ -4590,7 +4591,7 @@
 
         const label = document.createElement("label");
         label.setAttribute("for", field.name);
-        label.textContent = field.label;
+        label.textContent = t(field.label);
 
         const input = document.createElement(field.options ? "select" : field.multiline ? "textarea" : "input");
         input.className = field.multiline ? "textarea" : "input";
@@ -4600,7 +4601,7 @@
           field.options.forEach(option => {
             const element = document.createElement("option");
             element.value = option.value;
-            element.textContent = option.label;
+            element.textContent = t(option.label);
             input.appendChild(element);
           });
         } else if (!field.multiline) {
@@ -4612,13 +4613,13 @@
         if (field.max !== undefined) input.max = field.max;
         if (field.step !== undefined) input.step = field.step;
         if (field.checked !== undefined && input.type === "checkbox") input.checked = Boolean(field.checked);
-        if (field.placeholder) input.placeholder = field.placeholder;
+        if (field.placeholder) input.placeholder = t(field.placeholder);
 
         wrap.append(label, input);
         if (field.help) {
           const help = document.createElement("small");
           help.className = "focus-hint";
-          help.textContent = field.help;
+          help.textContent = t(field.help);
           wrap.appendChild(help);
         }
         els.modalBody.appendChild(wrap);
@@ -4842,7 +4843,7 @@
       if (!state.courseTemplates.length) {
         const empty = document.createElement("p");
         empty.className = "template-empty";
-        empty.textContent = "还没有保存的课程模板。";
+        empty.textContent = t("还没有保存的课程模板。");
         els.templateList.appendChild(empty);
         return;
       }
@@ -4856,12 +4857,12 @@
         item.innerHTML = `
           <div>
             <strong class="template-name"></strong>
-            <span class="template-meta">${categoryCount} 个分类 · ${taskCount} 个任务</span>
+            <span class="template-meta">${t(`${categoryCount} 个分类 · ${taskCount} 个任务`)}</span>
           </div>
           <div class="actions">
-            <button class="btn" type="button" data-action="use-template">使用</button>
-            <button class="btn secondary" type="button" data-action="rename-template">改名</button>
-            <button class="btn icon" type="button" data-action="delete-template" title="删除模板">×</button>
+            <button class="btn" type="button" data-action="use-template">${t("使用")}</button>
+            <button class="btn secondary" type="button" data-action="rename-template">${t("改名")}</button>
+            <button class="btn icon" type="button" data-action="delete-template" title="${t("删除模板")}">×</button>
           </div>
         `;
         item.querySelector(".template-name").textContent = template.name;
@@ -4881,12 +4882,12 @@
         item.innerHTML = `
           <div>
             <strong class="template-name"></strong>
-            <span class="template-meta">${kindLabel} · ${courseCount} 门课程 · ${taskCount} 个任务</span>
+            <span class="template-meta">${t(kindLabel)} · ${t(`${courseCount} 门课程`)} · ${t(`${taskCount} 个任务`)}</span>
           </div>
           <div class="actions">
-            <button class="btn" type="button" data-action="use-semester-template">添加阶段</button>
-            <button class="btn secondary" type="button" data-action="rename-semester-template">改名</button>
-            <button class="btn icon" type="button" data-action="delete-semester-template" title="删除模板">×</button>
+            <button class="btn" type="button" data-action="use-semester-template">${t("添加阶段")}</button>
+            <button class="btn secondary" type="button" data-action="rename-semester-template">${t("改名")}</button>
+            <button class="btn icon" type="button" data-action="delete-semester-template" title="${t("删除模板")}">×</button>
           </div>
         `;
         item.querySelector(".template-name").textContent = template.name;
@@ -5056,7 +5057,7 @@
           showToast("导入失败：这不是可识别的学习系统备份");
           return;
         }
-        if (!confirm("导入备份会替换当前浏览器里的学习数据，继续吗？")) return;
+        if (!confirm(t("导入备份会替换当前浏览器里的学习数据，继续吗？"))) return;
         state = importedState;
         resetHistory();
         saveState();
@@ -5823,7 +5824,7 @@
         ], values => saveSemesterTemplate(semester, values.name));
       }
 
-      if (action === "delete-semester" && semester && confirm(`删除学习阶段“${semester.name}”？`)) {
+      if (action === "delete-semester" && semester && confirm(t(`删除学习阶段“${semester.name}”？`))) {
         state.semesters = state.semesters.filter(item => item.id !== semester.id);
         commit("学习阶段已删除");
       }
@@ -5889,7 +5890,7 @@
         });
       }
 
-      if (action === "delete-course" && semester && course && confirm(`删除课程“${course.name}”？`)) {
+      if (action === "delete-course" && semester && course && confirm(t(`删除课程“${course.name}”？`))) {
         semester.courses = semester.courses.filter(item => item.id !== course.id);
         commit("课程已删除");
       }
@@ -5962,7 +5963,7 @@
         });
       }
 
-      if (action === "delete-category" && course && category && confirm(`删除分类“${category.name}”？`)) {
+      if (action === "delete-category" && course && category && confirm(t(`删除分类“${category.name}”？`))) {
         course.categories = course.categories.filter(item => item.id !== category.id);
         commit("分类已删除");
       }
@@ -6095,7 +6096,7 @@
         });
       }
 
-      if (action === "delete-template" && confirm(`删除课程模板“${template.name}”？`)) {
+      if (action === "delete-template" && confirm(t(`删除课程模板“${template.name}”？`))) {
         state.courseTemplates = state.courseTemplates.filter(entry => entry.id !== template.id);
         commit("课程模板已删除");
         renderTemplateList();
@@ -6127,7 +6128,7 @@
         });
       }
 
-      if (action === "delete-semester-template" && confirm(`删除阶段模板“${template.name}”？`)) {
+      if (action === "delete-semester-template" && confirm(t(`删除阶段模板“${template.name}”？`))) {
         state.semesterTemplates = state.semesterTemplates.filter(entry => entry.id !== template.id);
         commit("阶段模板已删除");
         renderSemesterTemplateList();
@@ -6221,6 +6222,5 @@
     render();
     if (!state.ownerName && !READ_ONLY_LINK) openWelcomeModal();
   </script>
-  <script src="i18n.js"></script>
 </body>
 </html>

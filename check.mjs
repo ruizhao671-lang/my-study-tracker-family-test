@@ -49,6 +49,27 @@ function restStateAt(nowMinute, startMinute, endMinute, extension) {
   return createRestFunction({ timer }, () => "2026-06-29", () => nowMinute)();
 }
 
+const translationKeys = new Set(
+  [...files.i18n.matchAll(/^\s*"([^"]+)"\s*:/gm)].map(match => match[1])
+);
+const intentionalStoredChinese = new Set([
+  "我的第一学期（示例，可随便修改或删除）",
+  "我的第四学期",
+  "示例学期（可以随便修改或删除）",
+  "通用考试学期"
+]);
+function untranslatedChineseLiterals(source) {
+  return [...source.matchAll(/(["`])((?:(?!\1).)*[\p{Script=Han}](?:(?!\1).)*)\1/gu)]
+    .map(match => match[2])
+    .filter(value => !value.includes("${") && !value.includes("<") && value.length < 180)
+    .filter(value => !translationKeys.has(value) && !intentionalStoredChinese.has(value));
+}
+const untranslatedUiLiterals = [
+  ...untranslatedChineseLiterals(files.online),
+  ...untranslatedChineseLiterals(files.cloud),
+  ...untranslatedChineseLiterals(files.bootstrap)
+];
+
 const checks = [
   ["稳定版仍使用原存储键", files.stable.includes('const STORAGE_KEY = "study-tracker-state-v2"')],
   ["联网版使用独立存储键", files.online.includes('const STORAGE_KEY = "study-tracker-online-state-v1"')],
@@ -59,7 +80,29 @@ const checks = [
   ["首次欢迎窗口姓名输入不触发浏览器真实姓名自动填充", files.online.includes('id="welcomeForm" autocomplete="off"') && files.online.includes('name="studySpaceLabel"') && files.online.includes('autocomplete="new-password"') && !files.online.includes('id="ownerName" name="ownerName"')],
   ["语言切换不修改用户数据并支持动态界面", files.i18n.includes("MutationObserver") && files.i18n.includes("translateElement(document)")],
   ["记住 English 后首次加载会重新渲染动态内容", files.i18n.includes("function start()") && files.i18n.includes("window.studyTrackerBridge?.render?.()") && files.i18n.includes("queueMicrotask(() => translateElement(document))")],
+  ["翻译模块在应用首次渲染前加载", files.online.indexOf('<script src="i18n.js"></script>') < files.online.indexOf("<script>\n    const STORAGE_KEY") && files.online.match(/<script src="i18n\.js"><\/script>/g)?.length === 1],
   ["语言切换只在翻译确实变化时改写选项并防止无限循环", files.i18n.includes('if (translated !== value) element.textContent = translated;') && files.i18n.includes("finally {")],
+  ["动态编辑弹窗统一翻译标题标签选项占位文案与帮助文案", [
+    "els.modalTitle.textContent = t(title);",
+    "label.textContent = t(field.label);",
+    "element.textContent = t(option.label);",
+    "input.placeholder = t(field.placeholder);",
+    "help.textContent = t(field.help);"
+  ].every(fragment => files.online.includes(fragment))],
+  ["截图涉及的考试计时模板与备注附件英文文案齐全", [
+    '"备注/附件": "Notes/attachments"',
+    '"添加考试": "Add exam"',
+    '"手动添加学习时段": "Add study period manually"',
+    '"修改模板名称": "Rename template"',
+    '"模板名称": "Template name"',
+    '"考试地点": "Exam location"',
+    '"考试要求": "Exam requirements"',
+    '"任务状态": "Task status"',
+    '"还没有保存的课程模板。": "No course templates saved yet."'
+  ].every(fragment => files.i18n.includes(fragment))],
+  ["课程与阶段模板列表直接本地化数量按钮和提示", files.online.includes('t(`${categoryCount} 个分类 · ${taskCount} 个任务`)') && files.online.includes('t(`${courseCount} 门课程`)') && files.online.includes('${t("使用")}') && files.online.includes('${t("改名")}')],
+  ["动态文字变化会触发翻译观察", files.i18n.includes('record.type === "characterData"') && files.i18n.includes("characterData: true")],
+  ["界面源码中的中文文字都有英文词条或明确属于历史数据", untranslatedUiLiterals.length === 0],
   ["英文只读分享窗口不再残留中文说明", files.i18n.includes('"只有拿到链接的人可以查看。家人不能修改内容，你也可以随时撤回链接。": "Only people with the link can view it.')],
   ["顶部阶段工具栏支持英文长文案自动换行", files.online.includes(".toolbar {") && files.online.includes("flex-wrap: wrap;") && files.online.includes(".toolbar #semesterName")],
   ["动态同步时间可以从英文切回中文", files.i18n.includes('[/^Synced to cloud · (.+)$/, "已同步到云端 · $1"]')],

@@ -53,6 +53,8 @@ async def security_headers(request: Request, call_next: Any) -> Any:
     response.headers["Permissions-Policy"] = "camera=(), microphone=(), geolocation=()"
     if request.url.path.startswith("/api/"):
         response.headers["Cache-Control"] = "no-store"
+    else:
+        response.headers["Cache-Control"] = "no-cache"
     return response
 
 

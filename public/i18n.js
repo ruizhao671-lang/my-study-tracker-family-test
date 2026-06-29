@@ -64,6 +64,7 @@
     "学习阶段开始日期": "Study stage start date",
     "学习阶段结束日期": "Study stage end date",
     "本学习阶段你已经专注学习": "You have focused-study for",
+    "本学习阶段你已经专注学习 0 天啦！": "You have focused-study for 0 days in this study stage!",
     "天啦！": "days in this study stage!",
     "先创建一个学习阶段，再设置专注学习计划。": "Create a study stage first, then set a focus study plan.",
     "按自然日 00:00 到 24:00 统计；今天修改每日目标，只影响今天和未来。": "Count by natural days from 00:00 to 24:00. Changes made today only affect today and future days.",
@@ -189,6 +190,12 @@
     "数据结构": "Data structures",
     "练习项目": "Practice project",
     "复习笔记": "Revision notes",
+    "第 1 章": "Chapter 1",
+    "第 2 章": "Chapter 2",
+    "第 3 章": "Chapter 3",
+    "习题 1": "Exercise 1",
+    "习题 2": "Exercise 2",
+    "错题整理": "Review mistakes",
     "模电": "Analog Electronics",
     "数电": "Digital Electronics",
     "数学": "Mathematics",
@@ -301,13 +308,21 @@
     "数据备份已导入": "Backup imported",
     "保存阶段模板": "Save stage template",
     "保存课程模板": "Save course template",
+    "修改模板名称": "Rename template",
+    "重命名阶段模板": "Rename stage template",
     "模板名称": "Template name",
+    "模板名称已更新": "Template name updated",
+    "阶段模板名称已更新": "Stage template name updated",
+    "课程模板已删除": "Course template deleted",
+    "阶段模板已删除": "Stage template deleted",
+    "还没有保存的课程模板。": "No course templates saved yet.",
     "课程名称": "Course name",
     "课程标签（可选，例如专业课、公共课）": "Course tag (optional, e.g. major subject or general subject)",
     "学习阶段名称": "Study stage name",
     "分类名称": "Category name",
     "第一栏": "First field",
     "第二栏": "Second field",
+    "第二栏已更新": "Second field updated",
     "编辑学期": "Edit stage",
     "编辑课程": "Edit course",
     "编辑分类": "Edit category",
@@ -350,6 +365,7 @@
     "链接已复制。": "Link copied.",
     "只读链接": "Read-only link",
     "语言": "Language",
+    "板块切换": "Section switcher",
     "学习系统记录": "Study progress",
     "学习进度记录": "Study progress",
     "学习计时": "Study timer",
@@ -442,8 +458,51 @@
     "复制任务": "Copy task",
     "删除任务": "Delete task",
     "删除模板": "Delete template",
+    "放置课程模板至上方": "Place course template above",
+    "放置课程模板至下方": "Place course template below",
+    "放置课程模板至此": "Place course template here",
+    "粘贴学习阶段到上方": "Paste study stage above",
+    "粘贴学习阶段到下方": "Paste study stage below",
+    "粘贴课程到上方": "Paste course above",
+    "粘贴课程到下方": "Paste course below",
+    "粘贴课程到这个学习阶段": "Paste course into this study stage",
+    "粘贴分类到上方": "Paste category above",
+    "粘贴分类到下方": "Paste category below",
+    "粘贴任务到上方": "Paste task above",
+    "粘贴任务到下方": "Paste task below",
+    "学习阶段已粘贴": "Study stage pasted",
+    "课程已粘贴": "Course pasted",
+    "分类已粘贴": "Category pasted",
+    "任务已粘贴": "Task pasted",
+    "已取消放置课程模板": "Course template placement cancelled",
+    "未命名学习阶段": "Untitled study stage",
+    "未命名课程": "Untitled course",
+    "未命名分类": "Untitled category",
+    "未命名模板": "Untitled template",
+    "未命名阶段模板": "Untitled stage template",
+    "我": "Me",
+    "学习": "Study",
+    "保存失败：附件可能太大，请删除大文件后重试": "Save failed: an attachment may be too large. Remove large files and try again.",
+    "导入失败：这不是可识别的学习系统备份": "Import failed: this is not a recognized Study Tracker backup.",
+    "导入备份会替换当前浏览器里的学习数据，继续吗？": "Importing this backup will replace the study data in this browser. Continue?",
+    "导入失败：请确认文件是 JSON 备份": "Import failed: make sure the file is a JSON backup.",
+    "这个浏览器暂时不支持背景音": "This browser does not currently support background audio.",
+    "这里只支持上传图片或 PDF": "Only images or PDF files can be uploaded here.",
+    "单个附件目前不能超过 1 MB": "Each attachment must currently be no larger than 1 MB.",
+    "每个任务最多保存 5 个附件": "Each task can store up to 5 attachments.",
     "联网测试版": "Online test version",
     "正在准备云端连接…": "Preparing cloud connection…",
+    "连接云端": "Connect to cloud",
+    "把测试版连接到互联网": "Connect the test version to the internet",
+    "网页功能已经准备好了。当前需要启动我们自己的 FastAPI 后端；发布后才会变成其他设备可访问的网址。": "The web app is ready. Start our FastAPI backend now; after deployment, other devices will be able to access it.",
+    "本机测试 FastAPI": "Test FastAPI locally",
+    "先检查账号隔离、自动保存和只读分享，测试数据库保存在项目目录外的私有数据文件中。": "First test account isolation, automatic saving, and read-only sharing. The test database is stored in a private data file outside the project folder.",
+    "选择免费测试服务器": "Choose a free test server",
+    "部署后让中国大陆、德国和其他地区分别实际测试访问速度与稳定性。": "After deployment, test access speed and stability from mainland China, Germany, and other regions.",
+    "再决定正式部署方案": "Then choose the production deployment",
+    "测试版不绑定某一家平台，后续可以迁移服务器和 PostgreSQL 数据库。": "The test version is not tied to one provider. The server and PostgreSQL database can be migrated later.",
+    "原来的本地版没有被修改。FastAPI 未启动时，你仍然可以在这里继续试用，内容会保存在当前浏览器。": "The original local version has not been changed. When FastAPI is not running, you can still use this page and your content will be saved in this browser.",
+    "知道了": "Got it",
     "FastAPI 后端尚未启动": "FastAPI backend is not running",
     "你的内容仍会保存在当前浏览器。启动测试后端后，账号、同步和家人分享才会启用。": "Your content is still saved in this browser. Accounts, sync, and family sharing become available after the test backend starts.",
     "当前测试空间仅保存在这个浏览器。登录后会同步到你的账号空间。": "This test space is currently saved only in this browser. Log in to sync it to your account.",
@@ -503,6 +562,9 @@
     [/^(\d+) 分钟 (\d+) 秒$/, "$1 min $2 sec"],
     [/^(\d+) 小时 (\d+) 分钟 (\d+) 秒$/, "$1 h $2 min $3 sec"],
     [/^总体进度：(\d+)\/(\d+)$/, "Overall progress: $1/$2"],
+    [/^生成时间：(.+)$/, "Generated: $1"],
+    [/^备注：(.+)$/, "Notes: $1"],
+    [/^附件：(\d+) 个$/, "Attachments: $1"],
     [/^已同步到云端 · (.+)$/, "Synced to cloud · $1"],
     [/^总进度：(\d+)\/(\d+)$/, "Progress: $1/$2"],
     [/^(.+)的学习系统$/, "$1's Study Tracker"],
@@ -514,6 +576,25 @@
     [/^已添加 (\d+) 个课程$/, "Added $1 courses"],
     [/^已添加 (\d+) 个分类$/, "Added $1 categories"],
     [/^已添加 (\d+) 个任务$/, "Added $1 tasks"],
+    [/^(\d+) 个分类 · (\d+) 个任务$/, "$1 categories · $2 tasks"],
+    [/^(\d+) 门课程$/, "$1 courses"],
+    [/^(\d+) 个任务$/, "$1 tasks"],
+    [/^学习阶段已复制，选择目标位置粘贴$/, "Study stage copied. Choose where to paste it"],
+    [/^课程已复制，选择目标位置粘贴$/, "Course copied. Choose where to paste it"],
+    [/^分类已复制，选择目标位置粘贴$/, "Category copied. Choose where to paste it"],
+    [/^任务已复制，选择目标位置粘贴$/, "Task copied. Choose where to paste it"],
+    [/^课程模板“(.+)”已放置$/, "Course template “$1” placed"],
+    [/^课程模板“(.+)”已更新$/, "Course template “$1” updated"],
+    [/^课程模板“(.+)”已保存$/, "Course template “$1” saved"],
+    [/^阶段模板“(.+)”已更新$/, "Stage template “$1” updated"],
+    [/^阶段模板“(.+)”已保存$/, "Stage template “$1” saved"],
+    [/^已添加阶段模板“(.+)”$/, "Added stage template “$1”"],
+    [/^“(.+)”待放置；点击其他地方将取消$/, "“$1” is ready to place; click elsewhere to cancel"],
+    [/^删除课程模板“(.+)”？$/, "Delete course template “$1”?"],
+    [/^删除阶段模板“(.+)”？$/, "Delete stage template “$1”?"],
+    [/^删除学习阶段“(.+)”？$/, "Delete study stage “$1”?"],
+    [/^删除课程“(.+)”？$/, "Delete course “$1”?"],
+    [/^删除分类“(.+)”？$/, "Delete category “$1”?"],
     [/^总计 (\d+) 秒$/, "Total $1 sec"],
     [/^总计 (\d+) 分钟$/, "Total $1 min"],
     [/^总计 (\d+) 小时$/, "Total $1 h"],
@@ -542,6 +623,9 @@
   ];
   const reversePatterns = [
     [/^Overall progress: (\d+)\/(\d+)$/, "总体进度：$1/$2"],
+    [/^Generated: (.+)$/, "生成时间：$1"],
+    [/^Notes: (.+)$/, "备注：$1"],
+    [/^Attachments: (\d+)$/, "附件：$1 个"],
     [/^Synced to cloud · (.+)$/, "已同步到云端 · $1"],
     [/^Progress: (\d+)\/(\d+)$/, "总进度：$1/$2"],
     [/^(.+)'s Study Tracker$/, "$1的学习系统"],
@@ -553,6 +637,25 @@
     [/^Added (\d+) courses$/, "已添加 $1 个课程"],
     [/^Added (\d+) categories$/, "已添加 $1 个分类"],
     [/^Added (\d+) tasks$/, "已添加 $1 个任务"],
+    [/^(\d+) categories · (\d+) tasks$/, "$1 个分类 · $2 个任务"],
+    [/^(\d+) courses$/, "$1 门课程"],
+    [/^(\d+) tasks$/, "$1 个任务"],
+    [/^Study stage copied\. Choose where to paste it$/, "学习阶段已复制，选择目标位置粘贴"],
+    [/^Course copied\. Choose where to paste it$/, "课程已复制，选择目标位置粘贴"],
+    [/^Category copied\. Choose where to paste it$/, "分类已复制，选择目标位置粘贴"],
+    [/^Task copied\. Choose where to paste it$/, "任务已复制，选择目标位置粘贴"],
+    [/^Course template “(.+)” placed$/, "课程模板“$1”已放置"],
+    [/^Course template “(.+)” updated$/, "课程模板“$1”已更新"],
+    [/^Course template “(.+)” saved$/, "课程模板“$1”已保存"],
+    [/^Stage template “(.+)” updated$/, "阶段模板“$1”已更新"],
+    [/^Stage template “(.+)” saved$/, "阶段模板“$1”已保存"],
+    [/^Added stage template “(.+)”$/, "已添加阶段模板“$1”"],
+    [/^“(.+)” is ready to place; click elsewhere to cancel$/, "“$1”待放置；点击其他地方将取消"],
+    [/^Delete course template “(.+)”\?$/, "删除课程模板“$1”？"],
+    [/^Delete stage template “(.+)”\?$/, "删除阶段模板“$1”？"],
+    [/^Delete study stage “(.+)”\?$/, "删除学习阶段“$1”？"],
+    [/^Delete course “(.+)”\?$/, "删除课程“$1”？"],
+    [/^Delete category “(.+)”\?$/, "删除分类“$1”？"],
     [/^Total (\d+) sec$/, "总计 $1 秒"],
     [/^Total (\d+) min$/, "总计 $1 分钟"],
     [/^Total (\d+) h$/, "总计 $1 小时"],
@@ -689,10 +792,16 @@
 
   const observer = new MutationObserver(records => {
     if (translating) return;
-    records.forEach(record => record.addedNodes.forEach(node => {
-      if (node.nodeType === Node.ELEMENT_NODE) translateElement(node);
-      if (node.nodeType === Node.TEXT_NODE && node.parentElement) translateElement(node.parentElement);
-    }));
+    records.forEach(record => {
+      if (record.type === "characterData" && record.target.parentElement) {
+        translateElement(record.target.parentElement);
+        return;
+      }
+      record.addedNodes.forEach(node => {
+        if (node.nodeType === Node.ELEMENT_NODE) translateElement(node);
+        if (node.nodeType === Node.TEXT_NODE && node.parentElement) translateElement(node.parentElement);
+      });
+    });
   });
 
   function start() {
@@ -700,7 +809,7 @@
     translateElement(document);
     window.studyTrackerBridge?.render?.();
     queueMicrotask(() => translateElement(document));
-    observer.observe(document.body, { childList: true, subtree: true });
+    observer.observe(document.body, { childList: true, characterData: true, subtree: true });
   }
 
   window.studyI18n = {
