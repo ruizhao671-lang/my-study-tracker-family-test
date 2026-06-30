@@ -160,6 +160,7 @@ const checks = [
   ["学习计时跨过 24 点的时间轴显示为次日而不是 25 点", files.online.includes("function formatTimelineHour") && files.online.includes("totalMinutes) / 1440") && files.online.includes("minuteOfDay") && files.online.includes('t("次日")') && files.i18n.includes('"次日": "Next day"')],
   ["学习计时不满一分钟正常保存并按秒显示明细", files.online.includes("function formatDurationWithSeconds") && files.online.includes("Math.max(1, sumSegments") && !files.online.includes("本次计时太短，已取消")],
   ["学习计时不满一分钟记录仍能显示编辑和删除操作", files.online.includes("min-height: 86px;") && files.online.includes("overflow: visible;") && files.online.includes("Math.max(94,") && files.online.includes('data-action="edit-time-session"') && files.online.includes('data-action="delete-time-session"')],
+  ["重叠时间块点击后临时置于最上层且不写入学习数据", files.online.includes(".time-block.foreground") && files.online.includes("z-index: 20;") && files.online.includes("function bringTimelineBlockToFront(block)") && files.online.includes("if (block) bringTimelineBlockToFront(block)") && !files.online.includes("foregroundTimelineBlockId")],
   ["学习计时跨自然日会拆分并显示分段标记", files.online.includes("function splitSegmentByDay") && files.online.includes("partIndex") && files.online.includes("time-part")],
   ["学习计时暂停后会在详情中显示多个学习段", files.online.includes("segments: [{ startAt: now, endAt: null }]") && files.online.includes("function formatSegmentRanges") && files.online.includes("学习段")],
   ["学习计时英文包含新增关联层级与秒级时长规则", files.i18n.includes("Linked task (optional)") && files.i18n.includes("Also mark this task as done after saving") && files.i18n.includes("$1 sec")],

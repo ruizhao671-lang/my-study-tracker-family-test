@@ -646,6 +646,7 @@
       position: absolute;
       left: 66px;
       right: 10px;
+      z-index: 1;
       min-height: 86px;
       padding: 8px 10px;
       border: 1px solid #a8cac2;
@@ -654,6 +655,11 @@
       background: #e9f5f2;
       box-shadow: 0 6px 14px rgba(18, 38, 34, 0.08);
       overflow: visible;
+    }
+
+    .time-block.foreground {
+      z-index: 20;
+      box-shadow: 0 0 0 3px rgba(22, 134, 83, 0.18), 0 10px 22px rgba(18, 38, 34, 0.16);
     }
 
     .time-block.exam-block {
@@ -3678,6 +3684,14 @@
       els.timerDayTimeline.innerHTML = parts.join("");
     }
 
+    function bringTimelineBlockToFront(block) {
+      if (!block?.classList.contains("time-block")) return;
+      els.timerDayTimeline.querySelectorAll(".time-block.foreground").forEach(item => {
+        item.classList.remove("foreground");
+      });
+      block.classList.add("foreground");
+    }
+
     function renderTimer() {
       if (!state.timer) state.timer = normalizeTimer();
       els.timerDayStart.value = minutesToTime(state.timer.scheduleStartMinute ?? 6 * 60);
@@ -5699,7 +5713,9 @@
       selectTimerDate(button.dataset.date);
     });
     els.timerDayTimeline.addEventListener("click", event => {
-      const action = event.target.dataset.action;
+      const block = event.target.closest(".time-block");
+      if (block) bringTimelineBlockToFront(block);
+      const action = event.target.closest("[data-action]")?.dataset.action;
       if (!action) return;
       const itemBlock = event.target.closest("[data-calendar-item-id]");
       const calendarItem = itemBlock ? findCalendarItem(itemBlock.dataset.calendarItemId) : null;
@@ -5708,7 +5724,6 @@
         if (action === "delete-calendar-item") deleteCalendarItem(calendarItem);
         return;
       }
-      const block = event.target.closest(".time-block");
       const session = block ? findTimeSession(block.dataset.sessionId) : null;
       if (!session) return;
       if (action === "edit-time-session") editTimeSession(session);
