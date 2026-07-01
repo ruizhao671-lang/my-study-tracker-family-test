@@ -643,9 +643,11 @@
     }
 
     .time-block {
+      --timeline-right: 10px;
+      --overlap-offset: 0px;
       position: absolute;
       left: 66px;
-      right: 10px;
+      right: calc(var(--timeline-right) + var(--overlap-offset));
       z-index: 1;
       min-height: 86px;
       padding: 8px 10px;
@@ -658,7 +660,8 @@
     }
 
     .time-block.foreground {
-      z-index: 20;
+      right: var(--timeline-right);
+      z-index: 20 !important;
       box-shadow: 0 0 0 3px rgba(22, 134, 83, 0.18), 0 10px 22px rgba(18, 38, 34, 0.16);
     }
 
@@ -1787,6 +1790,38 @@
       border-top: 1px solid var(--line);
     }
 
+    .rest-dialog {
+      width: min(680px, 100%);
+    }
+
+    .rest-dialog .dialog-header,
+    .rest-dialog .dialog-body,
+    .rest-dialog .dialog-footer,
+    .rest-dialog .field,
+    .rest-dialog .muted {
+      min-width: 0;
+    }
+
+    .rest-dialog .muted {
+      margin: 0;
+      white-space: normal;
+      overflow-wrap: anywhere;
+    }
+
+    .rest-dialog .dialog-footer {
+      flex-wrap: wrap;
+    }
+
+    .rest-dialog .dialog-footer .btn {
+      flex: 1 1 180px;
+      min-width: 0;
+      height: auto;
+      padding-block: 10px;
+      white-space: normal;
+      overflow-wrap: anywhere;
+      text-align: center;
+    }
+
     .toast {
       position: fixed;
       right: 18px;
@@ -1924,8 +1959,8 @@
       }
 
       .time-block {
+        --timeline-right: 7px;
         left: 54px;
-        right: 7px;
       }
 
       .timeline-hour span {
@@ -2033,7 +2068,7 @@
               <input class="input" id="timerDayStart" type="time" value="06:00">
             </div>
             <div class="field">
-              <label for="timerDayEnd">睡觉觉时间</label>
+              <label for="timerDayEnd">结束工作时间</label>
               <input class="input" id="timerDayEnd" type="time" value="23:00">
             </div>
             <div class="field">
@@ -2203,19 +2238,19 @@
   <div class="modal" id="restModal" role="dialog" aria-modal="true" aria-labelledby="restModalTitle">
     <section class="dialog rest-dialog">
       <div class="dialog-header">
-        <h2 id="restModalTitle">现在是休息时间哦</h2>
+        <h2 id="restModalTitle">到收工时间啦</h2>
       </div>
       <div class="dialog-body">
-        <p class="muted">今天的学习已经超过你设定的作息时间。你可以现在结束，也可以临时延长今天的课表。</p>
+        <p class="muted">今天安排的学习或工作时间已经结束。你可以现在收工，也可以临时延长今天的时间安排。</p>
         <div class="field">
-          <label for="restExtendMinutes">再学多少分钟</label>
+          <label for="restExtendMinutes">再专注多少分钟</label>
           <input class="input" id="restExtendMinutes" type="number" min="5" max="240" step="5" value="30">
         </div>
       </div>
       <div class="dialog-footer">
-        <button class="btn secondary" type="button" id="restSleepBtn">好的，这就去睡</button>
-        <button class="btn secondary" type="button" id="restExtendBtn">再学一会儿</button>
-        <button class="btn" type="button" id="restExceptionBtn">今天破例熬夜</button>
+        <button class="btn secondary" type="button" id="restSleepBtn">好的，今天收工</button>
+        <button class="btn secondary" type="button" id="restExtendBtn">再专注一会儿</button>
+        <button class="btn" type="button" id="restExceptionBtn">今天延长安排</button>
       </div>
     </section>
   </div>
@@ -3682,6 +3717,40 @@
         parts.push(`<p class="empty" style="margin:18px 0 0 66px;">${t("这一天还没有学习时间记录。")}</p>`);
       }
       els.timerDayTimeline.innerHTML = parts.join("");
+      layoutOverlappingTimelineBlocks();
+    }
+
+    function calculateTimelineOverlapDepths(items, minimumOverlap = 36) {
+      const sortedItems = [...items].sort((a, b) => a.top - b.top || a.order - b.order);
+      const active = [];
+      const depths = new Map();
+      sortedItems.forEach(item => {
+        for (let index = active.length - 1; index >= 0; index -= 1) {
+          if (active[index].bottom - item.top < minimumOverlap) active.splice(index, 1);
+        }
+        const usedDepths = new Set(active.map(entry => depths.get(entry.id) || 0));
+        let depth = 0;
+        while (usedDepths.has(depth)) depth += 1;
+        depths.set(item.id, depth);
+        active.push(item);
+      });
+      return depths;
+    }
+
+    function layoutOverlappingTimelineBlocks() {
+      const blocks = [...els.timerDayTimeline.querySelectorAll(".time-block")];
+      const items = blocks.map((block, order) => ({
+        id: String(order),
+        order,
+        top: Number.parseFloat(block.style.top) || 0,
+        bottom: (Number.parseFloat(block.style.top) || 0) + (Number.parseFloat(block.style.height) || block.offsetHeight)
+      }));
+      const depths = calculateTimelineOverlapDepths(items);
+      blocks.forEach((block, order) => {
+        const depth = Math.min(depths.get(String(order)) || 0, 5);
+        block.style.setProperty("--overlap-offset", `${depth * 26}px`);
+        block.style.zIndex = String(depth + 1);
+      });
     }
 
     function bringTimelineBlockToFront(block) {
@@ -3690,6 +3759,12 @@
         item.classList.remove("foreground");
       });
       block.classList.add("foreground");
+    }
+
+    function restoreTimelineBlockLayout() {
+      els.timerDayTimeline.querySelectorAll(".time-block.foreground").forEach(item => {
+        item.classList.remove("foreground");
+      });
     }
 
     function renderTimer() {
@@ -6087,6 +6162,12 @@
       if (event.target.closest("[data-action='select-calendar-item']")) return;
       selectedCalendarItemId = "";
       if (activePanel === "timer") renderTimer();
+    });
+
+    document.addEventListener("click", event => {
+      if (event instanceof MouseEvent && event.button !== 0) return;
+      if (event.target.closest("#timerDayTimeline .time-block")) return;
+      restoreTimelineBlockLayout();
     });
 
     els.templateList.addEventListener("click", event => {

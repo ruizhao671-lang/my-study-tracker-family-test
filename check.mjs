@@ -49,6 +49,16 @@ function restStateAt(nowMinute, startMinute, endMinute, extension) {
   return createRestFunction({ timer }, () => "2026-06-29", () => nowMinute)();
 }
 
+const overlapFunctionSource = extractNamedFunction(files.online, "calculateTimelineOverlapDepths");
+const calculateOverlapDepths = overlapFunctionSource
+  ? new Function(`${overlapFunctionSource}; return calculateTimelineOverlapDepths;`)()
+  : null;
+function overlapDepthList(items) {
+  if (!calculateOverlapDepths) return [];
+  const depths = calculateOverlapDepths(items);
+  return items.map(item => depths.get(item.id));
+}
+
 const translationKeys = new Set(
   [...files.i18n.matchAll(/^\s*"([^"]+)"\s*:/gm)].map(match => match[1])
 );
@@ -160,7 +170,15 @@ const checks = [
   ["学习计时跨过 24 点的时间轴显示为次日而不是 25 点", files.online.includes("function formatTimelineHour") && files.online.includes("totalMinutes) / 1440") && files.online.includes("minuteOfDay") && files.online.includes('t("次日")') && files.i18n.includes('"次日": "Next day"')],
   ["学习计时不满一分钟正常保存并按秒显示明细", files.online.includes("function formatDurationWithSeconds") && files.online.includes("Math.max(1, sumSegments") && !files.online.includes("本次计时太短，已取消")],
   ["学习计时不满一分钟记录仍能显示编辑和删除操作", files.online.includes("min-height: 86px;") && files.online.includes("overflow: visible;") && files.online.includes("Math.max(94,") && files.online.includes('data-action="edit-time-session"') && files.online.includes('data-action="delete-time-session"')],
-  ["重叠时间块点击后临时置于最上层且不写入学习数据", files.online.includes(".time-block.foreground") && files.online.includes("z-index: 20;") && files.online.includes("function bringTimelineBlockToFront(block)") && files.online.includes("if (block) bringTimelineBlockToFront(block)") && !files.online.includes("foregroundTimelineBlockId")],
+  ["重叠时间块使用阶梯宽度，点击置顶且点外恢复", files.online.includes("function calculateTimelineOverlapDepths") && files.online.includes("function layoutOverlappingTimelineBlocks") && files.online.includes("--overlap-offset") && files.online.includes("function bringTimelineBlockToFront(block)") && files.online.includes("function restoreTimelineBlockLayout()") && files.online.includes('#timerDayTimeline .time-block') && !files.online.includes("foregroundTimelineBlockId")],
+  ["时间块只有明显重叠才缩进，三层重叠依次形成阶梯", JSON.stringify(overlapDepthList([
+    { id: "a", order: 0, top: 0, bottom: 160 },
+    { id: "b", order: 1, top: 20, bottom: 130 },
+    { id: "c", order: 2, top: 40, bottom: 120 }
+  ])) === JSON.stringify([0, 1, 2]) && JSON.stringify(overlapDepthList([
+    { id: "a", order: 0, top: 0, bottom: 100 },
+    { id: "b", order: 1, top: 80, bottom: 180 }
+  ])) === JSON.stringify([0, 0])],
   ["学习计时跨自然日会拆分并显示分段标记", files.online.includes("function splitSegmentByDay") && files.online.includes("partIndex") && files.online.includes("time-part")],
   ["学习计时暂停后会在详情中显示多个学习段", files.online.includes("segments: [{ startAt: now, endAt: null }]") && files.online.includes("function formatSegmentRanges") && files.online.includes("学习段")],
   ["学习计时英文包含新增关联层级与秒级时长规则", files.i18n.includes("Linked task (optional)") && files.i18n.includes("Also mark this task as done after saving") && files.i18n.includes("$1 sec")],
@@ -174,7 +192,8 @@ const checks = [
   ["新建阶段放在底部且新建课程放在顶部", files.online.includes("state.semesters.push(...names.map") && files.online.includes("semester.courses.unshift(...names.map")],
   ["分类层级支持备注、附件、折叠与只读分享脱敏", files.online.includes('data-action="update-category-note"') && files.online.includes('data-action="add-category-attachment"') && files.online.includes('data-action="toggle-category-info"') && files.online.includes("renderAttachments(categoryEl.querySelector(\".attachments\"), category, \"category\")") && files.online.includes("category.attachments = Array.isArray(category.attachments)") && files.core.includes("attachments: []")],
   ["学习计时支持作息时间、休息提醒和临时延长", files.online.includes('id="timerDayStart"') && files.online.includes('id="restModal"') && files.online.includes("function checkRestReminder()") && files.online.includes("dailyExtensions")],
-  ["学习计时作息标签使用开启一天和睡觉觉文案", files.online.includes("开启一天的时间") && files.online.includes("睡觉觉时间") && !files.online.includes(">课表开始时间</label>") && !files.online.includes(">休息提醒时间</label>")],
+  ["学习计时作息标签使用开启一天和结束工作文案", files.online.includes("开启一天的时间") && files.online.includes("结束工作时间") && files.i18n.includes('"结束工作时间": "Work end time"') && !files.online.includes("睡觉觉时间") && !files.online.includes(">课表开始时间</label>") && !files.online.includes(">休息提醒时间</label>")],
+  ["收工提醒弹窗中英文完整且长按钮可换行", files.online.includes("到收工时间啦") && files.i18n.includes('"到收工时间啦": "Time to wrap up"') && files.online.includes(".rest-dialog .dialog-footer .btn") && files.online.includes("white-space: normal;") && files.online.includes("flex-wrap: wrap;")],
   ["休息提醒会覆盖结束时间之后和开始时间之前", files.online.includes("function getRestReminderState()") && files.online.includes("nowMinute >= scheduleEndMinute || isBeforeStart") && files.online.includes('"before-start"')],
   ["零点睡觉时间保留为合法的 0 分钟边界", files.online.includes("state.timer.scheduleEndMinute ?? 23 * 60") && !files.online.includes("state.timer.scheduleEndMinute || 23 * 60")],
   ["修改作息会清除当天旧的临时延长和提醒状态", files.online.includes("const scheduleChanged = input === els.timerDayStart || input === els.timerDayEnd") && files.online.includes("delete state.timer.dailyExtensions[dateKey]") && files.online.includes('state.timer.restAlertDateKey = ""')],
@@ -190,7 +209,7 @@ const checks = [
   ["学习计时暂停有倒计时，到期自动保存", files.online.includes('id="timerPauseLimit"') && files.online.includes("pauseDeadlineAt") && files.online.includes("finishTimer();") && files.online.includes("已暂停 · 暂停倒计时")],
   ["暂停倒计时默认十五分钟并滚动选择一到六十分钟", files.online.includes('<select class="input" id="timerPauseLimit"></select>') && files.online.includes("function setupTimerPauseLimitOptions()") && files.online.includes("Array.from({ length: 60 }") && files.online.includes("pauseLimitMinutes: Math.min(60, Math.max(1, Number(timer.pauseLimitMinutes || 15)))")],
   ["暂停倒计时超时会自动保存但不完成关联任务并弹窗提醒", files.online.includes("finishTimer({ autoEndedByPause: true })") && files.online.includes("selection.markTaskDone = false") && files.online.includes('id="pauseExpiredModal"') && files.online.includes("openPauseExpiredModal()")],
-  ["学习计时新增作息与暂停文案已有英文翻译", files.i18n.includes("Start-the-day time") && files.i18n.includes("Sleepy time") && files.i18n.includes("Pause countdown (minutes)") && files.i18n.includes("Expected study time per day") && files.i18n.includes("Focus study plan") && files.i18n.includes("It is rest time now") && files.i18n.includes("Oops, you were away too long") && files.i18n.includes("Category notes: key points")],
+  ["学习计时新增作息与暂停文案已有英文翻译", files.i18n.includes("Start-the-day time") && files.i18n.includes("Work end time") && files.i18n.includes("Pause countdown (minutes)") && files.i18n.includes("Expected study time per day") && files.i18n.includes("Focus study plan") && files.i18n.includes("Time to wrap up") && files.i18n.includes("Oops, you were away too long") && files.i18n.includes("Category notes: key points")],
   ["本地测试服务器支持带空格的 D 盘路径", (await readFile("./dev-server.mjs", "utf8")).includes("decodeURIComponent")],
   ["FastAPI 后端提供健康检查", files.backend.includes('@app.get("/api/health")')],
   ["FastAPI 健康检查会验证数据库连接", files.backend.includes('db.execute("SELECT 1").fetchone()')],
