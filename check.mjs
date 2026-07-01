@@ -41,12 +41,30 @@ const createRestFunction = restFunctionSource
   : null;
 function restStateAt(nowMinute, startMinute, endMinute, extension) {
   if (!createRestFunction) return null;
+  const baseTime = new Date(2026, 5, 29, 0, 0, 0, 0).getTime();
+  const nowTime = baseTime + nowMinute * 60000;
+  const dateKeyForTime = time => {
+    const date = new Date(time);
+    return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}-${String(date.getDate()).padStart(2, "0")}`;
+  };
   const timer = {
     scheduleStartMinute: startMinute,
     scheduleEndMinute: endMinute,
     dailyExtensions: extension === undefined ? {} : { "2026-06-29": extension }
   };
-  return createRestFunction({ timer }, () => "2026-06-29", () => nowMinute)();
+  return createRestFunction(
+    { timer },
+    dateKeyForTime,
+    time => {
+      const date = new Date(time);
+      return date.getHours() * 60 + date.getMinutes();
+    }
+  )(nowTime);
+}
+
+function absoluteExtensionAt(untilMinute) {
+  const baseTime = new Date(2026, 5, 29, 0, 0, 0, 0).getTime();
+  return { untilAt: baseTime + untilMinute * 60000 };
 }
 
 const overlapFunctionSource = extractNamedFunction(files.online, "calculateTimelineOverlapDepths");
@@ -194,7 +212,7 @@ const checks = [
   ["学习计时支持作息时间、休息提醒和临时延长", files.online.includes('id="timerDayStart"') && files.online.includes('id="restModal"') && files.online.includes("function checkRestReminder()") && files.online.includes("dailyExtensions")],
   ["学习计时作息标签使用开启一天和结束工作文案", files.online.includes("开启一天的时间") && files.online.includes("结束工作时间") && files.i18n.includes('"结束工作时间": "Work end time"') && !files.online.includes("睡觉觉时间") && !files.online.includes(">课表开始时间</label>") && !files.online.includes(">休息提醒时间</label>")],
   ["收工提醒弹窗中英文完整且长按钮可换行", files.online.includes("到收工时间啦") && files.i18n.includes('"到收工时间啦": "Time to wrap up"') && files.online.includes(".rest-dialog .dialog-footer .btn") && files.online.includes("white-space: normal;") && files.online.includes("flex-wrap: wrap;")],
-  ["休息提醒会覆盖结束时间之后和开始时间之前", files.online.includes("function getRestReminderState()") && files.online.includes("nowMinute >= scheduleEndMinute || isBeforeStart") && files.online.includes('"before-start"')],
+  ["休息提醒覆盖正常工作时段之外且优先识别工作时段", files.online.includes("function getRestReminderState(time = Date.now())") && files.online.includes("const isScheduledTime") && files.online.includes("if (isScheduledTime)") && files.online.includes('"before-start"')],
   ["零点睡觉时间保留为合法的 0 分钟边界", files.online.includes("state.timer.scheduleEndMinute ?? 23 * 60") && !files.online.includes("state.timer.scheduleEndMinute || 23 * 60")],
   ["修改作息会清除当天旧的临时延长和提醒状态", files.online.includes("const scheduleChanged = input === els.timerDayStart || input === els.timerDayEnd") && files.online.includes("delete state.timer.dailyExtensions[dateKey]") && files.online.includes('state.timer.restAlertDateKey = ""')],
   ["开始和结束时间相同时不会落入零点循环", files.online.includes("if (scheduleEndMinute === startMinute)") && files.online.includes("same-time")],
@@ -202,6 +220,9 @@ const checks = [
   ["06:00 到 00:00 在 01:00 提醒休息", restStateAt(1 * 60, 6 * 60, 0)?.isRestTime === true],
   ["普通白天作息在学习时间内不提醒", restStateAt(12 * 60, 6 * 60, 23 * 60)?.isRestTime === false],
   ["00:00 到 00:00 不会形成全天提醒循环", restStateAt(12 * 60, 0, 0)?.isRestTime === false],
+  ["08:00 到 23:00 在下午 14:00 不受凌晨旧延长影响", restStateAt(14 * 60, 8 * 60, 23 * 60, 90)?.isRestTime === false],
+  ["凌晨临时延长到 01:30 只在截止后继续提醒", restStateAt(75, 8 * 60, 23 * 60, absoluteExtensionAt(90))?.isRestTime === false && restStateAt(100, 8 * 60, 23 * 60, absoluteExtensionAt(90))?.isRestTime === true],
+  ["跨午夜临时延长使用真实截止时间", restStateAt(24 * 60 + 10, 8 * 60, 23 * 60, absoluteExtensionAt(24 * 60 + 30))?.isRestTime === false && restStateAt(24 * 60 + 40, 8 * 60, 23 * 60, absoluteExtensionAt(24 * 60 + 30))?.isRestTime === true],
   ["学习计时支持按学习阶段设置每日目标和专注学习天数", files.online.includes('id="focusDailyGoalHours"') && files.online.includes('id="focusSemester"') && files.online.includes('id="focusStartDate"') && files.online.includes('id="focusEndDate"') && files.online.includes("function countFocusedDays")],
   ["专注学习计划位于日历侧栏并突出展示专注天数", files.online.includes('class="timer-side"') && files.online.indexOf('class="timer-calendar"') < files.online.indexOf('class="timer-focus-plan"') && files.online.includes("font-size: 24px") && files.online.indexOf('id="timerPauseLimit"') < files.online.indexOf('id="focusDailyGoalHours"')],
   ["每日学习目标使用目标历史，今天修改只影响今天和未来", files.online.includes("targetHistory") && files.online.includes("function setFocusDailyGoal") && files.online.includes("compareDateKeys(entry.fromDate, fromDate) < 0")],

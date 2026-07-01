@@ -3068,7 +3068,13 @@
 
     function getTimerDayRange(dateKey, sessions, calendarItems = []) {
       const scheduleStart = Number(state.timer.scheduleStartMinute ?? 6 * 60);
-      let scheduleEnd = Number(state.timer.dailyExtensions?.[dateKey] ?? state.timer.scheduleEndMinute ?? 23 * 60);
+      const extension = state.timer.dailyExtensions?.[dateKey];
+      const extensionEnd = extension && typeof extension === "object"
+        ? Math.ceil((Number(extension.untilAt) - dateFromKey(dateKey).getTime()) / 60000)
+        : Number(extension);
+      let scheduleEnd = Number.isFinite(extensionEnd)
+        ? extensionEnd
+        : Number(state.timer.scheduleEndMinute ?? 23 * 60);
       if (scheduleEnd <= scheduleStart) scheduleEnd += 1440;
       const sessionStarts = sessions.map(session => minuteWithinDate(session.startAt, dateKey));
       const sessionEnds = sessions.map(session => minuteWithinDate(session.endAt, dateKey, true));
@@ -3811,20 +3817,25 @@
       els.pauseExpiredOkBtn.focus();
     }
 
-    function getRestReminderState() {
-      const dateKey = dateKeyFromTime();
+    function getRestReminderState(time = Date.now()) {
+      const dateKey = dateKeyFromTime(time);
+      const previousDateKey = dateKeyFromTime(time - 24 * 60 * 60 * 1000);
       const startMinute = Number(state.timer.scheduleStartMinute ?? 6 * 60);
       const scheduleEndMinute = Number(state.timer.scheduleEndMinute ?? 23 * 60);
-      const nowMinute = minutesOfDay();
-      const extension = state.timer.dailyExtensions?.[dateKey];
+      const nowMinute = minutesOfDay(time);
+      const dailyExtensions = state.timer.dailyExtensions || {};
+      const absoluteExtensions = [dailyExtensions[dateKey], dailyExtensions[previousDateKey]]
+        .filter(extension => extension && typeof extension === "object")
+        .map(extension => Number(extension.untilAt))
+        .filter(Number.isFinite);
+      const activeAbsoluteExtension = absoluteExtensions.length
+        ? Math.max(...absoluteExtensions)
+        : null;
 
-      if (Number.isFinite(Number(extension))) {
-        const boundary = Number(extension);
-        let comparableNow = nowMinute;
-        if (boundary > 1440 && comparableNow < startMinute) comparableNow += 1440;
+      if (activeAbsoluteExtension && time < activeAbsoluteExtension) {
         return {
-          isRestTime: comparableNow >= boundary,
-          alertKey: `${dateKey}-extension-${boundary}`
+          isRestTime: false,
+          alertKey: `${dateKey}-extension-until-${activeAbsoluteExtension}`
         };
       }
 
@@ -3832,6 +3843,27 @@
         return {
           isRestTime: false,
           alertKey: `${dateKey}-${startMinute}-${scheduleEndMinute}-same-time`
+        };
+      }
+
+      const isScheduledTime = scheduleEndMinute > startMinute
+        ? nowMinute >= startMinute && nowMinute < scheduleEndMinute
+        : nowMinute >= startMinute || nowMinute < scheduleEndMinute;
+      if (isScheduledTime) {
+        return {
+          isRestTime: false,
+          alertKey: `${dateKey}-${startMinute}-${scheduleEndMinute}-scheduled`
+        };
+      }
+
+      const legacyExtension = dailyExtensions[dateKey];
+      if (Number.isFinite(Number(legacyExtension))) {
+        const boundary = Number(legacyExtension);
+        let comparableNow = nowMinute;
+        if (boundary > 1440 && comparableNow < startMinute) comparableNow += 1440;
+        return {
+          isRestTime: comparableNow >= boundary,
+          alertKey: `${dateKey}-legacy-extension-${boundary}`
         };
       }
 
@@ -5672,7 +5704,9 @@
       const dateKey = dateKeyFromTime();
       const minutes = Math.min(240, Math.max(5, Number(els.restExtendMinutes.value || 30)));
       if (!state.timer.dailyExtensions) state.timer.dailyExtensions = {};
-      state.timer.dailyExtensions[dateKey] = minutesOfDay() + minutes;
+      state.timer.dailyExtensions[dateKey] = {
+        untilAt: Date.now() + minutes * 60 * 1000
+      };
       state.timer.restAlertDateKey = "";
       pendingTimerStartAfterRest = false;
       closeRestModalAfterChoice();
@@ -5687,7 +5721,9 @@
       const shouldStartTimer = pendingTimerStartAfterRest;
       const dateKey = dateKeyFromTime();
       if (!state.timer.dailyExtensions) state.timer.dailyExtensions = {};
-      state.timer.dailyExtensions[dateKey] = Math.max(minutesOfDay() + 24 * 60, Number(state.timer.scheduleEndMinute ?? 23 * 60) + 24 * 60);
+      state.timer.dailyExtensions[dateKey] = {
+        untilAt: Date.now() + 24 * 60 * 60 * 1000
+      };
       state.timer.restAlertDateKey = "";
       pendingTimerStartAfterRest = false;
       closeRestModalAfterChoice();
