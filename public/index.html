@@ -265,6 +265,32 @@
       font-weight: 800;
     }
 
+    .timer-mode-tabs {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      margin-bottom: 12px;
+    }
+
+    .timer-mode-tabs .segment {
+      min-height: 38px;
+    }
+
+    .countdown-settings {
+      display: none;
+      grid-template-columns: minmax(0, 1fr);
+      gap: 7px;
+      margin-top: 12px;
+      padding: 10px;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      background: #f6fbf9;
+    }
+
+    .countdown-settings.active {
+      display: grid;
+    }
+
     .timer-display {
       margin: 0;
       color: #102d29;
@@ -622,7 +648,7 @@
       border: 1px solid var(--line);
       border-radius: 8px;
       background: linear-gradient(to bottom, transparent calc(100% - 1px), var(--line) calc(100% - 1px));
-      overflow: hidden;
+      overflow: visible;
     }
 
     .timeline-hour {
@@ -2051,9 +2077,20 @@
     <section class="timer-panel" id="timerPanel" aria-label="学习计时">
       <div class="timer-layout">
         <article class="timer-card">
-          <p class="timer-label">当前学习</p>
+          <div class="timer-mode-tabs" aria-label="计时模式">
+            <button class="segment active" id="timerCountupModeBtn" type="button">正计时</button>
+            <button class="segment" id="timerCountdownModeBtn" type="button">倒计时</button>
+          </div>
+          <p class="timer-label" id="timerModeLabel">正计时</p>
           <p class="timer-display" id="timerDisplay">00:00:00</p>
           <p class="timer-status" id="timerStatus">还没有开始计时</p>
+
+          <div class="countdown-settings" id="countdownSettings">
+            <div class="field">
+              <label for="countdownMinutes">倒计时长度（分钟）</label>
+              <input class="input" id="countdownMinutes" type="number" min="1" step="1" value="120" placeholder="例如 120">
+            </div>
+          </div>
 
           <div class="timer-controls">
             <button class="btn" id="timerStartBtn" type="button">开始</button>
@@ -2320,8 +2357,13 @@
       systemPanelBtn: document.querySelector("#systemPanelBtn"),
       timerPanelBtn: document.querySelector("#timerPanelBtn"),
       timerPanel: document.querySelector("#timerPanel"),
+      timerCountupModeBtn: document.querySelector("#timerCountupModeBtn"),
+      timerCountdownModeBtn: document.querySelector("#timerCountdownModeBtn"),
+      timerModeLabel: document.querySelector("#timerModeLabel"),
       timerDisplay: document.querySelector("#timerDisplay"),
       timerStatus: document.querySelector("#timerStatus"),
+      countdownSettings: document.querySelector("#countdownSettings"),
+      countdownMinutes: document.querySelector("#countdownMinutes"),
       timerStartBtn: document.querySelector("#timerStartBtn"),
       timerPauseBtn: document.querySelector("#timerPauseBtn"),
       timerFinishBtn: document.querySelector("#timerFinishBtn"),
@@ -2546,6 +2588,8 @@
           elapsedMs,
           resumedAt: status === "running" ? Number(timer.active.resumedAt || Date.now()) : null,
           status,
+          mode: timer.active.mode === "countdown" ? "countdown" : "countup",
+          countdownDurationMs: Math.max(60000, Number(timer.active.countdownDurationMs || 0)),
           segments,
           pauseDeadlineAt: timer.active.pauseDeadlineAt ? Number(timer.active.pauseDeadlineAt) : null,
           semesterId: timer.active.semesterId || "",
@@ -2561,6 +2605,8 @@
       return {
         sessions,
         active,
+        timerMode: timer.timerMode === "countdown" ? "countdown" : "countup",
+        countdownMinutes: Math.max(1, Math.round(Number(timer.countdownMinutes || 120))),
         calendarItems: normalizeCalendarItems(timer.calendarItems),
         scheduleStartMinute: parseTimeToMinutes(timer.scheduleStart || (Number.isFinite(Number(timer.scheduleStartMinute)) ? minutesToTime(timer.scheduleStartMinute) : ""), 6 * 60),
         scheduleEndMinute: parseTimeToMinutes(timer.scheduleEnd || (Number.isFinite(Number(timer.scheduleEndMinute)) ? minutesToTime(timer.scheduleEndMinute) : ""), 23 * 60),
@@ -3109,16 +3155,49 @@
       return Math.max(0, Number(active.elapsedMs || 0) + runningExtra);
     }
 
+    function isCountdownMode() {
+      return (state.timer?.active?.mode || state.timer?.timerMode) === "countdown";
+    }
+
+    function getCountdownDurationMs() {
+      const activeDuration = Number(state.timer?.active?.countdownDurationMs || 0);
+      if (activeDuration) return Math.max(60000, activeDuration);
+      return Math.max(1, Number(state.timer?.countdownMinutes || 120)) * 60000;
+    }
+
+    function getCountdownRemainingMs() {
+      return Math.max(0, getCountdownDurationMs() - getActiveElapsed());
+    }
+
+    function renderTimerModeControls() {
+      const mode = isCountdownMode() ? "countdown" : "countup";
+      els.timerCountupModeBtn.classList.toggle("active", mode === "countup");
+      els.timerCountdownModeBtn.classList.toggle("active", mode === "countdown");
+      els.countdownSettings.classList.toggle("active", mode === "countdown");
+      els.timerModeLabel.textContent = t(mode === "countdown" ? "倒计时" : "正计时");
+      els.countdownMinutes.value = String(Math.max(1, Number(state.timer.countdownMinutes || 120)));
+      const hasActive = Boolean(state.timer.active);
+      els.timerCountupModeBtn.disabled = hasActive;
+      els.timerCountdownModeBtn.disabled = hasActive;
+      els.countdownMinutes.disabled = hasActive;
+    }
+
     function updateTimerDisplay() {
       const active = state.timer?.active;
-      els.timerDisplay.textContent = formatDuration(getActiveElapsed());
+      renderTimerModeControls();
+      const countdownMode = isCountdownMode();
+      els.timerDisplay.textContent = countdownMode
+        ? formatDuration(getCountdownRemainingMs())
+        : formatDuration(getActiveElapsed());
       const setTimerPrimaryAction = button => {
         [els.timerStartBtn, els.timerPauseBtn, els.timerFinishBtn, els.timerCancelBtn].forEach(item => {
           item.classList.toggle("secondary", item !== button);
         });
       };
       if (!active) {
-        els.timerStatus.textContent = t("还没有开始计时");
+        els.timerStatus.textContent = countdownMode
+          ? t("设置倒计时后开始")
+          : t("还没有开始计时");
         els.timerStartBtn.textContent = t("开始");
         els.timerStartBtn.disabled = false;
         els.timerPauseBtn.textContent = t("暂停");
@@ -3129,8 +3208,12 @@
         return;
       }
       const running = active.status === "running";
+      if (running && active.mode === "countdown" && getCountdownRemainingMs() <= 0) {
+        finishTimer({ countdownComplete: true });
+        return;
+      }
       if (running) {
-        els.timerStatus.textContent = t("正在学习中");
+        els.timerStatus.textContent = active.mode === "countdown" ? t("倒计时进行中") : t("正在学习中");
       } else {
         const pauseDeadline = Number(active.pauseDeadlineAt || 0);
         const pauseRemaining = pauseDeadline ? pauseDeadline - Date.now() : null;
@@ -3673,7 +3756,8 @@
       const hourHeight = 58;
       const range = getTimerDayRange(dateKey, sessions, timedItems);
       const dayMinutes = range.endMinute - range.startMinute;
-      els.timerDayTimeline.style.height = `${(dayMinutes / 60) * hourHeight}px`;
+      const timelineBottomBuffer = 128;
+      els.timerDayTimeline.style.height = `${(dayMinutes / 60) * hourHeight + timelineBottomBuffer}px`;
       const parts = [];
       for (let minute = range.startMinute; minute <= range.endMinute; minute += 60) {
         const top = ((minute - range.startMinute) / 60) * hourHeight;
@@ -4787,6 +4871,13 @@
       if (message) showToast(message);
     }
 
+    function setTimerMode(mode) {
+      if (state.timer.active) return;
+      state.timer.timerMode = mode === "countdown" ? "countdown" : "countup";
+      saveState();
+      renderTimer();
+    }
+
     function startTimer(options = {}) {
       if (!options.skipRestCheck) {
         const { isRestTime } = getRestReminderState();
@@ -4798,12 +4889,15 @@
       if (!state.timer.active) {
         const selection = getTimerSelection();
         const now = Date.now();
+        const mode = state.timer.timerMode === "countdown" ? "countdown" : "countup";
         state.timer.active = {
           id: uid(),
           startedAt: now,
           elapsedMs: 0,
           resumedAt: now,
           status: "running",
+          mode,
+          countdownDurationMs: mode === "countdown" ? Math.max(1, Number(state.timer.countdownMinutes || 120)) * 60000 : 0,
           segments: [{ startAt: now, endAt: null }],
           pauseDeadlineAt: null,
           semesterId: selection.semesterId,
@@ -4813,7 +4907,7 @@
           markTaskDone: selection.markTaskDone,
           note: selection.note
         };
-        commitTimer("学习计时已开始");
+        commitTimer(mode === "countdown" ? "倒计时已开始" : "学习计时已开始");
         return;
       }
       if (state.timer.active.status === "paused") {
@@ -4824,7 +4918,7 @@
         if (!Array.isArray(state.timer.active.segments)) state.timer.active.segments = [];
         state.timer.active.segments.push({ startAt: now, endAt: null });
         syncTimerFormToActive();
-        commitTimer("学习计时已继续");
+        commitTimer(state.timer.active.mode === "countdown" ? "倒计时已继续" : "学习计时已继续");
       }
     }
 
@@ -4844,6 +4938,7 @@
       if (!active) return;
       const selection = getTimerSelection();
       const autoEndedByPause = Boolean(options.autoEndedByPause);
+      const countdownComplete = Boolean(options.countdownComplete);
       if (autoEndedByPause) {
         selection.markTaskDone = false;
       }
@@ -4861,8 +4956,9 @@
       state.timer.active = null;
       closeRestModal();
       els.timerNote.value = "";
-      commitTimer(autoEndedByPause ? "暂停超时，计时已自动保存" : "学习时间已保存");
+      commitTimer(autoEndedByPause ? "暂停超时，计时已自动保存" : countdownComplete ? "倒计时结束，学习时间已保存" : "学习时间已保存");
       if (autoEndedByPause) openPauseExpiredModal();
+      if (countdownComplete) alert(t("倒计时结束，学习时间已保存"));
     }
 
     function cancelTimer() {
@@ -5686,6 +5782,13 @@
     els.timerCancelBtn.addEventListener("click", cancelTimer);
     els.timerPrevMonthBtn.addEventListener("click", () => shiftTimerMonth(-1));
     els.timerNextMonthBtn.addEventListener("click", () => shiftTimerMonth(1));
+    els.timerCountupModeBtn.addEventListener("click", () => setTimerMode("countup"));
+    els.timerCountdownModeBtn.addEventListener("click", () => setTimerMode("countdown"));
+    els.countdownMinutes.addEventListener("change", () => {
+      state.timer.countdownMinutes = Math.max(1, Math.round(Number(els.countdownMinutes.value || 120)));
+      saveState();
+      renderTimer();
+    });
     els.addExamBtn.addEventListener("click", () => openCalendarItemModal("exam"));
     els.addReminderBtn.addEventListener("click", () => openCalendarItemModal("reminder"));
     els.addManualSessionBtn.addEventListener("click", () => openManualSessionModal());
