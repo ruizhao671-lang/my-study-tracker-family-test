@@ -1,0 +1,29 @@
+# PRIVATE USER DATA AND SECRETS - NEVER COMMIT
+backend/data/
+.env
+.env.*
+!.env.example
+*.db
+*.sqlite
+*.sqlite3
+
+# PRIVATE PROJECT NOTES - KEEP ONLY ON D DRIVE
+DEVELOPMENT_LOG.md
+PRODUCT_PLAN.md
+PROJECT_OVERVIEW.md
+ROADMAP.md
+PRIVATE-DO-NOT-UPLOAD/
+private-backups/
+project-docs-*/
+
+# LOCAL ENVIRONMENTS, CACHES, AND BUILD OUTPUT
+.venv/
+__pycache__/
+*.pyc
+node_modules/
+dist/
+build/
+.DS_Store
+Thumbs.db
+github-update-*/
+github-upload-ready/

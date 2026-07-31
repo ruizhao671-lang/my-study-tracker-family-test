@@ -1,0 +1,34 @@
+.git
+.gitignore
+
+# PRIVATE USER DATA AND SECRETS - NEVER COPY INTO AN IMAGE
+.env
+.env.*
+!.env.example
+backend/data
+*.db
+*.sqlite
+*.sqlite3
+
+# PRIVATE PROJECT NOTES - KEEP ONLY ON D DRIVE
+DEVELOPMENT_LOG.md
+PRODUCT_PLAN.md
+PROJECT_OVERVIEW.md
+ROADMAP.md
+PRIVATE-DO-NOT-UPLOAD
+private-backups
+project-docs-*
+
+# LOCAL ENVIRONMENTS, CACHES, AND TEST MATERIAL
+.venv
+__pycache__
+*.pyc
+*.log
+node_modules
+api-test.py
+check.mjs
+cloud-core.test.mjs
+TEST_PLAN.md
+TEST_RESULTS.md
+github-update-*
+github-upload-ready
