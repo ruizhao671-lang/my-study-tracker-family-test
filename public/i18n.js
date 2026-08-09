@@ -497,6 +497,7 @@
     "导入备份会替换当前浏览器里的学习数据，继续吗？": "Importing this backup will replace the study data in this browser. Continue?",
     "导入失败：请确认文件是 JSON 备份": "Import failed: make sure the file is a JSON backup.",
     "这个浏览器暂时不支持背景音": "This browser does not currently support background audio.",
+    "白噪音启动失败，请调高设备音量后重试": "Could not start white noise. Turn up your device volume and try again.",
     "这里只支持上传图片或 PDF": "Only images or PDF files can be uploaded here.",
     "单个附件目前不能超过 1 MB": "Each attachment must currently be no larger than 1 MB.",
     "每个任务最多保存 5 个附件": "Each task can store up to 5 attachments.",

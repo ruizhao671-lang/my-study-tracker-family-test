@@ -285,8 +285,12 @@ function enableReadOnlyMode(ownerName) {
     ]);
     const allowedActions = new Set([
       "toggle-semester",
+      "toggle-semester-info",
       "toggle-course",
+      "toggle-course-info",
       "toggle-category",
+      "toggle-category-info",
+      "toggle-task-details",
       "select-timer-date",
       "select-calendar-item"
     ]);

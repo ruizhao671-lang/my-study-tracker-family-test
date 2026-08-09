@@ -77,6 +77,11 @@ function overlapDepthList(items) {
   return items.map(item => depths.get(item.id));
 }
 
+const touchGestureFunctionSource = extractNamedFunction(files.online, "isTouchScrollGesture");
+const isTouchScrollGesture = touchGestureFunctionSource
+  ? new Function(`${touchGestureFunctionSource}; return isTouchScrollGesture;`)()
+  : null;
+
 const translationKeys = new Set(
   [...files.i18n.matchAll(/^\s*"([^"]+)"\s*:/gm)].map(match => match[1])
 );
@@ -141,6 +146,12 @@ const checks = [
   ["云端状态切换会正确关闭或打开名字窗口", files.online.includes("if (state.ownerName)") && files.online.includes("closeWelcomeModal();")],
   ["只读页面不会写入本地学习数据", files.online.includes("window.studyCloud?.isReadOnly?.()")],
   ["只读页面展开收起只刷新显示而不保存或记录历史", files.online.includes("function commitDisclosureChange()") && files.online.includes("if (window.studyCloud?.isReadOnly?.())") && files.online.includes("commitDisclosureChange();")],
+  ["四级备注附件可以重复展开收起并在只读分享中使用", [
+    '"toggle-semester-info"',
+    '"toggle-course-info"',
+    '"toggle-category-info"',
+    '"toggle-task-details"'
+  ].every(action => files.cloud.includes(action)) && files.online.includes('const actionTarget = event.target.closest("[data-action]")') && files.online.match(/commitDisclosureChange\(\);/g)?.length >= 7],
   ["只读链接启动时不展示当前浏览器私人数据", files.online.includes("if (READ_ONLY_LINK) return") && files.online.includes("!READ_ONLY_LINK) openWelcomeModal")],
   ["只读链接加载或失效时始终保持只读界面", files.cloud.includes('enableReadOnlyMode("家人")') && files.cloud.includes("readOnlyObserver")],
   ["云端层支持邮箱注册", files.backend.includes('@app.post("/api/auth/register")') && files.cloud.includes('"register" : "login"')],
@@ -208,6 +219,10 @@ const checks = [
   ["支持大学学期与备考模块两种类型", files.online.includes('value="semester">大学学期') && files.online.includes('value="module">备考模块')],
   ["课程支持不新增层级的标签字段", files.online.includes("课程标签（可选，例如专业课、公共课）") && files.online.includes('title="课程标签（可选），例如专业课"') && files.core.includes("label: course.label")],
   ["复制粘贴提示会在下一次非复制左击后结束，粘贴后也结束", files.online.includes("if (!appClipboard) return;") && files.online.includes('if (action.startsWith("copy-")) return;') && !files.online.includes('action.startsWith("copy-") || action.startsWith("paste-")')],
+  ["触屏复制时粘贴位置可见且滚动不会误触粘贴或取消", files.online.includes('@media (hover: none), (pointer: coarse), (max-width: 820px)') && files.online.includes('suppressTouchClickUntil = touchGesture.scrolled ? Date.now() + 700 : 0;') && isTouchScrollGesture?.(0, 0, 20, 0) === true && isTouchScrollGesture?.(0, 0, 5, 5) === false],
+  ["触屏模板按钮使用稳定的最近操作目标", files.online.includes('!els.templateList.contains(actionTarget)') && files.online.includes('!els.semesterTemplateList.contains(actionTarget)') && files.online.includes('const actionTarget = event.target.closest("[data-action]")')],
+  ["直接复制粘贴保留任务进度而模板继续清空进度", files.online.includes("done: Boolean(task.done)") && files.online.includes("function copyTaskForTemplate(task)") && files.online.includes("tasks: (category.tasks || []).map(copyTaskForTemplate)") && files.online.includes("task.done = false;")],
+  ["移动端白噪音在点击中恢复音频并提高到可听音量", files.online.includes('audio.state === "suspended" ? audio.resume()') && files.online.includes("gain.gain.value = 0.035") && files.online.includes('audio.state !== "running"') && files.i18n.includes('"白噪音启动失败，请调高设备音量后重试"')],
   ["新建课程支持填写统一标签并用于批量新增课程", files.online.includes('name="courseLabel"') && files.online.includes("newCourse.label = label")],
   ["考研阶段模板包含五门直接并列课程", ["模电", "数电", "数学", "英语", "政治"].every(name => files.online.includes(`createLabeledCourse("${name}"`))],
   ["新建阶段放在底部且新建课程放在顶部", files.online.includes("state.semesters.push(...names.map") && files.online.includes("semester.courses.unshift(...names.map")],
