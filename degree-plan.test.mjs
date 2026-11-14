@@ -1,6 +1,9 @@
 import assert from "node:assert/strict";
 import { makeSharedState } from "./public/cloud-core.js";
-import { applyExamMatches, creditTotals, examMatches, newCourse, parseStudyTasks, useTumTemplate } from "./public/degree-core.js";
+import {
+  addTumStudyPeriods, applyExamMatches, chooseTargetExam, creditTotals, examMatches, newCourse,
+  normalizeModuleCode, parseStudyTasks, replaceTumMathChoice, useTumTemplate
+} from "./public/degree-core.js";
 
 const plan = useTumTemplate();
 assert.equal(plan.requiredCredits, 180);
@@ -56,4 +59,31 @@ const tasks = parseStudyTasks("Chapter 1 | 2\nMock exam | 1,5 | Break", [{ id: "
 assert.deepEqual(tasks.map(item => [item.hours, item.blockId]), [[2, ""], [1.5, "holiday"]]);
 assert.throws(() => parseStudyTasks("Chapter 1 | 2 | Typo", []));
 assert.equal("degreePlan" in makeSharedState({ degreePlan: plan }), false);
-console.log("PASS degree template, ECTS, linked tasks, exam filtering and updates, and sharing");
+const planning = useTumTemplate();
+addTumStudyPeriods(planning, "2026-11-14");
+assert.equal(planning.term, "WS 2026/27");
+assert.deepEqual(planning.blocks.map(block => block.kind), ["lecture", "break", "lecture", "break"]);
+assert.equal(planning.blocks[1].start, "2027-02-06");
+assert.equal(planning.blocks[1].end, "2027-04-11");
+const blocksBeforeRetry = structuredClone(planning.blocks);
+addTumStudyPeriods(planning, "2026-11-14");
+assert.deepEqual(planning.blocks, blocksBeforeRetry);
+
+const selectedMath = planning.modules[0].courses.find(course => course.code === "EI00460");
+assert.equal(normalizeModuleCode("\uFEFFＥＩ００４６０\u200b"), "EI00460");
+selectedMath.exams.push({ id: "retake", date: "2027-03-24", time: "14:00", kind: "retake" });
+chooseTargetExam(selectedMath, planning, "retake", "2026-11-14");
+assert.equal(selectedMath.blockId, planning.blocks[1].id);
+chooseTargetExam(selectedMath, planning, "", "2026-11-14");
+assert.equal(selectedMath.examId, "");
+assert.equal(selectedMath.blockId, planning.blocks[1].id);
+selectedMath.passed = true;
+replaceTumMathChoice(planning, selectedMath.id, "MA9410");
+const numerical = planning.modules[0].courses.find(course => course.code === "MA9410");
+assert.equal(creditTotals(planning, []).earned, 0);
+assert.equal(numerical.exams.length, 0);
+replaceTumMathChoice(planning, numerical.id, "EI00460");
+assert.equal(creditTotals(planning, []).earned, 5);
+assert.equal(planning.modules[0].courses.find(course => course.code === "EI00460").exams[0].id, "retake");
+
+console.log("PASS degree template, ECTS, linked tasks, exam filtering, study periods, and sharing");

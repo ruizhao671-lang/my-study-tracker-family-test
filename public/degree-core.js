@@ -35,6 +35,71 @@ export function useTumTemplate(mathCode = "EI00460") {
   return plan;
 }
 
+export function isTumMathChoice(plan, course) {
+  return plan.examSource === "tum-ei" && TUM_EI_BACHELOR.modules[0].choices.some(choice => choice.code === normalizeModuleCode(course.code));
+}
+
+export function replaceTumMathChoice(plan, courseId, code) {
+  const module = plan.modules.find(group => group.courses.some(course => course.id === courseId));
+  const current = module?.courses.find(course => course.id === courseId);
+  const next = TUM_EI_BACHELOR.modules[0].choices.find(choice => choice.code === code);
+  if (!current || !next || !isTumMathChoice(plan, current)) return;
+  const currentCode = normalizeModuleCode(current.code);
+  if (currentCode === code) return;
+  plan.mathAlternatives ??= {};
+  const replacement = plan.mathAlternatives[code] ?? newCourse({ ...next, blockId: current.blockId });
+  plan.mathAlternatives[currentCode] = current;
+  delete plan.mathAlternatives[code];
+  module.courses = module.courses.map(course => course.id === courseId ? replacement : course);
+}
+
+// Lecture dates published by TUM. Break blocks extend to the next lecture period.
+const TUM_TERMS = [
+  { term: "SS 2026", starts: "2026-04-01", lectureStart: "2026-04-13", lectureEnd: "2026-07-17", breakEnd: "2026-10-11" },
+  { term: "WS 2026/27", starts: "2026-10-01", lectureStart: "2026-10-12", lectureEnd: "2027-02-05", breakEnd: "2027-04-11" },
+  { term: "SS 2027", starts: "2027-04-01", lectureStart: "2027-04-12", lectureEnd: "2027-07-16", breakEnd: "2027-10-17" },
+  { term: "WS 2027/28", starts: "2027-10-01", lectureStart: "2027-10-18", lectureEnd: "2028-02-11", breakEnd: "2028-03-31" }
+];
+
+function dayAfter(date) {
+  return new Date(Date.parse(date) + 86400000).toISOString().slice(0, 10);
+}
+
+export function addTumStudyPeriods(plan, date) {
+  if (plan.examSource !== "tum-ei") return;
+  const active = TUM_TERMS.findLastIndex(term => term.starts <= date);
+  if (active < 0 || date > TUM_TERMS[active].breakEnd) return;
+  plan.term ||= TUM_TERMS[active].term;
+  const ids = new Set(plan.blocks.map(block => block.id));
+  const first = active > 0 && date < TUM_TERMS[active].lectureStart ? active - 1 : active;
+  for (const term of TUM_TERMS.slice(first, active + 2)) {
+    const entries = [
+      { kind: "lecture", name: term.term + " · Vorlesungszeit", start: term.lectureStart, end: term.lectureEnd },
+      { kind: "break", name: term.term + " · Vorlesungsfreie Zeit", start: dayAfter(term.lectureEnd), end: term.breakEnd }
+    ];
+    for (const entry of entries) {
+      const id = "tum-" + term.starts + "-" + entry.kind;
+      if (entry.end >= date && !ids.has(id) && !plan.blocks.some(block => block.start === entry.start && block.end === entry.end)) {
+        plan.blocks.push({ ...entry, id });
+      }
+    }
+  }
+  plan.blocks.sort((left, right) => left.start.localeCompare(right.start));
+}
+
+export function chooseTargetExam(course, plan, examId, date) {
+  const exam = course.exams.find(sitting => sitting.id === examId);
+  course.examId = exam?.id ?? "";
+  if (!exam || course.blockId || exam.date <= date) return;
+  const candidates = plan.blocks.filter(block => block.start < exam.date && block.end >= date);
+  const block = candidates.find(period => exam.date <= period.end) ?? candidates.at(-1);
+  if (block) course.blockId = block.id;
+}
+
+export function normalizeModuleCode(value) {
+  return String(value ?? "").normalize("NFKC").replace(/[\p{Cc}\p{Cf}\uFFFD]/gu, "").trim();
+}
+
 export function creditNumber(value) {
   const number = Number(String(value ?? "").trim().replace(",", "."));
   return Number.isFinite(number) && number >= 0 && number <= 1000 ? number : null;
@@ -64,7 +129,7 @@ export function creditTotals(plan, semesters) {
 }
 
 function matchCode(value) {
-  return value.toUpperCase().replace(/[^A-Z0-9]/g, "");
+  return normalizeModuleCode(value).toUpperCase().replace(/[^A-Z0-9]/g, "");
 }
 
 function matchName(value) {
