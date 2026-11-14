@@ -4,6 +4,7 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>My Study Tracker</title>
+  <link rel="stylesheet" href="degree-plan.css">
   <style>
     :root {
       --bg: #f3f6f5;
@@ -2036,7 +2037,10 @@
     <nav class="app-switch" aria-label="板块切换">
       <button class="panel-tab active" id="systemPanelBtn" type="button">学习进度记录</button>
       <button class="panel-tab" id="timerPanelBtn" type="button">学习计时</button>
+      <button class="panel-tab" id="degreePanelBtn" type="button" hidden>毕业规划</button>
     </nav>
+
+    <section id="degreePanel" aria-labelledby="degreePanelBtn" hidden></section>
 
     <section class="toolbar study-system-section" aria-label="学习系统操作">
       <input class="input" id="semesterName" placeholder="输入新学习阶段，例如 我的第二学期">
@@ -2284,6 +2288,7 @@
       </div>
       <div class="dialog-footer">
         <button class="btn secondary" id="welcomeImportBtn" type="button">导入原版备份</button>
+        <button class="btn secondary" id="welcomeAuthBtn" type="button">登录 / 注册</button>
         <button class="btn" type="submit">创建新的测试空间</button>
       </div>
     </form>
@@ -2324,10 +2329,12 @@
     </section>
   </div>
 
+  <dialog id="degreeDialog" aria-label="Degree planner"></dialog>
   <div class="toast" id="toast" role="status"></div>
 
   <script src="cloud-bootstrap.js"></script>
   <script type="module" src="api-sync.js"></script>
+  <script type="module" src="degree-plan.js"></script>
   <script src="i18n.js"></script>
   <script>
     const STORAGE_KEY = "study-tracker-online-state-v1";
@@ -2358,7 +2365,7 @@
     let templatePlacementActive = false;
     let selectedTemplateId = null;
     let viewMode = "list";
-    let activePanel = localStorage.getItem("study-tracker-active-panel-v1") === "timer" ? "timer" : "system";
+    let activePanel = localStorage.getItem("study-tracker-active-panel-v1") || "system";
     let history = [JSON.stringify(state)];
     let historyIndex = 0;
     let timerTick = null;
@@ -2375,6 +2382,8 @@
       editOwnerBtn: document.querySelector("#editOwnerBtn"),
       systemPanelBtn: document.querySelector("#systemPanelBtn"),
       timerPanelBtn: document.querySelector("#timerPanelBtn"),
+      degreePanelBtn: document.querySelector("#degreePanelBtn"),
+      degreePanel: document.querySelector("#degreePanel"),
       timerPanel: document.querySelector("#timerPanel"),
       timerCountupModeBtn: document.querySelector("#timerCountupModeBtn"),
       timerCountdownModeBtn: document.querySelector("#timerCountdownModeBtn"),
@@ -2768,6 +2777,8 @@
         courseTemplates,
         semesterTemplates,
         timer: normalizeTimer(savedState?.timer),
+        ...(Array.isArray(savedState?.degreePlan?.modules) && Array.isArray(savedState.degreePlan.blocks)
+          ? { degreePlan: savedState.degreePlan } : {}),
         onboardingSeeded: true,
         templateCatalogVersion: 3,
         starterContentVersion: 2
@@ -2970,7 +2981,13 @@
     }
 
     function setActivePanel(panel) {
-      activePanel = panel === "timer" ? "timer" : "system";
+      const degreeAvailable = !READ_ONLY_LINK && !window.studyCloud?.isReadOnly?.();
+      activePanel = panel === "degree" && degreeAvailable ? "degree" : panel === "timer" ? "timer" : "system";
+      els.degreePanelBtn.hidden = !degreeAvailable;
+      els.degreePanel.hidden = activePanel !== "degree";
+      document.body.classList.toggle("degree-mode", activePanel === "degree");
+      els.degreePanelBtn.classList.toggle("active", activePanel === "degree");
+      window.studyDegree?.render();
       localStorage.setItem("study-tracker-active-panel-v1", activePanel);
       document.body.classList.toggle("timer-mode", activePanel === "timer");
       els.systemPanelBtn.classList.toggle("active", activePanel === "system");
@@ -5842,6 +5859,7 @@
 
     els.systemPanelBtn.addEventListener("click", () => setActivePanel("system"));
     els.timerPanelBtn.addEventListener("click", () => setActivePanel("timer"));
+    els.degreePanelBtn.addEventListener("click", () => setActivePanel("degree"));
     els.timerStartBtn.addEventListener("click", startTimer);
     els.timerPauseBtn.addEventListener("click", pauseTimer);
     els.timerFinishBtn.addEventListener("click", finishTimer);
@@ -6541,6 +6559,24 @@
 
     window.studyTrackerBridge = {
       getState: () => JSON.parse(JSON.stringify(state)),
+      getDegreeWorkspace: () => ({
+        plan: state.degreePlan,
+        semesters: state.semesters,
+        editable: !READ_ONLY_LINK && !window.studyCloud?.isReadOnly?.()
+      }),
+      saveDegreePlan(plan) {
+        if (READ_ONLY_LINK || window.studyCloud?.isReadOnly?.()) return;
+        state.degreePlan = plan;
+        commit();
+      },
+      setDegreeLinkedTask(courseId, taskId, done) {
+        if (READ_ONLY_LINK || window.studyCloud?.isReadOnly?.()) return;
+        const course = state.semesters.flatMap(stage => stage.courses).find(item => item.id === courseId);
+        const task = course?.categories.flatMap(category => category.tasks).find(item => item.id === taskId);
+        if (!task) return;
+        task.done = done;
+        commit();
+      },
       replaceState(nextState, options = {}) {
         state = normalizeState(nextState);
         history = [JSON.stringify(state)];

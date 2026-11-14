@@ -105,7 +105,7 @@ try {
     assert.equal(await page.locator("#welcomeLanguage").inputValue(), "zh-CN", "Welcome language selector should return to Chinese after clearing device data");
     assert.ok(await page.locator("#welcomeModal.open").count(), "Clear-device logout should return to the welcome/create-space screen");
 
-    await page.locator(".cloud-auth-btn").click();
+    await page.locator("#welcomeAuthBtn").click();
     await page.locator("#cloudEmail").fill(testEmail);
     await page.locator("#cloudPassword").fill(testPassword);
     await page.locator('.cloud-auth-form button[data-mode="login"]').click();

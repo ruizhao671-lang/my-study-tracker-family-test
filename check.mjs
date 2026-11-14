@@ -1,13 +1,20 @@
 import { readFile } from "node:fs/promises";
 
+const load = name => readFile(new URL(name, import.meta.url), "utf8");
+const standalone = await load("../index.html").catch(error => {
+  if (error.code !== "ENOENT") throw error;
+  console.log("SKIP standalone backup HTML is not in this checkout");
+  return null;
+});
+
 const files = {
-  stable: await readFile("../index.html", "utf8"),
-  online: await readFile("./public/index.html", "utf8"),
-  bootstrap: await readFile("./public/cloud-bootstrap.js", "utf8"),
-  cloud: await readFile("./public/api-sync.js", "utf8"),
-  i18n: await readFile("./public/i18n.js", "utf8"),
-  core: await readFile("./public/cloud-core.js", "utf8"),
-  backend: await readFile("./backend/app.py", "utf8")
+  stable: standalone,
+  online: await load("./public/index.html"),
+  bootstrap: await load("./public/cloud-bootstrap.js"),
+  cloud: await load("./public/api-sync.js"),
+  i18n: await load("./public/i18n.js"),
+  core: await load("./public/cloud-core.js"),
+  backend: await load("./backend/app.py")
 };
 
 const inlineScripts = [...files.online.matchAll(/<script(?:\s[^>]*)?>([\s\S]*?)<\/script>/g)]
@@ -104,7 +111,7 @@ const untranslatedUiLiterals = [
 ];
 
 const checks = [
-  ["稳定版仍使用原存储键", files.stable.includes('const STORAGE_KEY = "study-tracker-state-v2"')],
+  ...(files.stable === null ? [] : [["稳定版仍使用原存储键", files.stable.includes('const STORAGE_KEY = "study-tracker-state-v2"')]]),
   ["联网版使用独立存储键", files.online.includes('const STORAGE_KEY = "study-tracker-online-state-v1"')],
   ["联网版启动不回退读取旧通用缓存", !files.online.includes("const saved = localStorage.getItem(STORAGE_KEY)")],
   ["联网版加载 FastAPI 适配层", files.online.includes('type="module" src="api-sync.js"')],
@@ -171,7 +178,7 @@ const checks = [
   ["延迟同步绑定原账号，避免切换账号后串写", files.cloud.includes("expectedUserId") && files.cloud.includes("currentUser?.uid !== expectedUserId") && files.cloud.includes("authEpoch")],
   ["退出登录前立即保存最后修改", files.cloud.includes("signOutSafely") && files.cloud.includes("await saveCloudState(bridge.getState(), true, userId)")],
   ["退出时可选择保留或清除当前账号本机缓存", files.cloud.includes("退出并清除此设备数据") && files.cloud.includes("clearAccountLocalData(previousUserId)") && files.cloud.includes("handleAuthChange(null, { clearDeviceData })")],
-  ["清除设备数据退出会同时清空访客缓存并回到全新测试空间", files.cloud.includes("function clearGuestLocalData()") && files.cloud.includes("clearGuestLocalData();") && files.cloud.includes("bridge.replaceState(makeEmptyState())")],
+  ["清除设备数据退出会同时清空访客缓存并回到全新测试空间", files.cloud.includes("function clearGuestLocalData()") && files.cloud.includes("clearGuestLocalData();") && files.cloud.includes("bridge.replaceState(makeEmptyState(), { persist: false })")],
   ["清除设备数据退出后语言恢复中文优先", files.cloud.includes('const LANGUAGE_KEY = "study-tracker-language-v1"') && files.cloud.includes("function resetLanguagePreferenceToChinese()") && files.cloud.includes('setLanguage?.("zh-CN")')],
   ["注册账号默认不导入访客数据且支持明确选择导入", files.cloud.includes('name="importGuest"') && files.cloud.includes("ui.authForm.elements.importGuest.checked")],
   ["联网版内联脚本可以解析", inlineScriptsParse],
@@ -249,7 +256,7 @@ const checks = [
   ["暂停倒计时默认十五分钟并滚动选择一到六十分钟", files.online.includes('<select class="input" id="timerPauseLimit"></select>') && files.online.includes("function setupTimerPauseLimitOptions()") && files.online.includes("Array.from({ length: 60 }") && files.online.includes("pauseLimitMinutes: Math.min(60, Math.max(1, Number(timer.pauseLimitMinutes || 15)))")],
   ["暂停倒计时超时会自动保存但不完成关联任务并弹窗提醒", files.online.includes("finishTimer({ autoEndedByPause: true })") && files.online.includes("selection.markTaskDone = false") && files.online.includes('id="pauseExpiredModal"') && files.online.includes("openPauseExpiredModal()")],
   ["学习计时新增作息与暂停文案已有英文翻译", files.i18n.includes("Start-the-day time") && files.i18n.includes("Work end time") && files.i18n.includes("Pause countdown (minutes)") && files.i18n.includes("Expected study time per day") && files.i18n.includes("Focus study plan") && files.i18n.includes("Time to wrap up") && files.i18n.includes("Oops, you were away too long") && files.i18n.includes("Category notes: key points")],
-  ["本地测试服务器支持带空格的 D 盘路径", (await readFile("./dev-server.mjs", "utf8")).includes("decodeURIComponent")],
+  ["本地测试服务器支持带空格的 D 盘路径", (await load("./dev-server.mjs")).includes("decodeURIComponent")],
   ["FastAPI 后端提供健康检查", files.backend.includes('@app.get("/api/health")')],
   ["FastAPI 健康检查会验证数据库连接", files.backend.includes('db.execute("SELECT 1").fetchone()')],
   ["FastAPI 后端不会保存明文密码", files.backend.includes("pbkdf2_hmac") && files.backend.includes("password_hash")],

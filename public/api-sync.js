@@ -35,6 +35,8 @@ window.addEventListener("beforeunload", event => {
 window.studyCloud = {
   ...window.studyCloud,
   isReadOnly: () => readOnly,
+  degreeAccountId: () => currentUser?.uid || "",
+  importDegreeSource: body => api("/api/degree/import", { method: "POST", body }),
   queueSave(nextState) {
     if (readOnly || loadingRemote || !currentUser) return;
     const userId = currentUser.uid;
@@ -111,7 +113,7 @@ async function handleAuthChange(user, options = {}) {
     window.studyCloud.setActiveUser?.(null);
     if (options.clearDeviceData) {
       clearGuestLocalData();
-      bridge.replaceState(makeEmptyState());
+      bridge.replaceState(makeEmptyState(), { persist: false });
       resetLanguagePreferenceToChinese();
     } else {
       bridge.replaceState(loadGuestState());
@@ -548,11 +550,13 @@ function createCloudUI() {
 
   refs.setupBtn.addEventListener("click", () => refs.setupDialog.classList.add("open"));
   refs.setupDialog.querySelector(".cloud-close-setup").addEventListener("click", () => refs.setupDialog.classList.remove("open"));
-  refs.authBtn.addEventListener("click", () => {
+  const openAuthentication = () => {
     refs.authError.textContent = "";
     refs.authDialog.classList.add("open");
     refs.authForm.elements.email.focus();
-  });
+  };
+  refs.authBtn.addEventListener("click", openAuthentication);
+  document.querySelector("#welcomeAuthBtn")?.addEventListener("click", openAuthentication);
   refs.authDialog.querySelector(".cloud-close-auth").addEventListener("click", () => refs.authDialog.classList.remove("open"));
   refs.authDialog.querySelector(".cloud-reset-password").addEventListener("click", resetPassword);
   refs.shareDialog.querySelector(".cloud-close-share").addEventListener("click", () => refs.shareDialog.classList.remove("open"));

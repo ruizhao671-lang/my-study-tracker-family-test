@@ -16,6 +16,7 @@ def auth(token: str) -> dict[str, str]:
 
 private_state = {
     "ownerName": "Demo User",
+    "degreePlan": {"name": "PRIVATE_DEGREE_PLAN", "modules": [], "blocks": []},
     "courseTemplates": [{"id": "private-template"}],
     "semesters": [
         {
@@ -84,7 +85,11 @@ with TestClient(app) as client:
         json={"state": private_state, "client_updated_at": 100},
     ).status_code == 200
     assert client.get("/api/workspace", headers=auth(token_a)).json()["state"]["ownerName"] == "Demo User"
-    assert client.get("/api/workspace", headers=auth(token_b)).json()["state"]["ownerName"] == ""
+    assert client.get("/api/workspace", headers=auth(token_a)).json()["state"]["degreePlan"] == private_state["degreePlan"]
+    other_workspace = client.get("/api/workspace", headers=auth(token_b)).json()["state"]
+    assert other_workspace["ownerName"] == ""
+    assert "degreePlan" not in other_workspace
+    assert client.post("/api/degree/import", json={"mode": "exams"}).status_code == 401
 
     share = client.put("/api/share", headers=auth(token_a), json={"enabled": True}).json()
     shared = client.get(f"/api/shared/{share['token']}").json()["state"]
@@ -92,6 +97,7 @@ with TestClient(app) as client:
     assert "PRIVATE_STAGE_NOTE" not in serialized
     assert "private-stage.pdf" not in serialized
     assert "private-template" not in serialized
+    assert "degreePlan" not in shared and "PRIVATE_DEGREE_PLAN" not in serialized
     assert shared["semesters"][0]["courses"][0]["categories"][0]["tasks"][0]["done"] is True
     assert shared["semesters"][0]["courses"][0]["label"] == "General course"
 

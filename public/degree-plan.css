@@ -1,0 +1,35 @@
+#degreePanel { margin: 1rem 0 2rem; }
+body.degree-mode .study-system-section { display: none; }
+.degree-header, .degree-actions, .degree-fields, .degree-row {
+  display: flex; flex-wrap: wrap; align-items: center; gap: .65rem;
+}
+.degree-header { justify-content: space-between; }
+.degree-header h2, .degree-block h3 { margin: 0; }
+.degree-card, .degree-module, .degree-block, .degree-course {
+  border: 1px solid var(--line, #d9e2e0); border-radius: 12px; padding: .85rem;
+  background: var(--panel, #fff);
+}
+.degree-card, .degree-module, .degree-block { margin-top: .75rem; }
+.degree-module > summary, .degree-course > summary { cursor: pointer; }
+.degree-module > summary { font-weight: 700; }
+.degree-caption, .degree-help { color: var(--muted, #526863); font-size: .88rem; }
+.degree-card progress { width: 100%; accent-color: #26745e; height: .75rem; }
+.degree-course { margin-top: .6rem; min-width: 0; overflow-wrap: anywhere; }
+.degree-course[draggable="true"] > summary { cursor: grab; user-select: none; }
+.degree-drag-handle { color: var(--muted, #526863); }
+.degree-course form, .degree-course > div { margin-top: .65rem; }
+.degree-actions { margin-top: .65rem; }
+.degree-fields label { display: grid; gap: .24rem; flex: 1 1 135px; min-width: 0; }
+.degree-fields .input, #degreeDialog .input { width: 100%; min-width: 0; box-sizing: border-box; }
+.degree-lanes { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 270px), 1fr)); gap: .8rem; }
+.degree-block { min-width: 0; align-self: start; }
+.degree-block.over { outline: 2px solid #26745e; outline-offset: 2px; }
+.degree-row { justify-content: space-between; border-bottom: 1px solid var(--line, #d9e2e0); padding: .4rem 0; }
+.degree-row:last-child { border-bottom: 0; }
+.degree-row label { display: flex; align-items: center; gap: .4rem; }
+#degreeDialog { border: 1px solid var(--line, #d9e2e0); border-radius: 14px; padding: 1rem; width: min(600px, 90vw); max-height: 88vh; }
+#degreeDialog::backdrop { background: #14252888; }
+#degreeDialog h3 { margin-top: 0; }
+#degreeDialog textarea { min-height: 105px; }
+#degreeDialog pre { overflow-wrap: anywhere; }
+.degree-error { color: #a12b22; }

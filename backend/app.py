@@ -13,6 +13,9 @@ from typing import Any
 
 from fastapi import Depends, FastAPI, Header, HTTPException, Request, status
 from fastapi.staticfiles import StaticFiles
+from starlette.concurrency import run_in_threadpool
+
+from backend.degree_import import MAX_BYTES as MAX_IMPORT_BYTES, SourceError, parse_source
 from pydantic import BaseModel, Field
 
 try:
@@ -37,6 +40,7 @@ SESSION_SECONDS = 30 * 24 * 60 * 60
 RATE_LIMITS = {
     "register": (5, 60 * 60),
     "login": (12, 10 * 60),
+    "degree_import": (12, 60),
 }
 rate_events: dict[str, deque[float]] = defaultdict(deque)
 rate_lock = threading.Lock()
@@ -440,6 +444,27 @@ def get_shared(share_token: str) -> dict[str, Any]:
     if not row:
         raise HTTPException(status_code=404, detail="share_not_found")
     return {"state": json.loads(row["state_json"]), "updatedAt": row["updated_at"]}
+
+
+@app.post("/api/degree/import")
+async def import_degree_source(request: Request, user: Any = Depends(current_user)) -> dict[str, Any]:
+    enforce_rate_limit(request, "degree_import", user["id"])
+    maximum_body = ((MAX_IMPORT_BYTES + 2) // 3) * 4 + 8192
+    contents = bytearray()
+    async for chunk in request.stream():
+        if len(contents) + len(chunk) > maximum_body:
+            raise HTTPException(status_code=413, detail="source_too_large")
+        contents.extend(chunk)
+    try:
+        data = json.loads(contents)
+    except (UnicodeError, ValueError) as exc:
+        raise HTTPException(status_code=422, detail="source_unreadable") from exc
+    if not isinstance(data, dict):
+        raise HTTPException(status_code=422, detail="source_unreadable")
+    try:
+        return await run_in_threadpool(parse_source, data)
+    except SourceError as exc:
+        raise HTTPException(status_code=422, detail=str(exc)) from exc
 
 
 app.mount("/", StaticFiles(directory=PUBLIC_DIR, html=True), name="public")
