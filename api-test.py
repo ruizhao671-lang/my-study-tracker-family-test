@@ -8,16 +8,26 @@ os.environ["REGISTRATION_INVITE_CODE"] = "test-invite-code"
 from fastapi.testclient import TestClient
 
 from backend.app import app
-from backend.degree_import import tum_catalogue_rows
+from backend.degree_import import exam_rows, tum_catalogue_rows
 
 assert tum_catalogue_rows(
     "CIT1330000        Computational Intelli-              WS         5       3/1/0\n"
     "                  gence\n"
     "SZ0489            English Pronunciation                        3\n"
+    "WI001056_1        Principles of Economics             WS         6       2/2/0\n"
 ) == [
     {"code": "CIT1330000", "name": "Computational Intelligence", "credits": 5.0},
     {"code": "SZ0489", "name": "English Pronunciation", "credits": 3.0},
+    {"code": "WI001056_1", "name": "Principles of Economics", "credits": 6.0},
 ]
+assert [
+    (row["code"], row["name"])
+    for row in exam_rows(
+        "WI001056_1  Principles of Economics  15.02.2027  09:00\n"
+        "16.02.2027  10:00  WI001056_1  Principles of Economics  120",
+        "test schedule",
+    )
+] == [("WI001056_1", "Principles of Economics")] * 2
 
 
 def auth(token: str) -> dict[str, str]:

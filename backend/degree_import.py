@@ -33,7 +33,8 @@ MONTHS = (
 ).split()
 DATE = re.compile(r"\b(\d{1,2})\.\s*(\d{1,2}|[A-Za-zÄÖÜäöüß]+)\.?\s*(20\d{2})\b")
 TIME = re.compile(r"\b([01]?\d|2[0-3]):([0-5]\d)\b")
-CODE = re.compile(r"\b[A-Z]{2,6}[- ]?\d{3,8}[A-Z]?\b")
+MODULE_CODE = r"[A-Z]{2,6}[- ]?\d{3,8}[A-Z]?(?:_\d{1,3})?"
+CODE = re.compile(rf"\b{MODULE_CODE}\b")
 CREDITS = re.compile(r"\b(\d{1,3}(?:[,.]\d{1,2})?)\s*(?:ECTS(?:[- ](?:Punkte|Credits))?|Credits?|LP)\b", re.I)
 TERM = re.compile(r"\b(Wintersemester|Sommersemester|WS|SS|SoSe|WiSe)\s*(20\d{2})(?:\s*[/–-]\s*(20\d{2}|\d{2}))?", re.I)
 RET = re.compile(r"Wiederholungs(?:klausur|prüfung|pruefung)|\bretakes?\b", re.I)
@@ -338,13 +339,14 @@ def tum_catalogue_rows(text):
     name_start = 0
     for line in text.splitlines():
         row = re.match(
-            r"^\s*([A-Z]{2,6}\d{3,8}[A-Z]?)\s{2,}(.+?)"
+            rf"^\s*({MODULE_CODE})\s{{2,}}(.+?)"
             r"\s{2,}(?:(?:W|S)S(?:\s*/\s*(?:W|S)S)?(?:\s*\(B\))?\s+)?"
             r"(\d{1,2}(?:[,.]\d{1,2})?)(?:\s{2,}|$)",
             line,
         )
         if row:
             code, name, credits = row.groups()
+            code = re.sub(r"\s+", "", code)
             current = {"code": code, "name": re.sub(r"\s+", " ", name), "credits": float(credits.replace(",", "."))}
             name_start = row.start(2)
             rows[code] = current

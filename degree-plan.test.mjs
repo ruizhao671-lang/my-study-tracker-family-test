@@ -42,6 +42,11 @@ const rows = [
   row("EI00999", "retake", "2027-03-23"),
   row("EI00460", "retake", "2027-03-24")
 ];
+const economics = newCourse({ code: "WI001056_1", name: "Principles of Economics", credits: 6, examTerm: plan.term });
+electives.courses.push(economics);
+assert.equal(examMatches(plan, stages, [row("WI001056_1", "first", "2027-02-15")])[0].course, economics);
+assert.deepEqual(examMatches(plan, stages, [row("WI001056", "first", "2027-02-15")]), []);
+assert.deepEqual(examMatches(plan, stages, [row("WI0010561", "first", "2027-02-15")]), []);
 const matches = examMatches(plan, stages, rows);
 assert.deepEqual(matches.map(item => item.course.code), ["EI00460", "EI00460", "EI00888"]);
 applyExamMatches(matches);

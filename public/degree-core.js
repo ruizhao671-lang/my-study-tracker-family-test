@@ -139,7 +139,7 @@ export function creditTotals(plan, semesters) {
 }
 
 function matchCode(value) {
-  return normalizeModuleCode(value).toUpperCase().replace(/[^A-Z0-9]/g, "");
+  return normalizeModuleCode(value).toUpperCase().replace(/[^A-Z0-9_]/g, "");
 }
 
 function matchName(value) {
