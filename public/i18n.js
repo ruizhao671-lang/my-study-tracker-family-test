@@ -30,6 +30,7 @@
     "事项时间（可选）": "Item time (optional)",
     "考试结束时间": "Exam end time",
     "考试地点": "Exam location",
+    "手填地点会保留。清空并保存后，使用毕业规划里的地点。": "Custom locations are saved. Clear the field and save to use the degree planner location.",
     "例如：教室、考场或线上平台": "For example: classroom, exam hall, or online platform",
     "考试要求": "Exam requirements",
     "例如：可携带公式表；闭卷；包含口试和笔试": "For example: formula sheet allowed; closed book; oral and written parts",

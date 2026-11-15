@@ -2567,6 +2567,7 @@
         location: typeof item?.location === "string" ? item.location : "",
         degreeCourseId: typeof item?.degreeCourseId === "string" ? item.degreeCourseId : "",
         degreeExamId: typeof item?.degreeExamId === "string" ? item.degreeExamId : "",
+        degreeExamLocationOverride: item?.degreeExamLocationOverride === true,
         privateDegreeExam: item?.privateDegreeExam === true || Boolean(item?.degreeExamId),
         requirements: typeof item?.requirements === "string" ? item.requirements : "",
         details: typeof item?.details === "string" ? item.details : ""
@@ -3531,12 +3532,13 @@
         if (!bound) {
           event.degreeCourseId = "";
           event.degreeExamId = "";
+          event.degreeExamLocationOverride = false;
           continue;
         }
         event.title = bound.course.name;
         event.date = bound.exam.date;
         event.startTime = bound.exam.time || "";
-        event.location = bound.exam.location || "";
+        if (!event.degreeExamLocationOverride) event.location = bound.exam.location || "";
         if (!event.startTime || (event.endTime && event.endTime <= event.startTime)) event.endTime = "";
       }
     }
@@ -3547,7 +3549,8 @@
         semesterId: item?.semesterId || "",
         courseId: item?.courseId || ""
       };
-      const linkedDegreeExam = preferredDegreeExam || (item?.degreeExamId ? JSON.stringify([item.degreeCourseId, item.degreeExamId]) : "");
+      const savedDegreeExam = item?.degreeExamId ? JSON.stringify([item.degreeCourseId, item.degreeExamId]) : "";
+      const linkedDegreeExam = preferredDegreeExam || savedDegreeExam;
       const degreeOptions = new Map(isExam ? degreeCalendarChoices(state.degreePlan).map(choice => [choice.id, choice]) : []);
       const fields = [
         ...(degreeOptions.size ? [{
@@ -3567,7 +3570,9 @@
         { label: "关联学习阶段（可选）", name: "calendarSemesterId", value: initial.semesterId, required: false, options: selectOptions(state.semesters, "不关联学习阶段") },
         { label: "关联课程（可选）", name: "calendarCourseId", value: initial.courseId, required: false, options: [{ value: "", label: t("不关联课程") }] },
         ...(isExam ? [
-          { label: "考试地点", name: "calendarLocation", value: item?.location || "", required: false, placeholder: "例如：教室、考场或线上平台" },
+          { label: "考试地点", name: "calendarLocation", value: item?.location || "", required: false,
+            placeholder: "例如：教室、考场或线上平台",
+            help: degreeOptions.size ? "手填地点会保留。清空并保存后，使用毕业规划里的地点。" : "" },
           { label: "考试要求", name: "calendarRequirements", value: item?.requirements || "", required: false, multiline: true, placeholder: "例如：可携带公式表；闭卷；包含口试和笔试" }
         ] : [
           { label: "事项内容", name: "calendarDetails", value: item?.details || "", required: false, multiline: true, placeholder: "记录这件事需要注意的内容" }
@@ -3588,6 +3593,8 @@
           semesterId: values.calendarSemesterId,
           courseId: values.calendarCourseId
         });
+        const plannedLocation = choice?.exam.location || "";
+        const manualLocation = isExam ? values.calendarLocation : "";
         const nextItem = {
           id: item?.id || uid(),
           type: isExam ? "exam" : "reminder",
@@ -3599,9 +3606,10 @@
           semesterName: selection.semesterName,
           courseId: selection.courseId,
           courseName: selection.courseName,
-          location: choice ? (choice.exam.location || "") : (isExam ? values.calendarLocation : ""),
+          location: manualLocation || plannedLocation,
           degreeCourseId: choice?.course.id || "",
           degreeExamId: choice?.exam.id || "",
+          degreeExamLocationOverride: Boolean(choice && manualLocation && manualLocation !== plannedLocation),
           privateDegreeExam: Boolean(choice || item?.privateDegreeExam),
           requirements: isExam ? values.calendarRequirements : "",
           details: isExam ? "" : values.calendarDetails
@@ -3620,7 +3628,8 @@
         const applyDegreeDetails = () => {
           const bound = degreeOptions.get(setting.value);
           const fields = els.editForm.elements;
-          for (const name of ["calendarTitle", "calendarDate", "calendarStartTime", "calendarLocation"]) {
+          fields.calendarLocation.parentElement.querySelector("small").hidden = !bound;
+          for (const name of ["calendarTitle", "calendarDate", "calendarStartTime"]) {
             fields[name].readOnly = Boolean(bound);
           }
           fields.calendarStartTime.required = !bound;
@@ -3629,7 +3638,11 @@
           fields.calendarTitle.value = bound.course.name;
           fields.calendarDate.value = bound.exam.date;
           fields.calendarStartTime.value = bound.exam.time || "";
-          fields.calendarLocation.value = bound.exam.location || "";
+          if (setting.value === savedDegreeExam && item?.degreeExamLocationOverride) {
+            fields.calendarLocation.value = item.location;
+          } else {
+            fields.calendarLocation.value = bound.exam.location || "";
+          }
           if (!bound.exam.time || fields.calendarEndTime.value <= bound.exam.time) fields.calendarEndTime.value = "";
         };
         setting.addEventListener("change", applyDegreeDetails);
