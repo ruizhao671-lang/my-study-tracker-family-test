@@ -338,6 +338,7 @@
     "关联毕业规划": "Link degree plan",
     "已关联毕业规划": "Degree plan linked",
     "课程标签（可选，例如专业课、公共课）": "Course tag (optional, e.g. major subject or general subject)",
+    "课程标签（来自毕业规划）": "Course tag (from the degree plan)",
     "学习阶段名称": "Study stage name",
     "分类名称": "Category name",
     "第一栏": "First field",

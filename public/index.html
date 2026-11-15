@@ -4234,6 +4234,18 @@
       return semesterEl;
     }
 
+    function linkedDegreeLabel(courseId) {
+      if (READ_ONLY_LINK || window.studyCloud?.isReadOnly?.()) return "";
+      const labels = (state.degreePlan?.modules || [])
+        .filter(module => module.courses.some(course => course.courseId === courseId))
+        .map(module => module.name).filter(Boolean);
+      return [...new Set(labels)].join(" · ");
+    }
+
+    function displayCourseLabel(course) {
+      return linkedDegreeLabel(course.id) || course.label || "";
+    }
+
     function renderGardenCourse(course) {
       const courseEl = document.createElement("article");
       courseEl.className = "garden-course";
@@ -4255,10 +4267,11 @@
         <div class="garden-meta">${categoriesMeta || `<span class="garden-category">暂无分类</span>`}</div>
       `;
       courseEl.querySelector("h3").textContent = course.name;
-      if (course.label) {
+      const courseLabel = displayCourseLabel(course);
+      if (courseLabel) {
         const label = document.createElement("span");
         label.className = "course-label";
-        label.textContent = course.label;
+        label.textContent = courseLabel;
         courseEl.querySelector(".garden-course-header").insertBefore(label, courseEl.querySelector(".garden-course-header strong"));
       }
 
@@ -4431,10 +4444,11 @@
         <p class="batch-help">深色为已完成，浅色为未完成。</p>
       `;
       card.querySelector("h2").textContent = course.name;
-      if (course.label) {
+      const courseLabel = displayCourseLabel(course);
+      if (courseLabel) {
         const label = document.createElement("span");
         label.className = "course-label";
-        label.textContent = course.label;
+        label.textContent = courseLabel;
         card.querySelector(".pdf-row").insertBefore(label, card.querySelector(".pdf-row strong"));
       }
       return card;
@@ -4449,7 +4463,7 @@
       const progress = getProgress(tasks);
       const linkedTemplate = state.courseTemplates.find(template => template.id === course.templateSourceId);
       const canLinkDegree = !READ_ONLY_LINK && !window.studyCloud?.isReadOnly?.();
-      const linkedDegree = state.degreePlan?.modules.some(module => module.courses.some(item => item.courseId === course.id));
+      const degreeLabel = linkedDegreeLabel(course.id);
 
       courseEl.innerHTML = `
         <header class="course-header">
@@ -4459,7 +4473,7 @@
               <span class="course-label" hidden></span>
               <span class="badge"></span>
               ${canLinkDegree ? `<button class="btn secondary progress-link" type="button" data-action="link-degree-progress">
-                ${t(linkedDegree ? "已关联毕业规划" : "关联毕业规划")}</button>` : ""}
+                ${t(degreeLabel ? "已关联毕业规划" : "关联毕业规划")}</button>` : ""}
             </div>
             <div class="progress-bar" aria-hidden="true">
               <div class="progress-fill"></div>
@@ -4496,8 +4510,8 @@
 
       courseEl.querySelector("h2").textContent = course.name;
       const courseLabel = courseEl.querySelector(".course-label");
-      courseLabel.textContent = course.label || "";
-      courseLabel.hidden = !course.label;
+      courseLabel.textContent = degreeLabel || course.label || "";
+      courseLabel.hidden = !courseLabel.textContent;
       courseEl.querySelector(".badge").textContent = `${progress.done}/${progress.total} · ${progress.percent}%`;
       courseEl.querySelector(".progress-fill").style.width = `${progress.percent}%`;
       courseEl.querySelector(".entity-note").value = course.note || "";
@@ -4944,6 +4958,7 @@
         }
         input.value = field.value ?? "";
         input.required = field.required !== false;
+        if (field.readOnly) input.readOnly = true;
         if (field.min !== undefined) input.min = field.min;
         if (field.max !== undefined) input.max = field.max;
         if (field.step !== undefined) input.step = field.step;
@@ -6285,12 +6300,14 @@
       }
 
       if (action === "edit-course" && course) {
+        const degreeLabel = linkedDegreeLabel(course.id);
         openEditModal("编辑课程", [
           { label: "课程名称", name: "name", value: course.name },
-          { label: "课程标签（可选，例如专业课、公共课）", name: "label", value: course.label || "", required: false }
+          { label: degreeLabel ? "课程标签（来自毕业规划）" : "课程标签（可选，例如专业课、公共课）",
+            name: "label", value: degreeLabel || course.label || "", required: false, readOnly: Boolean(degreeLabel) }
         ], values => {
           course.name = values.name;
-          course.label = values.label;
+          if (!degreeLabel) course.label = values.label;
           commit("课程已更新");
         });
         window.studyDegree?.attachCatalogue(els.modalBody.querySelector('[name="name"]'));
