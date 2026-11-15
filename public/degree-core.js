@@ -87,13 +87,23 @@ export function addTumStudyPeriods(plan, date) {
   plan.blocks.sort((left, right) => left.start.localeCompare(right.start));
 }
 
-export function chooseTargetExam(course, plan, examId, date) {
-  const exam = course.exams.find(sitting => sitting.id === examId);
-  course.examId = exam?.id ?? "";
-  if (!exam || course.blockId || exam.date <= date) return;
-  const candidates = plan.blocks.filter(block => block.start < exam.date && block.end >= date);
-  const block = candidates.find(period => exam.date <= period.end) ?? candidates.at(-1);
-  if (block) course.blockId = block.id;
+export function nextExam(course, plan, date) {
+  const block = plan.blocks.find(item => item.id === course.blockId);
+  const followingBreak = block?.kind === "lecture"
+    ? plan.blocks.find(item => item.kind === "break" && item.start === dayAfter(block.end))
+    : null;
+  const end = followingBreak?.end ?? block?.end;
+  const start = block && block.start > date ? block.start : date;
+  return course.exams.filter(exam => exam.date >= start && (!end || exam.date <= end))
+    .sort((left, right) => left.date.localeCompare(right.date) || (left.time || "24:00").localeCompare(right.time || "24:00"))[0];
+}
+
+export function scheduleNewExamCourse(course, plan, date) {
+  if (course.examPlacement === "manual" || (course.blockId && course.examPlacement !== "auto")) return;
+  const exam = nextExam({ ...course, blockId: "" }, plan, date);
+  const block = exam && plan.blocks.find(item => item.start <= exam.date && exam.date <= item.end);
+  course.blockId = block?.id ?? "";
+  course.examPlacement = "auto";
 }
 
 export function normalizeModuleCode(value) {
@@ -142,9 +152,12 @@ function examKey(exam) {
 
 export function linkedProgressCourse(course, semesters) {
   const available = semesters.flatMap(stage => stage.courses);
-  if (course.courseId) return available.find(item => item.id === course.courseId);
-  if (course.progressLink === "manual") return undefined;
-  const name = matchName(course.name);
+  return available.find(item => item.id === course.courseId);
+}
+
+export function suggestProgressCourse(name, semesters) {
+  const available = semesters.flatMap(stage => stage.courses);
+  name = matchName(name);
   if (!name) return undefined;
   const matches = available.filter(item => matchName(item.name) === name);
   return matches.length === 1 ? matches[0] : undefined;
@@ -158,11 +171,11 @@ export function revisionProgress(course, semesters) {
   return { linked, existing, total: tasks.length, done, ratio: tasks.length ? done / tasks.length : 0 };
 }
 
-export function timeBlockCredits(plan, semesters) {
+export function timeBlockCredits(plan, semesters, date) {
   const summary = new Map(plan.blocks.map(block => [block.id, { planned: 0, weighted: 0, courses: [] }]));
   for (const module of plan.modules) {
     for (const course of module.courses) {
-      const exam = course.exams.find(item => item.id === course.examId);
+      const exam = !isEarned(course, semesters) ? nextExam(course, plan, date) : undefined;
       const examBlock = exam && plan.blocks.find(block => block.start <= exam.date && exam.date <= block.end);
       const entry = summary.get(examBlock?.id ?? course.blockId);
       if (!entry) continue;

@@ -54,7 +54,8 @@ export function makeSharedState(sourceState) {
     timer: {
       sessions: [],
       active: null,
-      calendarItems: (sourceState?.timer?.calendarItems || []).map(item => ({
+      calendarItems: (sourceState?.timer?.calendarItems || [])
+        .filter(item => !item.privateDegreeExam && !item.degreeExamId).map(item => ({
         id: item.id,
         type: item.type === "reminder" ? "reminder" : "exam",
         title: item.title || "",

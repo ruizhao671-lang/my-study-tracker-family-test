@@ -2565,6 +2565,9 @@
         courseId: typeof item?.courseId === "string" ? item.courseId : "",
         courseName: typeof item?.courseName === "string" ? item.courseName : "",
         location: typeof item?.location === "string" ? item.location : "",
+        degreeCourseId: typeof item?.degreeCourseId === "string" ? item.degreeCourseId : "",
+        degreeExamId: typeof item?.degreeExamId === "string" ? item.degreeExamId : "",
+        privateDegreeExam: item?.privateDegreeExam === true || Boolean(item?.degreeExamId),
         requirements: typeof item?.requirements === "string" ? item.requirements : "",
         details: typeof item?.details === "string" ? item.details : ""
       })).filter(item => item.title && item.date);
@@ -3514,17 +3517,53 @@
       return (state.timer.calendarItems || []).find(item => item.id === itemId);
     }
 
-    function openCalendarItemModal(type, item = null) {
+    function degreeCalendarChoices(plan) {
+      return (plan?.modules || []).flatMap(module => module.courses.flatMap(course => course.exams.map(exam => ({
+        id: JSON.stringify([course.id, exam.id]), course, exam
+      })))).sort((left, right) => left.exam.date.localeCompare(right.exam.date));
+    }
+
+    function syncDegreeCalendar(plan) {
+      const choices = new Map(degreeCalendarChoices(plan).map(choice => [choice.id, choice]));
+      for (const event of state.timer.calendarItems) {
+        if (!event.degreeExamId) continue;
+        const bound = choices.get(JSON.stringify([event.degreeCourseId, event.degreeExamId]));
+        if (!bound) {
+          event.degreeCourseId = "";
+          event.degreeExamId = "";
+          continue;
+        }
+        event.title = bound.course.name;
+        event.date = bound.exam.date;
+        event.startTime = bound.exam.time || "";
+        event.location = bound.exam.location || "";
+        if (!event.startTime || (event.endTime && event.endTime <= event.startTime)) event.endTime = "";
+      }
+    }
+
+    function openCalendarItemModal(type, item = null, preferredDegreeExam = "") {
       const isExam = type === "exam";
       const initial = {
         semesterId: item?.semesterId || "",
         courseId: item?.courseId || ""
       };
+      const linkedDegreeExam = preferredDegreeExam || (item?.degreeExamId ? JSON.stringify([item.degreeCourseId, item.degreeExamId]) : "");
+      const degreeOptions = new Map(isExam ? degreeCalendarChoices(state.degreePlan).map(choice => [choice.id, choice]) : []);
       const fields = [
+        ...(degreeOptions.size ? [{
+          label: t("关联毕业规划里的考试（可选）"),
+          name: "calendarDegreeExam", value: linkedDegreeExam, required: false,
+          options: [{ value: "", label: t("手动填写") }, ...[...degreeOptions.values()].map(({ id, course, exam }) => ({
+            value: id,
+            label: course.name + " · " + exam.date +
+              (exam.time ? " " + exam.time : "") +
+              (exam.kind === "retake" ? " · " + t("补考") : exam.kind === "first" ? " · " + t("初考") : "")
+          }))]
+        }] : []),
         { label: isExam ? "科目名称" : "事项名称", name: "calendarTitle", value: item?.title || "", placeholder: isExam ? "例如：高等数学" : "例如：提交报名材料" },
         { label: "日期", name: "calendarDate", value: item?.date || state.timer.selectedDate || dateKeyFromTime(), type: "date" },
-        { label: isExam ? "考试开始时间" : "事项时间（可选）", name: "calendarStartTime", value: item?.startTime || "", type: "time", required: isExam },
-        ...(isExam ? [{ label: "考试结束时间", name: "calendarEndTime", value: item?.endTime || "", type: "time" }] : []),
+        { label: isExam ? "考试开始时间" : "事项时间（可选）", name: "calendarStartTime", value: item?.startTime || "", type: "time", required: isExam && !linkedDegreeExam },
+        ...(isExam ? [{ label: "考试结束时间", name: "calendarEndTime", value: item?.endTime || "", type: "time", required: !linkedDegreeExam }] : []),
         { label: "关联学习阶段（可选）", name: "calendarSemesterId", value: initial.semesterId, required: false, options: selectOptions(state.semesters, "不关联学习阶段") },
         { label: "关联课程（可选）", name: "calendarCourseId", value: initial.courseId, required: false, options: [{ value: "", label: t("不关联课程") }] },
         ...(isExam ? [
@@ -3535,7 +3574,13 @@
         ])
       ];
       openEditModal(item ? (isExam ? "编辑考试" : "编辑事项") : (isExam ? "添加考试" : "添加事项"), fields, values => {
-        if (isExam && values.calendarEndTime <= values.calendarStartTime) {
+        const choice = degreeOptions.get(values.calendarDegreeExam);
+        if (choice && state.timer.calendarItems.some(event => event.id !== item?.id &&
+          event.degreeCourseId === choice.course.id && event.degreeExamId === choice.exam.id)) {
+          showToast("这场考试已关联到日历。");
+          return false;
+        }
+        if (isExam && values.calendarEndTime && (!values.calendarStartTime || values.calendarEndTime <= values.calendarStartTime)) {
           showToast("考试结束时间必须晚于开始时间");
           return false;
         }
@@ -3546,15 +3591,18 @@
         const nextItem = {
           id: item?.id || uid(),
           type: isExam ? "exam" : "reminder",
-          title: values.calendarTitle,
-          date: values.calendarDate,
-          startTime: values.calendarStartTime || "",
+          title: choice?.course.name || values.calendarTitle,
+          date: choice?.exam.date || values.calendarDate,
+          startTime: choice ? (choice.exam.time || "") : (values.calendarStartTime || ""),
           endTime: isExam ? values.calendarEndTime : "",
           semesterId: selection.semesterId,
           semesterName: selection.semesterName,
           courseId: selection.courseId,
           courseName: selection.courseName,
-          location: isExam ? values.calendarLocation : "",
+          location: choice ? (choice.exam.location || "") : (isExam ? values.calendarLocation : ""),
+          degreeCourseId: choice?.course.id || "",
+          degreeExamId: choice?.exam.id || "",
+          privateDegreeExam: Boolean(choice || item?.privateDegreeExam),
           requirements: isExam ? values.calendarRequirements : "",
           details: isExam ? "" : values.calendarDetails
         };
@@ -3567,6 +3615,26 @@
         commitTimer(item ? (isExam ? "考试已更新" : "事项已更新") : (isExam ? "考试已添加" : "事项已添加"));
       });
       setupModalAssociations("calendar", initial, false);
+      const setting = els.editForm.elements.calendarDegreeExam;
+      if (setting) {
+        const applyDegreeDetails = () => {
+          const bound = degreeOptions.get(setting.value);
+          const fields = els.editForm.elements;
+          for (const name of ["calendarTitle", "calendarDate", "calendarStartTime", "calendarLocation"]) {
+            fields[name].readOnly = Boolean(bound);
+          }
+          fields.calendarStartTime.required = !bound;
+          fields.calendarEndTime.required = !bound;
+          if (!bound) return;
+          fields.calendarTitle.value = bound.course.name;
+          fields.calendarDate.value = bound.exam.date;
+          fields.calendarStartTime.value = bound.exam.time || "";
+          fields.calendarLocation.value = bound.exam.location || "";
+          if (!bound.exam.time || fields.calendarEndTime.value <= bound.exam.time) fields.calendarEndTime.value = "";
+        };
+        setting.addEventListener("change", applyDegreeDetails);
+        applyDegreeDetails();
+      }
     }
 
     function deleteCalendarItem(item) {
@@ -4225,6 +4293,7 @@
               <input class="input" name="courseLabel" placeholder="课程标签（可选），例如专业课" title="课程标签（可选），例如专业课">
               <input class="input amount-input" name="courseAmount" type="number" min="1" max="100" value="1" title="添加数量">
               <button class="btn secondary" type="submit">+ 添加课程</button>
+              <button class="btn secondary" type="button" data-action="lookup-tum-course">从 TUM 目录查找</button>
             </form>
             <div class="semester-extra entity-extra">
               <textarea class="textarea entity-note" data-action="update-semester-note" placeholder="学期备注：目标、考试时间、整体安排"></textarea>
@@ -6184,15 +6253,37 @@
         commitDisclosureChange();
       }
 
+      if (action === "lookup-tum-course") {
+        const form = actionTarget.closest("form");
+        const picker = window.studyDegree?.attachCatalogue(form?.elements.courseName);
+        if (picker) {
+          actionTarget.hidden = true;
+          picker.open = true;
+          picker.querySelector("input").focus();
+        }
+      }
+
       if (action === "edit-course" && course) {
+        const available = (state.degreePlan?.modules || []).flatMap(module => module.courses
+          .filter(item => !item.courseId).map(item => ({ value: item.id, label: item.name + " · " + module.name })));
         openEditModal("编辑课程", [
           { label: "课程名称", name: "name", value: course.name },
-          { label: "课程标签（可选，例如专业课、公共课）", name: "label", value: course.label || "", required: false }
+          { label: "课程标签（可选，例如专业课、公共课）", name: "label", value: course.label || "", required: false },
+          ...(available.length ? [{
+            label: "关联毕业规划课程（可选）",
+            name: "degreeProgressCourse", value: "", required: false,
+            options: [{ value: "", label: "不新增关联" }, ...available]
+          }] : [])
         ], values => {
           course.name = values.name;
           course.label = values.label;
+          if (values.degreeProgressCourse) {
+            const target = state.degreePlan?.modules.flatMap(group => group.courses).find(item => item.id === values.degreeProgressCourse);
+            if (target && !target.courseId) target.courseId = course.id;
+          }
           commit("课程已更新");
         });
+        window.studyDegree?.attachCatalogue(els.modalBody.querySelector('[name="name"]'));
       }
 
       if (action === "save-course-template" && course) {
@@ -6567,7 +6658,16 @@
       saveDegreePlan(plan) {
         if (READ_ONLY_LINK || window.studyCloud?.isReadOnly?.()) return;
         state.degreePlan = plan;
+        syncDegreeCalendar(plan);
         commit();
+      },
+      openDegreeCalendar(courseId, examId) {
+        if (READ_ONLY_LINK || window.studyCloud?.isReadOnly?.()) return;
+        const key = JSON.stringify([courseId, examId]);
+        if (!degreeCalendarChoices(state.degreePlan).some(choice => choice.id === key)) return;
+        const existing = state.timer.calendarItems.find(item => item.degreeCourseId === courseId && item.degreeExamId === examId);
+        setActivePanel("timer");
+        openCalendarItemModal("exam", existing ?? null, key);
       },
       setDegreeLinkedTask(courseId, taskId, done) {
         if (READ_ONLY_LINK || window.studyCloud?.isReadOnly?.()) return;

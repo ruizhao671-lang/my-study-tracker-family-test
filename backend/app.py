@@ -15,7 +15,7 @@ from fastapi import Depends, FastAPI, Header, HTTPException, Request, status
 from fastapi.staticfiles import StaticFiles
 from starlette.concurrency import run_in_threadpool
 
-from backend.degree_import import MAX_BYTES as MAX_IMPORT_BYTES, SourceError, parse_source
+from backend.degree_import import MAX_BYTES as MAX_IMPORT_BYTES, SourceError, parse_source, tum_catalogue
 from pydantic import BaseModel, Field
 
 try:
@@ -41,6 +41,7 @@ RATE_LIMITS = {
     "register": (5, 60 * 60),
     "login": (12, 10 * 60),
     "degree_import": (12, 60),
+    "tum_catalogue": (30, 60),
 }
 rate_events: dict[str, deque[float]] = defaultdict(deque)
 rate_lock = threading.Lock()
@@ -293,6 +294,7 @@ def shared_state(source: dict[str, Any]) -> dict[str, Any]:
                     "details": item.get("details", ""),
                 }
                 for item in source.get("timer", {}).get("calendarItems", [])
+                if not item.get("privateDegreeExam") and not item.get("degreeExamId")
             ],
         },
     }
@@ -444,6 +446,15 @@ def get_shared(share_token: str) -> dict[str, Any]:
     if not row:
         raise HTTPException(status_code=404, detail="share_not_found")
     return {"state": json.loads(row["state_json"]), "updatedAt": row["updated_at"]}
+
+
+@app.get("/api/catalogue/tum-ei")
+def get_tum_catalogue(request: Request) -> dict[str, Any]:
+    enforce_rate_limit(request, "tum_catalogue")
+    try:
+        return tum_catalogue()
+    except SourceError as exc:
+        raise HTTPException(status_code=502, detail=str(exc)) from exc
 
 
 @app.post("/api/degree/import")

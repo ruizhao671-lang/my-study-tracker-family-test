@@ -8,6 +8,16 @@ os.environ["REGISTRATION_INVITE_CODE"] = "test-invite-code"
 from fastapi.testclient import TestClient
 
 from backend.app import app
+from backend.degree_import import tum_catalogue_rows
+
+assert tum_catalogue_rows(
+    "CIT1330000        Computational Intelli-              WS         5       3/1/0\n"
+    "                  gence\n"
+    "SZ0489            English Pronunciation                        3\n"
+) == [
+    {"code": "CIT1330000", "name": "Computational Intelligence", "credits": 5.0},
+    {"code": "SZ0489", "name": "English Pronunciation", "credits": 3.0},
+]
 
 
 def auth(token: str) -> dict[str, str]:
@@ -18,6 +28,11 @@ private_state = {
     "ownerName": "Demo User",
     "degreePlan": {"name": "PRIVATE_DEGREE_PLAN", "modules": [], "blocks": []},
     "courseTemplates": [{"id": "private-template"}],
+    "timer": {"calendarItems": [
+        {"id": "ordinary", "title": "Shareable exam", "date": "2027-01-14"},
+        {"id": "linked", "title": "PRIVATE_LINKED_EXAM", "date": "2027-01-15", "degreeExamId": "sitting-1"},
+        {"id": "detached", "title": "PRIVATE_DETACHED_EXAM", "date": "2027-01-16", "privateDegreeExam": True},
+    ]},
     "semesters": [
         {
             "id": "semester-a",
@@ -100,6 +115,8 @@ with TestClient(app) as client:
     assert "degreePlan" not in shared and "PRIVATE_DEGREE_PLAN" not in serialized
     assert shared["semesters"][0]["courses"][0]["categories"][0]["tasks"][0]["done"] is True
     assert shared["semesters"][0]["courses"][0]["label"] == "General course"
+    assert [item["id"] for item in shared["timer"]["calendarItems"]] == ["ordinary"]
+    assert "PRIVATE_LINKED_EXAM" not in serialized and "PRIVATE_DETACHED_EXAM" not in serialized
 
     assert client.put("/api/share", headers=auth(token_a), json={"enabled": False}).status_code == 200
     assert client.get(f"/api/shared/{share['token']}").status_code == 404

@@ -1,7 +1,7 @@
 import { TUM_EI_BACHELOR } from "./degree-templates.js";
 import {
   applyExamMatches, courseTasks, creditNumber, creditTotals, daysBetween, examMatches,
-  addTumStudyPeriods, chooseTargetExam, isEarned, isTumMathChoice, makePlan, newCourse,
+  addTumStudyPeriods, nextExam, scheduleNewExamCourse, suggestProgressCourse, isEarned, isTumMathChoice, makePlan, newCourse,
   newModule, normalizeModuleCode, parseStudyTasks, replaceTumMathChoice, useTumTemplate,
   campusForVenue, linkedProgressCourse, revisionProgress, timeBlockCredits
 } from "./degree-core.js";
@@ -49,6 +49,69 @@ let view = "timeline";
 let dragging = "";
 let dialogVersion = 0;
 let currentSnapshot = null;
+let catalogueRequest;
+
+function attachCatalogue(name, code, credits) {
+  if (!name) return;
+  const picker = document.createElement("details");
+  picker.className = "degree-catalogue";
+  picker.innerHTML = `<summary>${word("在 TUM EI 目录中找课程", "Find a course in the TUM EI catalogue")}</summary>
+    ${field(word("课程名或模块编号", "Course name or module code"), "", "", "search", 'autocomplete="off"')}
+    <div class="degree-catalogue-results"></div>`;
+  (name.closest("label, .field") || name).before(picker);
+  const search = picker.querySelector("input");
+  const results = picker.querySelector(".degree-catalogue-results");
+  const searchable = text => text.normalize("NFKD").toLowerCase().replace(/\p{Diacritic}/gu, "").replace(/[^\p{L}\p{N}]+/gu, " ").trim();
+  let catalogue;
+  function showMatches() {
+    if (!catalogue) return;
+    results.replaceChildren();
+    const query = searchable(search.value);
+    if (query.length < 2) return;
+    const words = query.split(" ");
+    const matches = catalogue.filter(item => words.every(text => item.search.includes(text))).slice(0, 10);
+    if (!matches.length) results.textContent = word("未找到课程，可以继续手动填写。", "No match. You can enter the course manually.");
+    for (const item of matches) {
+      const result = document.createElement("button");
+      result.type = "button";
+      result.className = "btn secondary";
+      result.textContent = item.name + " · " + item.code + " · " + item.credits + " ECTS";
+      result.onclick = () => {
+        name.value = item.name;
+        if (code) code.value = item.code;
+        if (credits) credits.value = item.credits;
+        name.dispatchEvent(new Event("change", { bubbles: true }));
+        picker.open = false;
+        name.focus();
+      };
+      results.append(result);
+    }
+  }
+  picker.addEventListener("toggle", async () => {
+    if (!picker.open || catalogue) return;
+    results.textContent = word("正在读取 TUM 目录…", "Loading the TUM catalogue…");
+    try {
+      catalogueRequest ??= fetch("/api/catalogue/tum-ei")
+        .then(response => {
+          if (!response.ok) throw new Error("catalogue");
+          return response.json();
+        })
+        .then(data => data.courses.map(item => ({ ...item, search: searchable(item.code + " " + item.name) })))
+        .catch(error => { catalogueRequest = undefined; throw error; });
+      catalogue = await catalogueRequest;
+      showMatches();
+    } catch {
+      results.textContent = word("暂时无法读取 TUM 目录，可以继续手动填写。", "TUM catalogue unavailable. You can enter the course manually.");
+    }
+  });
+  search.addEventListener("input", showMatches);
+  return picker;
+}
+
+function attachDegreeCatalogue() {
+  const form = dialog.querySelector("form");
+  attachCatalogue(form.elements.name, form.elements.code, form.elements.credits);
+}
 
 function update(change) {
   const { plan, editable } = get();
@@ -168,9 +231,9 @@ function periodName(block) {
 
 function renderCourse(course, module, plan, semesters, location, blockId = "") {
   const onTimeline = location === "timeline";
-  const { existing: original, linked, total, done } = revisionProgress(course, semesters);
+  const { existing: original, total, done } = revisionProgress(course, semesters);
   const tasks = course.tasks.filter(task => !onTimeline || (task.blockId || course.blockId) === blockId);
-  const exam = course.exams.find(item => item.id === course.examId);
+  const exam = !isEarned(course, semesters) ? nextExam(course, plan, today()) : undefined;
   const remaining = exam ? daysBetween(today(), exam.date) : null;
   const remainingHours = tasks.reduce((sum, task) => sum + (task.done ? 0 : task.hours), 0);
   const progress = original.length ? word("学习进度列表 ", "Linked course tasks ") + original.filter(task => task.done).length + "/" + original.length : "";
@@ -200,14 +263,17 @@ function renderCourse(course, module, plan, semesters, location, blockId = "") {
       exam ? `<div class="degree-course-date"><div><span>${kindName(exam.kind)}</span>
       <strong>${formatPlannerDate(exam.date)}${exam.time ? " · " + escape(exam.time) : ""}</strong></div>
       ${timing ? `<span class="degree-remaining">${timing}</span>` : ""}</div>` :
-      `<div class="degree-course-date"><span>${course.exams.length ? word("选一场考试作为截止日", "Choose a target exam") :
-        word("待定考试日期", "Exam date to be set")}</span></div>`}
+      `<div class="degree-course-date"><span>${word("考试时间待定", "Exam date pending")}</span></div>`}
     ${shortVenue(exam) ? `<div class="degree-venue" title="${escape(exam.location)}">${escape(shortVenue(exam))}</div>` : ""}
     ${exam?.location && campusForVenue(exam.location) && campusForVenue(exam.location) !== exam.location ? `<details class="degree-room"><summary>${word("查看考场", "See rooms")}</summary>${escape(exam.location)}</details>` : ""}
     ${module.kind === "elective" && !earned ? `<label class="degree-elective-opt"><input name="planThisTerm" type="checkbox" ${course.examTerm === currentExamTerm(plan) ? "checked" : ""}> ${word("本学期计划考试", "Plan to sit this term")}</label>` : ""}
-    ${course.exams.length && !earned ? `<div class="degree-sittings">${course.exams.map(item =>
-      button(kindName(item.kind) + " · " + formatPlannerDate(item.date) + (item.time ? " " + item.time : ""), "choose-exam",
-        `data-exam="${escape(item.id)}" aria-pressed="${course.examId === item.id}"`)).join("")}</div>` : ""}
+    ${course.exams.length && !earned ? `<details class="degree-room" data-key="${escape("exams-" + location + "-" + blockId + "-" + course.id)}">
+      <summary>${word("查看已公布场次", "View saved sittings")}</summary>
+      ${[...course.exams].sort((a, b) => a.date.localeCompare(b.date)).map(item => `<div class="degree-row">
+        <span>${escape(examLabel(item))}${shortVenue(item) ? " · " + escape(shortVenue(item)) : ""}</span>
+        ${actions(button(word("编辑", "Edit"), "edit-exam", `data-exam="${escape(item.id)}"`) +
+          button(word("关联日历", "Link to calendar"), "link-calendar", `data-exam="${escape(item.id)}"`))}
+      </div>`).join("")}</details>` : ""}
     ${total ? `<div class="degree-card-progress"><div><span>${word("复习进度", "Study progress")} ${done}/${total}</span>
       ${remainingHours ? `<span>${displayNumber(remainingHours)} h ${word("待学", "left")}</span>` : ""}</div>
       <progress value="${done}" max="${total}" aria-label="${word("复习进度", "Study progress")}"></progress></div>` : ""}
@@ -217,14 +283,13 @@ function renderCourse(course, module, plan, semesters, location, blockId = "") {
       ${!onTimeline || blockId ? `<div class="degree-fields">${moveField}</div>` : ""}
       ${actions(button(word("编辑课程", "Edit course"), "course", courseRef) +
         button(word("添加考试", "Add exam"), "exam", courseRef) +
-        (exam ? button(word("编辑所选考试", "Edit selected exam"), "edit-exam", courseRef) +
-          button(word("取消选定", "Clear target"), "choose-exam", 'data-exam=""') : "") +
+        (exam ? button(word("关联下一场到日历", "Link next exam to calendar"), "link-calendar",
+          `data-exam="${escape(exam.id)}"`) : "") +
         button(word("添加复习任务", "Add study task"), "add-study-task", courseRef) +
         button(word("粘贴任务清单", "Paste task list"), "study-tasks", courseRef))}
       ${linkedTask ? caption(word("学分关联任务：", "Credit linked to: ") + (linkedTask.title || linkedTask.name)) :
         course.passTaskId ? caption(word("关联任务已找不到，请编辑课程重新选择。", "Linked task missing. Open Edit course to choose again.")) :
         `<div class="degree-pass"><label><input name="passed" type="checkbox" ${course.passed ? "checked" : ""}> ${word("已取得学分", "Credits earned")}</label></div>`}
-      ${linked && !course.courseId ? caption(word("已按课程名称匹配学习进度。", "Matched to the existing course by name.")) : ""}
       ${progress ? `<details data-key="${escape("linked-" + location + "-" + blockId + "-" + course.id)}"><summary>${escape(progress)}</summary>${original.map(task => `<div class="degree-row" data-task="${escape(task.id)}"><label><input type="checkbox" name="linkedDone" ${task.done ? "checked" : ""}> ${escape(task.title || task.name)}</label></div>`).join("")}</details>` : ""}
       ${tasks.map(task => `<div class="degree-row" data-task="${escape(task.id)}"><label>
         <input type="checkbox" name="studyDone" ${task.done ? "checked" : ""}> ${escape(task.title)} · ${displayNumber(task.hours)} h
@@ -253,9 +318,9 @@ function renderTimeline(plan, semesters) {
   const date = today();
   const entries = plan.modules.flatMap(module => module.courses.map(course => ({ module, course })));
   const active = plan.blocks.find(block => block.start <= date && date <= block.end);
-  const creditsByBlock = timeBlockCredits(plan, semesters);
+  const creditsByBlock = timeBlockCredits(plan, semesters, date);
   const upcoming = entries.flatMap(({ course }) => {
-    const exam = course.exams.find(item => item.id === course.examId);
+    const exam = nextExam(course, plan, date);
     return exam && exam.date >= date && !isEarned(course, semesters) ? [{ course, exam }] : [];
   }).sort((a, b) => (a.exam.date + a.exam.time).localeCompare(b.exam.date + b.exam.time));
   const pending = entries.filter(({ course }) => !course.blockId && !isEarned(course, semesters));
@@ -277,7 +342,7 @@ function renderTimeline(plan, semesters) {
         button(word("添加时间块", "Add study period"), "block") + electiveButton(plan))}
     </div><div class="degree-overview-stats">
       <div><span>${word("当前时间块", "Current period")}</span><strong>${active ? escape(periodName(active)) : word("未设置", "Not set")}</strong></div>
-      <div><span>${word("下一场考试", "Next exam")}</span><strong>${next ? escape(formatPlannerDate(next.exam.date)) + " · " + escape(next.course.name) : word("待选定", "Choose a target")}</strong></div>
+      <div><span>${word("下一场考试", "Next exam")}</span><strong>${next ? escape(formatPlannerDate(next.exam.date)) + " · " + escape(next.course.name) : word("待定", "Pending")}</strong></div>
       <button type="button" data-degree="credits"><span>${word("毕业学分", "Degree credits")}</span>
       <strong>${displayNumber(totals.earned)} / ${displayNumber(plan.requiredCredits)} ECTS</strong></button>
     </div></section>
@@ -337,8 +402,8 @@ function exportDegreePdf(plan, semesters) {
   output.opener = null;
   const title = word("毕业规划", "Degree plan");
   const totals = creditTotals(plan, semesters);
-  const periods = timeBlockCredits(plan, semesters);
   const printedOn = today();
+  const periods = timeBlockCredits(plan, semesters, printedOn);
   const table = (columns, rows) => `<table><thead><tr>${columns.map(name => `<th scope="col">${escape(name)}</th>`).join("")}</tr></thead><tbody>${rows}</tbody></table>`;
   const periodSections = plan.blocks.map(block => {
     const { planned, weighted, courses } = periods.get(block.id);
@@ -364,6 +429,14 @@ function exportDegreePdf(plan, semesters) {
   const groups = totals.modules.map(({ module, earned, complete }) =>
     `<tr><td>${escape(module.name)}</td><td>${displayNumber(earned)}</td><td>${displayNumber(module.requiredCredits)}</td>
       <td>${complete ? word("达标", "Met") : "—"}</td></tr>`).join("");
+  const courseRoster = totals.modules.flatMap(({ module }) => module.courses.map(course => {
+    const block = plan.blocks.find(item => item.id === course.blockId);
+    return `<tr><td><strong>${escape(course.name)}</strong>
+      <small>${[module.name, normalizeModuleCode(course.code)].filter(Boolean).map(escape).join(" · ")}</small></td>
+      <td>${displayNumber(course.credits)}</td>
+      <td>${isEarned(course, semesters) ? word("已取得", "Earned") : word("未取得", "Outstanding")}</td>
+      <td>${block ? escape(periodName(block)) : "—"}</td></tr>`;
+  })).join("");
   output.document.open();
   output.document.write(`<!doctype html><html lang="${en() ? "en" : "zh-CN"}"><meta charset="utf-8">
     <title>${escape(title)} - ${escape(plan.name)} - ${printedOn}</title>
@@ -391,6 +464,8 @@ function exportDegreePdf(plan, semesters) {
       th { background: #e8f3ef; }
       .period td:first-child { width: 38%; }
       .period td:last-child { width: 42%; }
+      .roster td:first-child { width: 48%; }
+      .roster td:nth-child(2), .roster td:nth-child(3) { white-space: nowrap; }
       .print-button { border: 0; border-radius: 2mm; padding: 2mm 3mm; background: #0f766e; color: white; cursor: pointer; margin-bottom: 3mm; }
       @media print { body { padding: 0; print-color-adjust: exact; } .print-button { display: none; } }
     </style><body>
@@ -403,6 +478,8 @@ function exportDegreePdf(plan, semesters) {
     ${periodSections || `<p>${word("暂无时间块。", "No study periods yet.")}</p>`}
     <h2>${word("各模块实际学分", "Credits earned by group")}</h2>
     ${table([word("模块", "Group"), word("已获 ECTS", "Earned ECTS"), word("要求 ECTS", "Required ECTS"), word("达标", "Met")], groups)}
+    ${courseRoster ? `<h2>${word("完整课程清单", "Full course list")}</h2><div class="roster">
+      ${table([word("课程与模块", "Course and group"), "ECTS", word("学分状态", "Credit status"), word("学习时间块", "Study period")], courseRoster)}</div>` : ""}
     </body></html>`);
   output.document.close();
   output.document.querySelector(".print-button").addEventListener("click", () => output.print());
@@ -445,7 +522,7 @@ function electiveButton(plan) {
     ? button(word("添加选修课", "Add elective"), "add-elective") : "";
 }
 
-function addElective(plan) {
+function addElective(plan, semesters) {
   const groups = plan.modules.filter(module => module.kind === "elective");
   if (!groups.length) return;
   const term = currentExamTerm(plan);
@@ -453,7 +530,8 @@ function addElective(plan) {
     select(word("计入哪个模块", "Credit group"), "module", groups.map(module => option(module.id, module.name)).join("")) +
     field(word("课程名称", "Course name"), "name", "", "text", 'required maxlength="180"') +
     field("ECTS", "credits", "", "number", 'required min="0.01" max="1000" step="0.01"') +
-    field(word("模块编号（可选）", "Module code (optional)"), "code", "", "text", 'maxlength="40" dir="ltr" spellcheck="false"')
+    field(word("模块编号（可选）", "Module code (optional)"), "code", "", "text", 'maxlength="40" dir="ltr" spellcheck="false"') +
+    progressCourseSelect(semesters)
   ) + `<label class="degree-elective-opt"><input type="checkbox" name="planned" checked>
     ${word("本学期计划考试", "Plan to sit this term")} (${escape(term)})</label>`, data => {
     const name = requireValue(clean(data.get("name")), word("请填写课程名称。", "Enter a course name."));
@@ -462,9 +540,13 @@ function addElective(plan) {
     update(draft => {
       const target = draft.modules.find(module => module.id === data.get("module") && module.kind === "elective");
       if (!target) return;
-      target.courses.push(newCourse({ name, credits, code, examTerm: data.has("planned") ? term : "" }));
+      target.courses.push(newCourse({
+        name, credits, code, courseId: clean(data.get("courseId")), examTerm: data.has("planned") ? term : ""
+      }));
     });
   });
+  setProgressSuggestion(semesters);
+  attachDegreeCatalogue();
 }
 
 function moduleDialog(module) {
@@ -486,17 +568,33 @@ function moduleDialog(module) {
   });
 }
 
+function progressCourseSelect(semesters, selected = "") {
+  return select(word("关联学习进度（可选）", "Link existing progress (optional)"), "courseId",
+    option("", word("不关联", "No link"), selected) +
+    semesters.flatMap(stage => stage.courses.map(item => option(item.id, stage.name + " · " + item.name, selected))).join(""));
+}
+
+function setProgressSuggestion(semesters) {
+  const name = dialog.querySelector('[name="name"]');
+  const link = dialog.querySelector('[name="courseId"]');
+  const renderSuggestion = () => {
+    const suggested = suggestProgressCourse(name.value, semesters);
+    for (const item of link.options) {
+      const label = item.textContent.replace(/^(同名课程 · |Same name · )/, "");
+      item.textContent = item.value === suggested?.id ? word("同名课程 · ", "Same name · ") + label : label;
+    }
+  };
+  name.addEventListener("change", renderSuggestion);
+  renderSuggestion();
+}
+
 function courseDialog(course, module, plan, semesters) {
-  const groups = semesters.flatMap(stage => stage.courses.map(item => ({ id: item.id, label: stage.name + " · " + item.name })));
   const targetModule = module || plan.modules.find(item => item.courses.some(candidate => candidate.id === course.id));
-  const linkSelection = course?.courseId || (course?.progressLink === "manual" ? "manual" : "auto");
   showDialog(word("课程与学分", "Course and credits"), fields(
     field(word("课程名", "Course name"), "name", course?.name, "text", 'required maxlength="180"') +
     field(word("模块编号", "Module code"), "code", normalizeModuleCode(course?.code), "text", 'maxlength="40" dir="ltr" placeholder="EI00460" spellcheck="false" autocomplete="off"') +
     field("ECTS", "credits", course?.credits, "number", 'required min="0" max="1000" step="0.01"') +
-    select(word("关联学习进度", "Link existing progress"), "courseId", option("auto", word("按课程名称自动关联", "Match by course name"), linkSelection) +
-      option("manual", word("只用这张卡的任务", "Use tasks on this card only"), linkSelection) +
-      groups.map(item => option(item.id, item.label, linkSelection)).join("")) +
+    progressCourseSelect(semesters, course?.courseId) +
     select(word("确认取得学分的任务", "Task that confirms earned credits"), "passTaskId", "") +
     (targetModule.kind === "elective" ? field(word("计划考试学期", "Planned exam semester"), "examTerm", course?.examTerm || "", "text",
       `placeholder="${escape(plan.term || "WS 2026/27")}" maxlength="40"`) : "")
@@ -510,14 +608,11 @@ function courseDialog(course, module, plan, semesters) {
       return;
     }
     const name = requireValue(clean(data.get("name")), word("请填写课程名称。", "Enter a course name."));
-    const link = clean(data.get("courseId"));
-    const passTaskId = clean(data.get("passTaskId"));
-    const courseId = link === "manual" ? "" : link === "auto"
-      ? (passTaskId ? linkedProgressCourse({ name }, semesters)?.id || "" : "") : link;
-    const progressLink = link === "manual" ? "manual" : "auto";
+    const courseId = clean(data.get("courseId"));
+    const passTaskId = courseId ? clean(data.get("passTaskId")) : "";
     const examTerm = clean(data.get("examTerm"), 40);
     const next = {
-      name, code: normalizeModuleCode(data.get("code")).slice(0, 40), credits: creditNumber(data.get("credits")) ?? 0, courseId, passTaskId, examTerm, progressLink
+      name, code: normalizeModuleCode(data.get("code")).slice(0, 40), credits: creditNumber(data.get("credits")) ?? 0, courseId, passTaskId, examTerm
     };
     if (course) editCourse(course.id, item => {
       if (item.passTaskId && !passTaskId) item.passed = isEarned(item, semesters);
@@ -529,12 +624,12 @@ function courseDialog(course, module, plan, semesters) {
   const task = dialog.querySelector('[name="passTaskId"]');
   const fillTasks = selected => {
     task.innerHTML = option("", word("手动确认", "Confirm manually"), selected) +
-      courseTasks(link.value === "auto" ? linkedProgressCourse({ name: dialog.querySelector('[name="name"]').value }, semesters)?.id : link.value,
-        semesters).map(item => option(item.id, item.title || item.name, selected)).join("");
+      courseTasks(link.value, semesters).map(item => option(item.id, item.title || item.name, selected)).join("");
   };
   fillTasks(course?.passTaskId);
   link.addEventListener("change", () => fillTasks(""));
-  dialog.querySelector('[name="name"]').addEventListener("change", () => { if (link.value === "auto") fillTasks(""); });
+  setProgressSuggestion(semesters);
+  attachDegreeCatalogue();
 }
 
 function blockDialog(block) {
@@ -559,17 +654,18 @@ function blockDialog(block) {
 }
 
 function examDialog(course, plan, previous) {
-  showDialog(previous ? word("编辑所选考试", "Edit selected exam") : word("添加考试", "Add exam"), fields(
+  showDialog(previous ? word("编辑考试", "Edit exam") : word("添加考试", "Add exam"), fields(
     field(word("考试学期", "Exam semester"), "term", previous?.term || plan.term, "text", 'required maxlength="40"') +
     select(word("场次", "Sitting"), "kind", ["first", "retake", "exam"].map(kind => option(kind, kindName(kind), previous?.kind || "first")).join("")) +
     field(word("考试日期", "Exam date"), "date", previous?.date, "date", "required") +
     field(word("开始时间", "Start time"), "time", previous?.time, "time") +
     field(word("考试地点或校区", "Room or campus"), "location", previous?.location, "text", 'maxlength="300" placeholder="Garching / München"')
   ) + (previous ? `<label><input type="checkbox" name="remove"> ${word("删除这场考试", "Delete this sitting")}</label>` : ""),
-  data => editCourse(course.id, item => {
+  data => editCourse(course.id, (item, draft) => {
     if (previous && data.has("remove")) {
       item.exams = item.exams.filter(exam => exam.id !== previous.id);
-      item.examId = "";
+      if (item.examId === previous.id) item.examId = "";
+      scheduleNewExamCourse(item, draft, today());
       return;
     }
     const exam = { term: clean(data.get("term"), 40), kind: data.get("kind"), date: data.get("date"), time: data.get("time"), location: clean(data.get("location"), 300), source: "" };
@@ -578,12 +674,12 @@ function examDialog(course, plan, previous) {
     if (existing) {
       if (previous && previous.id !== existing.id) item.exams = item.exams.filter(entry => entry.id !== previous.id);
       if (previous || exam.location) existing.location = exam.location;
-      item.examId = existing.id;
+      scheduleNewExamCourse(item, draft, today());
       return;
     }
     exam.id = previous?.id || crypto.randomUUID();
     item.exams = [...item.exams.filter(entry => entry.id !== exam.id), exam];
-    if (!item.examId) item.examId = exam.id;
+    scheduleNewExamCourse(item, draft, today());
   }));
 }
 
@@ -722,6 +818,7 @@ function previewExamImport(plan, semesters, parsed, fallbackTerm) {
         draft.term = term;
         const byId = new Map(allCourses(draft).map(course => [course.id, course]));
         applyExamMatches(selected.map(match => ({ ...match, course: byId.get(match.course.id) })));
+        for (const id of new Set(selected.map(match => match.course.id))) scheduleNewExamCourse(byId.get(id), draft, today());
       });
     }, word("保存选中的场次", "Save selected dates"));
 }
@@ -771,7 +868,7 @@ panel.addEventListener("click", event => {
     case "timeline": view = "timeline"; render(); break;
     case "credits": view = "credits"; render(); break;
     case "settings": settingsDialog(plan); break;
-    case "add-elective": addElective(plan); break;
+    case "add-elective": addElective(plan, semesters); break;
     case "export-pdf": exportDegreePdf(plan, semesters); break;
     case "template": {
       const draft = useTumTemplate();
@@ -782,15 +879,13 @@ panel.addEventListener("click", event => {
     }
     case "seed-periods": update(draft => addTumStudyPeriods(draft, today())); break;
     case "jump-period": scrollToPeriod(target.dataset.block); break;
-    case "choose-exam":
-      if (course) editCourse(course.id, (item, draft) => chooseTargetExam(item, draft, target.dataset.exam, today()));
-      break;
     case "import-tum": importTumExams(plan, semesters, target); break;
     case "module": moduleDialog(module); break;
     case "course": courseDialog(course, module, plan, semesters); break;
     case "block": blockDialog(block); break;
     case "exam": examDialog(course, plan); break;
-    case "edit-exam": examDialog(course, plan, course.exams.find(item => item.id === course.examId)); break;
+    case "edit-exam": examDialog(course, plan, course.exams.find(item => item.id === target.dataset.exam)); break;
+    case "link-calendar": bridge.openDegreeCalendar?.(course.id, target.dataset.exam); break;
     case "study-tasks": tasksDialog(course, plan); break;
     case "add-study-task": taskDialog(course, null, plan); break;
     case "study-task": taskDialog(course, course.tasks.find(item => item.id === target.closest("[data-task]")?.dataset.task), plan); break;
@@ -808,7 +903,10 @@ panel.addEventListener("change", event => {
   if (!id) return;
   switch (input.name) {
     case "passed": editCourse(id, course => { if (!course.passTaskId) course.passed = input.checked; }); break;
-    case "blockId": editCourse(id, course => { course.blockId = input.value; }); break;
+    case "blockId": editCourse(id, course => {
+      course.blockId = input.value;
+      course.examPlacement = "manual";
+    }); break;
     case "mathChoice": update(plan => replaceTumMathChoice(plan, id, input.value)); break;
     case "planThisTerm": editCourse(id, (course, plan) => { course.examTerm = input.checked ? currentExamTerm(plan) : ""; }); break;
     case "linkedDone": {
@@ -844,7 +942,10 @@ panel.addEventListener("drop", event => {
   const lane = event.target.closest("[data-lane]");
   if (!dragging || !lane) return;
   event.preventDefault();
-  editCourse(dragging, course => { course.blockId = lane.dataset.lane; });
+  editCourse(dragging, course => {
+    course.blockId = lane.dataset.lane;
+    course.examPlacement = "manual";
+  });
   dragging = "";
 });
 panel.addEventListener("dragend", () => {
@@ -852,5 +953,5 @@ panel.addEventListener("dragend", () => {
   panel.querySelectorAll(".over").forEach(item => item.classList.remove("over"));
 });
 
-window.studyDegree = { render };
+window.studyDegree = { render, attachCatalogue };
 render();

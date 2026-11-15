@@ -10,6 +10,7 @@ import ssl
 import time
 from datetime import date
 from html.parser import HTMLParser
+from threading import Lock
 from urllib.parse import urljoin, urlsplit
 
 MAX_BYTES = 4 * 1024 * 1024
@@ -18,6 +19,14 @@ TUM_EXAMS_URL = (
     "https://www.cit.tum.de/cit/studium/studierende/"
     "pruefungsangelegenheiten-module/elektrotechnik-informationstechnik/"
 )
+
+TUM_EI_PROGRAMME_URL = (
+    "https://www.cit.tum.de/cit/studium/studiengaenge/"
+    "bachelor-elektrotechnik-informationstechnik/studieninhalte/"
+)
+CATALOGUE_TTL = 24 * 60 * 60
+_catalogue_cache = None
+_catalogue_lock = Lock()
 
 MONTHS = (
     "januar februar märz april mai juni juli august september oktober november dezember"
@@ -321,6 +330,67 @@ def tum_exams():
     if len(terms) != 1:
         raise SourceError("source_not_found")
     return {"term": terms.pop(), "rows": [row for _, rows in results for row in rows]}
+
+
+def tum_catalogue_rows(text):
+    rows = {}
+    current = None
+    name_start = 0
+    for line in text.splitlines():
+        row = re.match(
+            r"^\s*([A-Z]{2,6}\d{3,8}[A-Z]?)\s{2,}(.+?)"
+            r"\s{2,}(?:(?:W|S)S(?:\s*/\s*(?:W|S)S)?(?:\s*\(B\))?\s+)?"
+            r"(\d{1,2}(?:[,.]\d{1,2})?)(?:\s{2,}|$)",
+            line,
+        )
+        if row:
+            code, name, credits = row.groups()
+            current = {"code": code, "name": re.sub(r"\s+", " ", name), "credits": float(credits.replace(",", "."))}
+            name_start = row.start(2)
+            rows[code] = current
+            continue
+        if current is not None and len(line) > name_start and not line[:name_start].strip() and not line[name_start].isspace():
+            fragment = re.split(r"\s{2,}", line[name_start:], maxsplit=1)[0].strip()
+            if fragment and not fragment.startswith(("Seite ", "Stand:")) and not re.match(r"^[(/0-9]", fragment):
+                title = current["name"]
+                if title.endswith("-") and fragment[0].islower() and not fragment.startswith(("und ", "oder ")):
+                    current["name"] = title[:-1] + fragment
+                else:
+                    current["name"] += " " + fragment
+                continue
+        current = None
+    return sorted(rows.values(), key=lambda course: (course["name"].casefold(), course["code"]))
+
+
+def tum_catalogue():
+    global _catalogue_cache
+    with _catalogue_lock:
+        now = time.monotonic()
+        if _catalogue_cache and now - _catalogue_cache[0] < CATALOGUE_TTL:
+            return _catalogue_cache[1]
+        try:
+            contents, _, base = fetch_public(TUM_EI_PROGRAMME_URL, tum_only=True)
+            document = SourceHTML()
+            document.feed(contents.decode("utf-8", errors="replace"))
+            url = next((
+                urljoin(base, href)
+                for href, title in document.links
+                if "modulliste bachelor" in title.casefold() and "20231" in title
+                and urlsplit(href).path.lower().endswith(".pdf")
+            ), None)
+            if not url:
+                raise SourceError("source_not_found")
+            contents, _, source = fetch_public(url, tum_only=True)
+            courses = tum_catalogue_rows(pdf_text(contents))
+            if not courses:
+                raise SourceError("source_not_found")
+            data = {"source": source, "courses": courses}
+        except SourceError:
+            if _catalogue_cache:
+                return _catalogue_cache[1]
+            raise
+        _catalogue_cache = (now, data)
+        return data
 
 
 def programme_preview(text):
