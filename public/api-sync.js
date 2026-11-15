@@ -50,7 +50,7 @@ window.studyCloud = {
   }
 };
 
-start();
+window.studyCloud.initialWorkspace = start();
 
 async function start() {
   bridge = bridge || await waitForBridge();

@@ -307,6 +307,21 @@ export function daysBetween(start, end) {
   return Math.round((Date.parse(end) - Date.parse(start)) / 86400000);
 }
 
+export const STUDY_PLAN_LINK_PREFIX = "#study-plan-v1=";
+
+export function studyPlanFromLink(hash) {
+  if (!hash.startsWith(STUDY_PLAN_LINK_PREFIX)) return null;
+  const encoded = hash.slice(STUDY_PLAN_LINK_PREFIX.length);
+  if (encoded.length > 90000 || !/^[A-Za-z0-9_-]+$/.test(encoded)) throw new Error("Invalid study plan link");
+  const bytes = Uint8Array.from(atob(encoded.replaceAll("-", "+").replaceAll("_", "/")), character => character.charCodeAt(0));
+  const { course, tasks } = JSON.parse(new TextDecoder("utf-8", { fatal: true }).decode(bytes)) || {};
+  if (typeof tasks !== "string" || !tasks.trim() || tasks.length > 30000 ||
+      (course !== undefined && (typeof course !== "string" || course.length > 40))) {
+    throw new Error("Invalid study plan data");
+  }
+  return { course: normalizeModuleCode(course).toUpperCase(), tasks };
+}
+
 export function parseStudyTasks(text, blocks) {
   const normalizePeriod = value => value.normalize("NFKC").toLowerCase().replace(/\s+/g, "");
   const names = new Map();

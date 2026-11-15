@@ -2,7 +2,7 @@ import assert from "node:assert/strict";
 import { makeSharedState } from "./public/cloud-core.js";
 import {
   addTumStudyPeriods, applyExamMatches, nextExam, scheduleNewExamCourse, creditTotals, examMatches, newCourse,
-  campusForVenue, findCatalogueCourses, normalizeModuleCode, parseStudyTasks, replaceTumMathChoice, revisionProgress, setProgressLink, suggestProgressCourse, timeBlockCredits, useTumTemplate
+  campusForVenue, findCatalogueCourses, normalizeModuleCode, parseStudyTasks, replaceTumMathChoice, revisionProgress, setProgressLink, studyPlanFromLink, suggestProgressCourse, timeBlockCredits, useTumTemplate
 } from "./public/degree-core.js";
 
 const plan = useTumTemplate();
@@ -80,6 +80,13 @@ assert.deepEqual(findCatalogueCourses(catalogueCourses, "WI001056_1"), [publicMo
 assert.deepEqual(findCatalogueCourses(catalogueCourses, "ei 04021"), [publicModules[0]]);
 assert.deepEqual(findCatalogueCourses(catalogueCourses, "EI04022"), []);
 assert.deepEqual(findCatalogueCourses([catalogueCourses[2]], "Simulaton"), []);
+const encodedPlan = data => "#study-plan-v1=" + Buffer.from(JSON.stringify(data), "utf8").toString("base64url");
+const planText = "假期 | 第 3 章 | 做一套题 | 2 小时";
+assert.deepEqual(studyPlanFromLink(encodedPlan({ course: "ei04021", tasks: planText })), { course: "EI04021", tasks: planText });
+assert.deepEqual(studyPlanFromLink(encodedPlan({ tasks: planText })), { course: "", tasks: planText });
+assert.equal(studyPlanFromLink("#degree"), null);
+assert.throws(() => studyPlanFromLink("#study-plan-v1=!!!!!!"));
+assert.throws(() => studyPlanFromLink(encodedPlan({ tasks: "x".repeat(30001) })));
 const tasks = parseStudyTasks("Chapter 1 | 2\nMock exam | 1,5 | Break", [{ id: "holiday", name: "Break" }]);
 assert.deepEqual(tasks.map(item => [item.hours, item.blockId]), [[2, ""], [1.5, "holiday"]]);
 assert.equal(parseStudyTasks("Chapter 1 | 2 | Typo", [])[0].blockId, null);

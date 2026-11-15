@@ -3,7 +3,7 @@ import {
   applyExamMatches, courseTasks, creditNumber, creditTotals, daysBetween, examMatches,
   addTumStudyPeriods, nextExam, scheduleNewExamCourse, suggestProgressCourse, isEarned, isTumMathChoice, makePlan, newCourse,
   newModule, normalizeModuleCode, findCatalogueCourses, parseStudyTasks, replaceTumMathChoice, useTumTemplate,
-  campusForVenue, linkedProgressCourse, revisionProgress, setProgressLink, timeBlockCredits
+  campusForVenue, linkedProgressCourse, revisionProgress, setProgressLink, STUDY_PLAN_LINK_PREFIX, studyPlanFromLink, timeBlockCredits
 } from "./degree-core.js";
 
 const panel = document.querySelector("#degreePanel");
@@ -49,6 +49,7 @@ let view = "timeline";
 let dragging = "";
 let dialogVersion = 0;
 let currentSnapshot = null;
+let incomingStudyPlan = null;
 let catalogueRequest;
 
 function attachCatalogue(name, code, credits) {
@@ -176,7 +177,9 @@ function render() {
       ${button(word("学分视图", "ECTS by module"), "credits", `aria-pressed="${view === "credits"}"`, view === "credits")}
       ${button(word("毕业设置", "Degree settings"), "settings")}
       ${button(word("导出 PDF", "Export PDF"), "export-pdf")}
-    </div>` : ""}</header>
+    </div>` : ""}
+    ${incomingStudyPlan ? button(word("导入待确认学习计划", "Review incoming study plan"), "incoming-study-plan") : ""}
+    </header>
     ${plan ? (view === "credits" ? renderCredits(plan, semesters) : renderTimeline(plan, semesters)) : renderSetup()}`;
   panel.querySelectorAll("details[data-key]").forEach(node => {
     node.open = previousDetails.get(node.dataset.key) ?? node.hasAttribute("data-initial-open");
@@ -775,7 +778,54 @@ function planTaskRow(task, options) {
     </div>`;
 }
 
-function openStudyPlan(course, plan, semesters) {
+function showIncomingStudyPlan(chooseCourse = false) {
+  const { editable, plan, semesters } = get();
+  const pending = incomingStudyPlan;
+  if (!editable || !pending) return;
+  const entries = (plan?.modules || []).flatMap(group =>
+    group.courses.map(course => ({ course, group: group.name })));
+  if (!entries.length) {
+    bridge.showToast(word("登录后打开已有毕业规划，或创建规划并添加课程，就能导入这份计划。",
+      "Sign in to your degree plan, or create a degree plan with a course to import these tasks."));
+    return;
+  }
+  const matches = pending.course ? entries.filter(({ course }) =>
+    normalizeModuleCode(course.code).toUpperCase() === pending.course) : [];
+  if (!chooseCourse && matches.length === 1) {
+    openStudyPlan(matches[0].course, plan, semesters, pending);
+    return;
+  }
+  const selected = matches.length === 1 ? matches[0].course.id : "";
+  showDialog(word("选择学习计划的课程", "Choose a course for this study plan"),
+    fields(select(word("导入到", "Import into"), "course", option("", word("请选择课程", "Select a course"), selected) +
+      entries.map(({ course, group }) => option(course.id, [course.name, course.code, group].filter(Boolean).join(" · "), selected)).join(""))),
+    data => {
+      const course = requireValue(entries.find(item => item.course.id === data.get("course"))?.course,
+        word("请先选择课程。", "Choose a course first."));
+      openStudyPlan(course, plan, semesters, pending);
+    }, word("预览计划", "Preview plan"));
+}
+
+async function receiveStudyPlanLink() {
+  const hash = window.location.hash;
+  if (!hash.startsWith(STUDY_PLAN_LINK_PREFIX)) return;
+  window.history.replaceState(window.history.state, "", window.location.pathname + window.location.search);
+  let pending;
+  try {
+    pending = studyPlanFromLink(hash);
+  } catch {
+    bridge.showToast(word("这条学习计划链接不完整，请在 ChatGPT 里重新生成。", "This study plan link is invalid. Regenerate it in ChatGPT."));
+    return;
+  }
+  if (!get().editable) return;
+  incomingStudyPlan = pending;
+  try { await window.studyCloud?.initialWorkspace; } catch { /* An existing local workspace can still be used. */ }
+  if (incomingStudyPlan !== pending || !get().editable) return;
+  bridge.openDegreePlanner();
+  showIncomingStudyPlan();
+}
+
+function openStudyPlan(course, plan, semesters, receivedPlan = null) {
   const defaultPeriod = course.blockId || "";
   const periods = new Map(plan.blocks.map(block => [block.id, periodName(block)]));
   const unknownPeriod = "__unmatched";
@@ -848,6 +898,7 @@ function openStudyPlan(course, plan, semesters) {
       return { ...task, title, hours, group: clean(task.group, 100) };
     });
     for (const { requestedPeriod, ...task } of additions(tasks)) tasks.push(task);
+    if (receivedPlan && incomingStudyPlan === receivedPlan) incomingStudyPlan = null;
     update(draft => {
       allCourses(draft).find(item => item.id === course.id).tasks = tasks;
     }, linked && changedDone.size ? { courseId: linked.id, done: changedDone } : undefined);
@@ -908,6 +959,21 @@ function openStudyPlan(course, plan, semesters) {
     previewPanel.querySelectorAll("select[data-preview-task]").forEach(input => { input.value = unknownPeriod; });
   }
 
+  function previewTasks() {
+    preview = null;
+    importError.hidden = true;
+    try {
+      const blocks = plan.blocks.map(block => ({ ...block, aliases: [periodName(block, false), periodName(block, true)] }));
+      const parsed = parseStudyTasks(form.elements.paste.value, blocks);
+      if (!parsed.length) throw new Error(word("请先粘贴至少一条任务。", "Paste at least one task."));
+      preview = parsed;
+    } catch (error) {
+      importError.textContent = word("请检查清单 · ", "Check list · ") + error.message;
+      importError.hidden = false;
+    }
+    drawPreview();
+  }
+
   form.addEventListener("click", event => {
     const target = event.target.closest("[data-degree]");
     if (!target) return;
@@ -921,18 +987,7 @@ function openStudyPlan(course, plan, semesters) {
       own.splice(own.findIndex(task => task.id === id), 1);
       drawPlan();
     } else if (target.dataset.degree === "plan-preview") {
-      preview = null;
-      importError.hidden = true;
-      try {
-        const blocks = plan.blocks.map(block => ({ ...block, aliases: [periodName(block, false), periodName(block, true)] }));
-        const parsed = parseStudyTasks(form.elements.paste.value, blocks);
-        if (parsed.length) preview = parsed;
-        else throw new Error(word("请先粘贴至少一条任务。", "Paste at least one task."));
-      } catch (error) {
-        importError.textContent = word("请检查清单 · ", "Check list · ") + error.message;
-        importError.hidden = false;
-      }
-      drawPreview();
+      previewTasks();
     } else if (target.dataset.degree === "plan-reset") {
       form.elements.paste.value = "";
       preview = null;
@@ -970,6 +1025,11 @@ function openStudyPlan(course, plan, semesters) {
     }
   });
   drawPlan();
+  if (receivedPlan) {
+    form.elements.paste.value = receivedPlan.tasks;
+    form.elements.paste.closest("details").open = true;
+    previewTasks();
+  }
 }
 
 async function loadSource(data, mode) {
@@ -1140,6 +1200,7 @@ panel.addEventListener("click", event => {
     case "edit-exam": examDialog(course, plan, course.exams.find(item => item.id === target.dataset.exam)); break;
     case "link-calendar": bridge.openDegreeCalendar?.(course.id, target.dataset.exam); break;
     case "study-plan": if (course) openStudyPlan(course, plan, semesters); break;
+    case "incoming-study-plan": showIncomingStudyPlan(true); break;
     case "import-programme": importProgramme(false); break;
     case "import-programme-pdf": importProgramme(true); break;
     case "import-exams":
@@ -1195,3 +1256,5 @@ panel.addEventListener("dragend", () => {
 
 window.studyDegree = { render, attachCatalogue, openProgressLinks };
 render();
+window.addEventListener("hashchange", receiveStudyPlanLink);
+receiveStudyPlanLink();
