@@ -2,7 +2,7 @@ import assert from "node:assert/strict";
 import { makeSharedState } from "./public/cloud-core.js";
 import {
   addTumStudyPeriods, applyExamMatches, chooseTargetExam, creditTotals, examMatches, newCourse,
-  normalizeModuleCode, parseStudyTasks, replaceTumMathChoice, useTumTemplate
+  campusForVenue, normalizeModuleCode, parseStudyTasks, replaceTumMathChoice, revisionProgress, timeBlockCredits, useTumTemplate
 } from "./public/degree-core.js";
 
 const plan = useTumTemplate();
@@ -86,4 +86,42 @@ replaceTumMathChoice(planning, numerical.id, "EI00460");
 assert.equal(creditTotals(planning, []).earned, 5);
 assert.equal(planning.modules[0].courses.find(course => course.code === "EI00460").exams[0].id, "retake");
 
-console.log("PASS degree template, ECTS, linked tasks, exam filtering, study periods, and sharing");
+const electiveGroup = plan.modules.find(module => module.kind === "elective");
+const more = electiveGroup.courses.find(course => course.code === "EI00888");
+const kept = more.exams[0];
+more.examId = kept.id;
+const unchangedAndNew = [
+  { ...row("EI00888", "first", "2027-02-15"), location: "MUC - 05 1200" },
+  { ...row("EI00888", "first", "2027-03-01"), location: "GAR - MI HS1" }
+];
+const incremental = examMatches(plan, stages, unchangedAndNew);
+assert.deepEqual(incremental.map(item => item.change), ["location", "added"]);
+applyExamMatches(incremental);
+assert.equal(more.exams.length, 2);
+assert.equal(more.examId, kept.id);
+assert.equal(more.exams.find(item => item.id === kept.id).location, "MUC - 05 1200");
+assert.equal(examMatches(plan, stages, unchangedAndNew).length, 0);
+assert.equal(campusForVenue("MUC - 05 1200; GAR - MI HS1"), "München / Garching");
+assert.equal(campusForVenue("Eikon-Rechnerräume"), "");
+
+const weightedPlan = useTumTemplate();
+addTumStudyPeriods(weightedPlan, "2026-11-14");
+const weightedMath = weightedPlan.modules[0].courses.find(course => course.code === "EI00460");
+weightedMath.blockId = weightedPlan.blocks[0].id;
+weightedMath.examId = "march-exam";
+weightedMath.exams.push({ id: "march-exam", date: "2027-03-24" });
+const linked = { id: "old-discrete", name: "Diskrete Mathematik für Ingenieure", categories: [{
+  tasks: [{ id: "chapter-one", done: true }, { id: "chapter-two", done: false }]
+}] };
+const history = [{ courses: [linked] }];
+assert.equal(revisionProgress(weightedMath, history).ratio, 0.5);
+let periodCredits = timeBlockCredits(weightedPlan, history);
+assert.equal(periodCredits.get(weightedPlan.blocks[0].id).planned, 0);
+assert.equal(periodCredits.get(weightedPlan.blocks[1].id).planned, 5);
+assert.equal(periodCredits.get(weightedPlan.blocks[1].id).weighted, 2.5);
+linked.categories[0].tasks[1].done = true;
+assert.equal(timeBlockCredits(weightedPlan, history).get(weightedPlan.blocks[1].id).weighted, 5);
+assert.equal(creditTotals(weightedPlan, history).earned, 0);
+weightedMath.progressLink = "manual";
+assert.equal(revisionProgress(weightedMath, history).total, 0);
+console.log("PASS linked forecast, exam additions and venue updates, degree templates, and sharing");

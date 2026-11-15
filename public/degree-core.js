@@ -133,11 +133,57 @@ function matchCode(value) {
 }
 
 function matchName(value) {
-  return value.normalize("NFKC").toLowerCase().replace(/[^\p{L}\p{N}]/gu, "");
+  return String(value ?? "").normalize("NFKC").toLowerCase().replace(/[^\p{L}\p{N}]/gu, "");
 }
 
 function examKey(exam) {
   return [exam.term, exam.kind, exam.date, exam.time].join("|");
+}
+
+export function linkedProgressCourse(course, semesters) {
+  const available = semesters.flatMap(stage => stage.courses);
+  if (course.courseId) return available.find(item => item.id === course.courseId);
+  if (course.progressLink === "manual") return undefined;
+  const name = matchName(course.name);
+  if (!name) return undefined;
+  const matches = available.filter(item => matchName(item.name) === name);
+  return matches.length === 1 ? matches[0] : undefined;
+}
+
+export function revisionProgress(course, semesters) {
+  const linked = linkedProgressCourse(course, semesters);
+  const existing = linked?.categories.flatMap(group => group.tasks) ?? [];
+  const tasks = [...existing.filter(task => task.id !== course.passTaskId), ...course.tasks];
+  const done = tasks.filter(task => task.done).length;
+  return { linked, existing, total: tasks.length, done, ratio: tasks.length ? done / tasks.length : 0 };
+}
+
+export function timeBlockCredits(plan, semesters) {
+  const summary = new Map(plan.blocks.map(block => [block.id, { planned: 0, weighted: 0, courses: [] }]));
+  for (const module of plan.modules) {
+    for (const course of module.courses) {
+      const exam = course.exams.find(item => item.id === course.examId);
+      const examBlock = exam && plan.blocks.find(block => block.start <= exam.date && exam.date <= block.end);
+      const entry = summary.get(examBlock?.id ?? course.blockId);
+      if (!entry) continue;
+      const progress = revisionProgress(course, semesters);
+      entry.planned += course.credits;
+      entry.weighted += course.credits * progress.ratio;
+      entry.courses.push({ course, exam, progress });
+    }
+  }
+  return summary;
+}
+
+export function campusForVenue(location) {
+  const campuses = [];
+  if (/\b(?:MUC|München|Munich|Stammgelände)\b/i.test(location)) campuses.push("München");
+  if (/\b(?:GAR|Garching)\b/i.test(location)) campuses.push("Garching");
+  return campuses.join(" / ");
+}
+
+function sameVenue(a, b) {
+  return (a || "").trim().replace(/\s+/g, " ") === (b || "").trim().replace(/\s+/g, " ");
 }
 
 export function examMatches(plan, semesters, rows) {
@@ -145,29 +191,42 @@ export function examMatches(plan, semesters, rows) {
   const eligible = plan.modules.flatMap(module => module.courses.filter(course =>
     !isEarned(course, semesters) && (module.kind !== "elective" || course.examTerm === plan.term)
   ));
-  const matches = [];
-  const seen = new Set();
+  const byCourse = new Map();
   for (const row of rows) {
     const candidates = eligible.filter(course => course.code && row.code
       ? matchCode(course.code) === matchCode(row.code)
       : matchName(course.name) === matchName(row.name));
     if (candidates.length !== 1) continue;
     const [course] = candidates;
-    const exam = { term: plan.term, kind: row.kind, date: row.date, time: row.time, source: row.source };
-    const key = course.id + "|" + examKey(exam);
-    if (seen.has(key)) continue;
-    seen.add(key);
-    const existing = course.exams.filter(item => item.term === exam.term && item.kind === exam.kind);
-    if (existing.some(item => examKey(item) === examKey(exam))) continue;
-    matches.push({ course, exam, existing });
+    const exam = { term: plan.term, kind: row.kind, date: row.date, time: row.time, source: row.source, location: row.location || "" };
+    const byKey = byCourse.get(course) ?? new Map();
+    const key = examKey(exam);
+    if (!byKey.has(key) || (exam.location && !byKey.get(key).location)) byKey.set(key, exam);
+    byCourse.set(course, byKey);
   }
-  return matches.map(match => {
-    const competing = matches.filter(other => other.course === match.course && other.exam.kind === match.exam.kind);
-    const previous = match.existing.length === 1 && competing.length === 1 && match.existing[0].source
-      ? match.existing[0] : null;
-    return { ...match, previous };
-  });
+
+  const matches = [];
+  for (const [course, imported] of byCourse) {
+    const saved = course.exams.filter(exam => exam.term === plan.term);
+    for (const [key, exam] of imported) {
+      const exact = saved.find(item => examKey(item) === key);
+      if (exact) {
+        if (exam.location && !sameVenue(exam.location, exact.location)) {
+          matches.push({ course, exam: { ...exact, location: exam.location }, previous: exact, change: "location" });
+        }
+        continue;
+      }
+      const sameSource = saved.filter(item => item.kind === exam.kind && item.source && item.source === exam.source);
+      const newFromSource = [...imported.values()].filter(item => item.kind === exam.kind && item.source === exam.source);
+      const previous = sameSource.length === 1 && newFromSource.length === 1 && !imported.has(examKey(sameSource[0]))
+        ? sameSource[0] : null;
+      if (previous && !exam.location) exam.location = previous.location || "";
+      matches.push({ course, exam, previous, change: previous ? "rescheduled" : "added" });
+    }
+  }
+  return matches;
 }
+
 
 export function applyExamMatches(matches) {
   for (const { course, exam, previous } of matches) {

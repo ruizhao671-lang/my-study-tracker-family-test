@@ -199,10 +199,47 @@ def get_term(text):
     return "SS " + year
 
 
+def exam_location(columns):
+    if not columns:
+        return ""
+    # Elective tables may attach a programme assignment to the room cell.
+    return re.split(r"(?:BSEI|MSEI|MSCE|MSMCD)(?=[\dA-Z, ]|$)", columns[0], maxsplit=1)[0].strip(" ,;")
+
+
+def room_fragment(line, column):
+    if DATE.search(line) or re.search(r"Hörsäle|Zuordnung|\bMin\.", line):
+        return ""
+    fragments = re.split(r"\s{3,}", line.strip())
+    fragment = fragments[-1]
+    return fragment if fragment and line.rfind(fragment) >= max(45, column * 0.82) else ""
+
+
+def wrapped_room(lines, index, location):
+    if not location:
+        return ""
+    line = lines[index]
+    column = line.rfind(location)
+    if column < 60:
+        return location.rstrip(" ,;")
+    before = room_fragment(lines[index - 1], column) if index else ""
+    if before and re.search(r"\b(?:GAR|MUC)\s*-", before) and re.match(r"HS\d|N\s+\d|Interims", location, re.I):
+        location = before + " " + location
+    next_index = index + 1
+    while next_index < len(lines):
+        fragment = room_fragment(lines[next_index], column)
+        open_ending = re.search(r"[,;/-]\s*$|\b(?:Nord|im|MI|HS\d|[0-9]{2})\s*$", location)
+        if not fragment or not open_ending:
+            break
+        location += " " + fragment
+        next_index += 1
+    return location.rstrip(" ,;")
+
+
 def exam_rows(text, source, default_kind="exam"):
     rows = []
     kind = default_kind
-    for line in text.splitlines():
+    lines = text.splitlines()
+    for index, line in enumerate(lines):
         date_match = DATE.search(line)
         if not date_match:
             if RET.search(line):
@@ -211,8 +248,11 @@ def exam_rows(text, source, default_kind="exam"):
                 kind = "first"
             continue
         day, month, year = date_match.groups()
-        remaining = line[date_match.end():]
-        code = CODE.search(remaining)
+        before = line[:date_match.start()]
+        after = line[date_match.end():]
+        left_code = CODE.match(before.lstrip())
+        right_code = CODE.search(after) if not left_code else None
+        code = left_code or right_code
         if not code:
             if RET.search(line):
                 kind = "retake"
@@ -224,15 +264,28 @@ def exam_rows(text, source, default_kind="exam"):
             exam_date = date(int(year), month_number, int(day)).isoformat()
         except ValueError:
             continue
-        time_match = TIME.search(remaining[:code.start()])
+
+        if left_code:
+            title = before.lstrip()[left_code.end():].strip()
+            name = re.split(r"\s{2,}", title, maxsplit=1)[0]
+            time_match = TIME.search(after)
+            fields = re.split(r"\s{2,}", after[time_match.end():].strip()) if time_match else []
+            location = exam_location(fields[2:])
+        else:
+            time_match = TIME.search(after[:right_code.start()])
+            fields = re.split(r"\s{2,}", after[right_code.end():].strip())
+            name = fields[0]
+            duration_at = next((index for index, field in enumerate(fields[1:], 1) if field.isdigit()), len(fields))
+            location = wrapped_room(lines, index, fields[duration_at + 1]) if duration_at + 1 < len(fields) else ""
+
         start = f"{int(time_match[1]):02d}:{time_match[2]}" if time_match else ""
-        name = re.split(r"\s{2,}", remaining[code.end():].strip(), maxsplit=1)[0]
         rows.append({
             "code": re.sub(r"\s+", "", code[0]),
             "name": name,
             "date": exam_date,
             "time": start,
             "kind": kind,
+            "location": location,
             "source": source,
         })
     return rows
