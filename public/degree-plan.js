@@ -2,7 +2,7 @@ import { TUM_EI_BACHELOR } from "./degree-templates.js";
 import {
   applyExamMatches, courseTasks, creditNumber, creditTotals, daysBetween, examMatches,
   addTumStudyPeriods, nextExam, scheduleNewExamCourse, suggestProgressCourse, isEarned, isTumMathChoice, makePlan, newCourse,
-  newModule, normalizeModuleCode, parseMeinStudium, parseStudyTasks, replaceTumMathChoice, useTumTemplate,
+  newModule, normalizeModuleCode, findMeinStudiumCourses, parseMeinStudium, parseStudyTasks, replaceTumMathChoice, useTumTemplate,
   campusForVenue, linkedProgressCourse, revisionProgress, setProgressLink, timeBlockCredits
 } from "./degree-core.js";
 
@@ -67,12 +67,11 @@ function attachCatalogue(name, code, credits, pickerOptions = {}) {
   const picker = document.createElement("details");
   picker.className = "degree-catalogue";
   picker.innerHTML = `<summary>${word("在 Mein Studium 课程中查找", "Find a course from Mein Studium")}</summary>
-    ${field(word("课程名或模块编号", "Course name or module code"), "", "", "search", 'autocomplete="off"')}
+    ${field(word("课程名关键词或模块编号", "Course keywords or module code"), "", "", "search", 'autocomplete="off" maxlength="180"')}
     <div class="degree-catalogue-results" aria-live="polite"></div>`;
   (name.closest("label, .field") || name).before(picker);
   const search = picker.querySelector("input");
   const results = picker.querySelector(".degree-catalogue-results");
-  const searchable = text => text.normalize("NFKD").toLowerCase().replace(/\p{Diacritic}/gu, "").replace(/[^\p{L}\p{N}]+/gu, " ").trim();
   const group = pickerOptions.group;
   const formGroup = pickerOptions.formGroup;
   let chosen;
@@ -88,13 +87,8 @@ function attachCatalogue(name, code, credits, pickerOptions = {}) {
         "First add this credit group's courses under Degree Planner → Import Mein Studium.");
       return;
     }
-    const query = searchable(search.value);
-    if (query.length < 2) return;
-    const distinct = [...new Map(candidates.map(item => [item.code, item])).values()];
-    const searchRows = text => distinct.filter(item => text.split(" ").every(token => searchable(item.code + " " + item.name).includes(token)));
-    const first = searchRows(query);
-    const moduleName = query.replace(/^(?:praktikum|vorlesung|ubung)\s+/, "");
-    const matches = first.length || moduleName === query ? first : searchRows(moduleName);
+    if (search.value.trim().length < 2) return;
+    const matches = findMeinStudiumCourses(candidates, search.value);
     if (!matches.length) results.textContent = word("当前导入的课程中未找到匹配。", "No match among the imported courses.");
     for (const item of matches.slice(0, 10)) {
       const result = document.createElement("button");

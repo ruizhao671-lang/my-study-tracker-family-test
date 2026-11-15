@@ -133,6 +133,54 @@ export function parseMeinStudium(text, catalogue) {
   return [...courses.values()];
 }
 
+function normalizeCourseSearch(text) {
+  return text.normalize("NFKD").toLowerCase().replace(/\p{Diacritic}/gu, "").replaceAll("ß", "ss")
+    .replace(/[^\p{L}\p{N}]+/gu, " ").trim();
+}
+
+function isSmallSpellingChange(typed, word) {
+  if (Math.abs(typed.length - word.length) > 1) return false;
+  let index = 0;
+  const sharedLength = Math.min(typed.length, word.length);
+  while (index < sharedLength && typed[index] === word[index]) index++;
+  if (typed.length < word.length) return typed.slice(index) === word.slice(index + 1);
+  if (typed.length > word.length) return typed.slice(index + 1) === word.slice(index);
+  return typed.slice(index + 1) === word.slice(index + 1) ||
+    (typed[index] === word[index + 1] && typed[index + 1] === word[index] && typed.slice(index + 2) === word.slice(index + 2));
+}
+
+export function findMeinStudiumCourses(courses, value) {
+  const query = normalizeCourseSearch(value);
+  if (query.length < 2) return [];
+  const compact = query.replaceAll(" ", "");
+  const looksLikeCode = /^[a-z]{0,6}\d{2,}[a-z]?\d*$/.test(compact);
+  const terms = query.split(" ");
+  const contentWords = terms.filter(term => term !== "und" && term !== "and");
+  const words = contentWords.length ? contentWords : terms;
+  const withoutActivity = words.length > 1 && /^(praktikum|vorlesung|ubung)$/.test(words[0]) ? words.slice(1) : null;
+
+  const score = course => {
+    const code = normalizeCourseSearch(course.code).replaceAll(" ", "");
+    if (code === compact) return 0;
+    if (looksLikeCode) return code.startsWith(compact) ? 1 : code.includes(compact) ? 2 : Infinity;
+    const name = normalizeCourseSearch(course.name);
+    if (name === query) return 0;
+    const candidates = name.split(" ");
+    const scoreWords = tokens => tokens.reduce((total, token) => {
+      if (candidates.includes(token)) return total;
+      if (candidates.some(word => word.startsWith(token))) return total + 1;
+      if (name.includes(token) || code.includes(token)) return total + 2;
+      const close = token.length >= 4 && /^\p{L}+$/u.test(token) &&
+        candidates.some(word => word.length >= 4 && isSmallSpellingChange(token, word));
+      return close ? total + 5 : Infinity;
+    }, 0);
+    return 1 + Math.min(scoreWords(words), withoutActivity ? 3 + scoreWords(withoutActivity) : Infinity);
+  };
+  const distinct = [...new Map(courses.map(course => [course.code, course])).values()];
+  return distinct.map(course => ({ course, score: score(course) })).filter(match => Number.isFinite(match.score))
+    .sort((left, right) => left.score - right.score).map(match => match.course);
+}
+
 export function courseTasks(courseId, semesters) {
   const course = semesters.flatMap(stage => stage.courses).find(item => item.id === courseId);
   return course?.categories.flatMap(category => category.tasks) ?? [];

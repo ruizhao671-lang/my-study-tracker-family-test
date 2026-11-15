@@ -2,7 +2,7 @@ import assert from "node:assert/strict";
 import { makeSharedState } from "./public/cloud-core.js";
 import {
   addTumStudyPeriods, applyExamMatches, nextExam, scheduleNewExamCourse, creditTotals, examMatches, newCourse,
-  campusForVenue, normalizeModuleCode, parseMeinStudium, parseStudyTasks, replaceTumMathChoice, revisionProgress, setProgressLink, suggestProgressCourse, timeBlockCredits, useTumTemplate
+  campusForVenue, findMeinStudiumCourses, normalizeModuleCode, parseMeinStudium, parseStudyTasks, replaceTumMathChoice, revisionProgress, setProgressLink, suggestProgressCourse, timeBlockCredits, useTumTemplate
 } from "./public/degree-core.js";
 
 const plan = useTumTemplate();
@@ -75,6 +75,17 @@ assert.deepEqual(parseMeinStudium("SZ0420 | My module from Mein Studium | 3,0 EC
 ]);
 assert.throws(() => parseMeinStudium("SZ0420", publicModules));
 assert.throws(() => parseMeinStudium("SZ0420 | No credit | 0", []));
+const personalCourses = [
+  ...publicModules,
+  { code: "EI04001", name: "Komputer & Creativität", credits: 6 }
+];
+assert.deepEqual(findMeinStudiumCourses(personalCourses, "mechatron simul"), [publicModules[0]]);
+assert.deepEqual(findMeinStudiumCourses(personalCourses, "Praktikum Simulaton mechatronsicher Systeme"), [publicModules[0]]);
+assert.deepEqual(findMeinStudiumCourses(personalCourses, "Komputer und Kreativitat"), [personalCourses[2]]);
+assert.deepEqual(findMeinStudiumCourses(personalCourses, "WI001056_1"), [publicModules[1]]);
+assert.deepEqual(findMeinStudiumCourses(personalCourses, "ei 04021"), [publicModules[0]]);
+assert.deepEqual(findMeinStudiumCourses(personalCourses, "EI04022"), []);
+assert.deepEqual(findMeinStudiumCourses([personalCourses[2]], "Simulaton"), []);
 const tasks = parseStudyTasks("Chapter 1 | 2\nMock exam | 1,5 | Break", [{ id: "holiday", name: "Break" }]);
 assert.deepEqual(tasks.map(item => [item.hours, item.blockId]), [[2, ""], [1.5, "holiday"]]);
 assert.equal(parseStudyTasks("Chapter 1 | 2 | Typo", [])[0].blockId, null);
