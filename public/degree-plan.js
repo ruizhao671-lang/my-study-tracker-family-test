@@ -253,7 +253,8 @@ function renderCourse(course, module, plan, semesters, location, blockId = "") {
     <div class="degree-course-top">
       <div class="degree-tags">
         <span class="degree-tag">${escape(module.name)}</span>
-        <span class="degree-tag degree-ects">${displayNumber(course.credits)} ECTS</span>
+        <span class="degree-tag degree-ects">${onTimeline && blockId && course.blockId !== blockId
+          ? word("仅复习任务", "Study tasks only") : displayNumber(course.credits) + " ECTS"}</span>
         ${normalizeModuleCode(course.code) ? `<bdi dir="ltr" class="degree-code">${escape(normalizeModuleCode(course.code))}</bdi>` : ""}
       </div>
       ${isUnscheduledCard ? deleteButton : ""}
@@ -322,10 +323,12 @@ function renderTimeline(plan, semesters) {
   const date = today();
   const entries = plan.modules.flatMap(module => module.courses.map(course => ({ module, course })));
   const active = plan.blocks.find(block => block.start <= date && date <= block.end);
-  const creditsByBlock = timeBlockCredits(plan, semesters, date);
+  const creditsByBlock = timeBlockCredits(plan, semesters);
   const upcoming = entries.flatMap(({ course }) => {
     const exam = nextExam(course, plan, date);
-    return exam && exam.date >= date && !isEarned(course, semesters) ? [{ course, exam }] : [];
+    if (!exam || isEarned(course, semesters)) return [];
+    const examBlock = plan.blocks.find(block => block.start <= exam.date && exam.date <= block.end);
+    return [{ course, exam, blockId: examBlock?.id }];
   }).sort((a, b) => (a.exam.date + a.exam.time).localeCompare(b.exam.date + b.exam.time));
   const pending = entries.filter(({ course }) => !course.blockId && !isEarned(course, semesters));
   const next = upcoming[0];
@@ -361,7 +364,7 @@ function renderTimeline(plan, semesters) {
       const scheduled = entries.filter(({ course }) => course.blockId === block.id ||
         course.tasks.some(task => (task.blockId || course.blockId) === block.id));
       const credits = creditsByBlock.get(block.id);
-      const periodExams = credits.courses.filter(({ exam }) => exam && block.start <= exam.date && exam.date <= block.end);
+      const periodExams = upcoming.filter(item => item.blockId === block.id);
       const examOnly = periodExams.filter(({ course }) => !scheduled.some(item => item.course.id === course.id));
       const current = active?.id === block.id;
       return `<section class="degree-block ${block.kind === "break" ? "degree-break" : ""} ${current ? "degree-current" : ""}"
@@ -407,19 +410,19 @@ function exportDegreePdf(plan, semesters) {
   const title = word("毕业规划", "Degree plan");
   const totals = creditTotals(plan, semesters);
   const printedOn = today();
-  const periods = timeBlockCredits(plan, semesters, printedOn);
+  const periods = timeBlockCredits(plan, semesters);
   const table = (columns, rows) => `<table><thead><tr>${columns.map(name => `<th scope="col">${escape(name)}</th>`).join("")}</tr></thead><tbody>${rows}</tbody></table>`;
   const periodSections = plan.blocks.map(block => {
     const { planned, weighted, courses } = periods.get(block.id);
-    const counted = new Set(courses.map(item => item.course.id));
-    const studyOnly = allCourses(plan).filter(course => !counted.has(course.id) && (
-      course.blockId === block.id || course.tasks.some(task => (task.blockId || course.blockId) === block.id)
-    ));
+    const studyOnly = allCourses(plan).filter(course => course.blockId !== block.id &&
+      course.tasks.some(task => task.blockId === block.id));
     const items = courses
-      .slice().sort((a, b) => (a.exam?.date || "9999").localeCompare(b.exam?.date || "9999"))
+      .map(({ course, progress }) => ({
+        course, progress, exam: !isEarned(course, semesters) ? nextExam(course, plan, printedOn) : undefined
+      }))
+      .sort((a, b) => (a.exam?.date || "9999").localeCompare(b.exam?.date || "9999"))
       .map(({ course, exam, progress }) => `<tr>
-      <td><strong>${escape(course.name)}</strong> ${course.code ? `<small>${escape(course.code)}</small>` : ""}
-        ${course.blockId && course.blockId !== block.id ? `<small>${word("学习时间", "Study period")} · ${escape(periodName(plan.blocks.find(item => item.id === course.blockId) || { name: "" }))}</small>` : ""}</td>
+      <td><strong>${escape(course.name)}</strong> ${course.code ? `<small>${escape(course.code)}</small>` : ""}</td>
       <td>${displayNumber(course.credits)}</td>
       <td>${progress.total ? displayNumber(progress.ratio * 100) + "%" : "—"}</td>
       <td>${exam ? escape(examLabel(exam)) : "—"}${exam?.location ? `<small>${escape(exam.location)}</small>` : ""}</td>

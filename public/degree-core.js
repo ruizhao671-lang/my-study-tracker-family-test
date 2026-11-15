@@ -171,18 +171,16 @@ export function revisionProgress(course, semesters) {
   return { linked, existing, total: tasks.length, done, ratio: tasks.length ? done / tasks.length : 0 };
 }
 
-export function timeBlockCredits(plan, semesters, date) {
+export function timeBlockCredits(plan, semesters) {
   const summary = new Map(plan.blocks.map(block => [block.id, { planned: 0, weighted: 0, courses: [] }]));
   for (const module of plan.modules) {
     for (const course of module.courses) {
-      const exam = !isEarned(course, semesters) ? nextExam(course, plan, date) : undefined;
-      const examBlock = exam && plan.blocks.find(block => block.start <= exam.date && exam.date <= block.end);
-      const entry = summary.get(examBlock?.id ?? course.blockId);
+      const entry = summary.get(course.blockId);
       if (!entry) continue;
       const progress = revisionProgress(course, semesters);
       entry.planned += course.credits;
       entry.weighted += course.credits * progress.ratio;
-      entry.courses.push({ course, exam, progress });
+      entry.courses.push({ course, progress });
     }
   }
   return summary;
