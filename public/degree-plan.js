@@ -2,7 +2,7 @@ import { TUM_EI_BACHELOR } from "./degree-templates.js";
 import {
   applyExamMatches, courseTasks, creditNumber, creditTotals, daysBetween, examMatches,
   addTumStudyPeriods, nextExam, scheduleNewExamCourse, suggestProgressCourse, isEarned, isTumMathChoice, makePlan, newCourse,
-  newModule, normalizeModuleCode, findMeinStudiumCourses, parseMeinStudium, parseStudyTasks, replaceTumMathChoice, useTumTemplate,
+  newModule, normalizeModuleCode, findCatalogueCourses, parseStudyTasks, replaceTumMathChoice, useTumTemplate,
   campusForVenue, linkedProgressCourse, revisionProgress, setProgressLink, timeBlockCredits
 } from "./degree-core.js";
 
@@ -51,52 +51,29 @@ let dialogVersion = 0;
 let currentSnapshot = null;
 let catalogueRequest;
 
-function loadPublicCatalogue() {
-  catalogueRequest ??= fetch("/api/catalogue/tum-ei")
-    .then(response => {
-      if (!response.ok) throw new Error("catalogue");
-      return response.json();
-    })
-    .then(data => data.courses)
-    .catch(error => { catalogueRequest = undefined; throw error; });
-  return catalogueRequest;
-}
-
-function attachCatalogue(name, code, credits, pickerOptions = {}) {
+function attachCatalogue(name, code, credits) {
   if (!name) return;
   const picker = document.createElement("details");
   picker.className = "degree-catalogue";
-  picker.innerHTML = `<summary>${word("在 Mein Studium 课程中查找", "Find a course from Mein Studium")}</summary>
+  picker.innerHTML = `<summary>${word("在 TUM EI 目录中找课程", "Find a course in the TUM EI catalogue")}</summary>
     ${field(word("课程名关键词或模块编号", "Course keywords or module code"), "", "", "search", 'autocomplete="off" maxlength="180"')}
     <div class="degree-catalogue-results" aria-live="polite"></div>`;
   (name.closest("label, .field") || name).before(picker);
   const search = picker.querySelector("input");
   const results = picker.querySelector(".degree-catalogue-results");
-  const group = pickerOptions.group;
-  const formGroup = pickerOptions.formGroup;
-  let chosen;
-
+  let catalogue;
   function showMatches() {
-    const selectedGroup = formGroup?.value || group;
-    const modules = (get().plan?.modules || []).filter(module => !selectedGroup || module.id === selectedGroup);
-    const candidates = modules.flatMap(module => module.meinStudiumCourses || []);
+    if (!catalogue) return;
     results.replaceChildren();
-    search.disabled = !candidates.length;
-    if (!candidates.length) {
-      results.textContent = word("请先到「毕业规划 → 导入 Mein Studium」添加对应学分组的课程。",
-        "First add this credit group's courses under Degree Planner → Import Mein Studium.");
-      return;
-    }
     if (search.value.trim().length < 2) return;
-    const matches = findMeinStudiumCourses(candidates, search.value);
-    if (!matches.length) results.textContent = word("当前导入的课程中未找到匹配。", "No match among the imported courses.");
+    const matches = findCatalogueCourses(catalogue, search.value);
+    if (!matches.length) results.textContent = word("未找到课程，可以继续手动填写。", "No match. You can enter the course manually.");
     for (const item of matches.slice(0, 10)) {
       const result = document.createElement("button");
       result.type = "button";
       result.className = "btn secondary";
       result.textContent = item.name + " · " + item.code + " · " + item.credits + " ECTS";
       result.onclick = () => {
-        chosen = item;
         name.value = item.name;
         if (code) code.value = item.code;
         if (credits) credits.value = item.credits;
@@ -107,69 +84,30 @@ function attachCatalogue(name, code, credits, pickerOptions = {}) {
       results.append(result);
     }
   }
-  picker.addEventListener("toggle", () => { if (picker.open) showMatches(); });
-  search.addEventListener("input", showMatches);
-  formGroup?.addEventListener("change", () => {
-    if (chosen) {
-      if (name.value === chosen.name) name.value = "";
-      if (code.value === chosen.code) code.value = "";
-      if (credits.value === String(chosen.credits)) credits.value = "";
-      chosen = null;
-      name.dispatchEvent(new Event("change", { bubbles: true }));
+  picker.addEventListener("toggle", async () => {
+    if (!picker.open || catalogue) return;
+    results.textContent = word("正在读取 TUM 目录…", "Loading the TUM catalogue…");
+    try {
+      catalogueRequest ??= fetch("/api/catalogue/tum-ei")
+        .then(response => {
+          if (!response.ok) throw new Error("catalogue");
+          return response.json();
+        })
+        .then(data => data.courses)
+        .catch(error => { catalogueRequest = undefined; throw error; });
+      catalogue = await catalogueRequest;
+      showMatches();
+    } catch {
+      results.textContent = word("暂时无法读取 TUM 目录，可以继续手动填写。", "TUM catalogue unavailable. You can enter the course manually.");
     }
-    if (picker.open) showMatches();
   });
-  showMatches();
+  search.addEventListener("input", showMatches);
   return picker;
 }
 
-function attachDegreeCatalogue(group) {
+function attachDegreeCatalogue() {
   const form = dialog.querySelector("form");
-  attachCatalogue(form.elements.name, form.elements.code, form.elements.credits, { group, formGroup: form.elements.module });
-}
-
-function meinStudiumDialog(plan) {
-  const modules = plan.modules;
-  const electives = modules.filter(module => module.kind === "elective");
-  const groups = [...electives, ...modules.filter(module => module.kind !== "elective")];
-  const groupLabel = module => module.name + " · " + (module.meinStudiumCourses?.length || 0);
-  showDialog(word("导入 Mein Studium", "Import Mein Studium"),
-    caption(word("打开 TUMonline → Mein Studium，按学分组复制计入毕业的模块。保存会替换所选组的搜索目录。",
-      "From TUMonline → Mein Studium, copy credit-bearing modules by group. Saving replaces the selected group's search list.")) +
-    fields(select(word("对应的学分组", "Credit group"), "group", groups.map(module => option(module.id, groupLabel(module))).join(""))) +
-    `<label class="plan-paste-label">${word("模块编号，每行一个", "One module code per line")}
-      <textarea class="input" name="catalogue" maxlength="60000" spellcheck="false" placeholder="EI04021"></textarea>
-    </label>` +
-    caption(word("也可以每行填写「编号 | 官方模块名 | ECTS」。只填写该计分组中的模块。",
-      "You can also enter one “Code | Official module name | ECTS” per line. Include only modules in this credit group.")),
-    async (data, current) => {
-      const groupId = data.get("group");
-      const text = String(data.get("catalogue"));
-      const needsNames = text.split(/\r?\n/).some(line => line.trim() && !/[|｜\t]/.test(line));
-      let official = [];
-      if (needsNames) {
-        try { official = await loadPublicCatalogue(); }
-        catch { throw new Error(word("暂时无法读取公开模块资料。可填写「编号 | 官方模块名 | ECTS」。",
-          "Public module information is unavailable. Enter Code | Official module name | ECTS.")); }
-      }
-      let courses;
-      try { courses = parseMeinStudium(text, official); }
-      catch (error) {
-        throw new Error(word("请核对编号，或补齐模块名和 ECTS · ", "Check the code or add a module name and ECTS · ") + error.message);
-      }
-      if (current()) update(draft => {
-        draft.modules.find(module => module.id === groupId).meinStudiumCourses = courses;
-      });
-    }, word("保存该组目录", "Save this group's list"));
-
-  const form = dialog.querySelector("form");
-  const drafts = new Map(groups.map(module => [module.id, (module.meinStudiumCourses || [])
-    .map(item => [item.code, item.name, item.credits].join(" | ")).join("\n")]));
-  form.elements.catalogue.value = drafts.get(form.elements.group.value) || "";
-  form.elements.catalogue.addEventListener("input", () => drafts.set(form.elements.group.value, form.elements.catalogue.value));
-  form.elements.group.addEventListener("change", () => {
-    form.elements.catalogue.value = drafts.get(form.elements.group.value) || "";
-  });
+  attachCatalogue(form.elements.name, form.elements.code, form.elements.credits);
 }
 
 function update(change, linkedChanges) {
@@ -236,7 +174,6 @@ function render() {
     ${plan ? `<div class="degree-actions">
       ${button(word("时间块视图", "Timeline"), "timeline", `aria-pressed="${view === "timeline"}"`, view === "timeline")}
       ${button(word("学分视图", "ECTS by module"), "credits", `aria-pressed="${view === "credits"}"`, view === "credits")}
-      ${plan.modules.length ? button(word("导入 Mein Studium", "Import Mein Studium"), "import-mein-studium") : ""}
       ${button(word("毕业设置", "Degree settings"), "settings")}
       ${button(word("导出 PDF", "Export PDF"), "export-pdf")}
     </div>` : ""}</header>
@@ -753,7 +690,7 @@ function courseDialog(course, module, plan, semesters) {
   fillTasks(course?.passTaskId);
   link.addEventListener("change", () => fillTasks(""));
   setProgressSuggestion(semesters);
-  attachDegreeCatalogue(targetModule.id);
+  attachDegreeCatalogue();
 }
 
 function blockDialog(block) {
@@ -1178,7 +1115,6 @@ panel.addEventListener("click", event => {
     case "timeline": view = "timeline"; render(); break;
     case "credits": view = "credits"; render(); break;
     case "settings": settingsDialog(plan); break;
-    case "import-mein-studium": meinStudiumDialog(plan); break;
     case "add-elective": addElective(plan, semesters); break;
     case "export-pdf": exportDegreePdf(plan, semesters); break;
     case "template": {

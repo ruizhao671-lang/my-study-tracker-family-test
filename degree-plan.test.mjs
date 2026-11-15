@@ -2,7 +2,7 @@ import assert from "node:assert/strict";
 import { makeSharedState } from "./public/cloud-core.js";
 import {
   addTumStudyPeriods, applyExamMatches, nextExam, scheduleNewExamCourse, creditTotals, examMatches, newCourse,
-  campusForVenue, findMeinStudiumCourses, normalizeModuleCode, parseMeinStudium, parseStudyTasks, replaceTumMathChoice, revisionProgress, setProgressLink, suggestProgressCourse, timeBlockCredits, useTumTemplate
+  campusForVenue, findCatalogueCourses, normalizeModuleCode, parseStudyTasks, replaceTumMathChoice, revisionProgress, setProgressLink, suggestProgressCourse, timeBlockCredits, useTumTemplate
 } from "./public/degree-core.js";
 
 const plan = useTumTemplate();
@@ -69,23 +69,17 @@ const publicModules = [
   { code: "EI04021", name: "Simulation mechatronischer Systeme", credits: 5 },
   { code: "WI001056_1", name: "Principles of Economics", credits: 6 }
 ];
-assert.deepEqual(parseMeinStudium("EI04021\nEI04021", publicModules), [publicModules[0]]);
-assert.deepEqual(parseMeinStudium("SZ0420 | My module from Mein Studium | 3,0 ECTS", []), [
-  { code: "SZ0420", name: "My module from Mein Studium", credits: 3 }
-]);
-assert.throws(() => parseMeinStudium("SZ0420", publicModules));
-assert.throws(() => parseMeinStudium("SZ0420 | No credit | 0", []));
-const personalCourses = [
+const catalogueCourses = [
   ...publicModules,
   { code: "EI04001", name: "Komputer & Creativität", credits: 6 }
 ];
-assert.deepEqual(findMeinStudiumCourses(personalCourses, "mechatron simul"), [publicModules[0]]);
-assert.deepEqual(findMeinStudiumCourses(personalCourses, "Praktikum Simulaton mechatronsicher Systeme"), [publicModules[0]]);
-assert.deepEqual(findMeinStudiumCourses(personalCourses, "Komputer und Kreativitat"), [personalCourses[2]]);
-assert.deepEqual(findMeinStudiumCourses(personalCourses, "WI001056_1"), [publicModules[1]]);
-assert.deepEqual(findMeinStudiumCourses(personalCourses, "ei 04021"), [publicModules[0]]);
-assert.deepEqual(findMeinStudiumCourses(personalCourses, "EI04022"), []);
-assert.deepEqual(findMeinStudiumCourses([personalCourses[2]], "Simulaton"), []);
+assert.deepEqual(findCatalogueCourses(catalogueCourses, "mechatron simul"), [publicModules[0]]);
+assert.deepEqual(findCatalogueCourses(catalogueCourses, "Praktikum Simulaton mechatronsicher Systeme"), [publicModules[0]]);
+assert.deepEqual(findCatalogueCourses(catalogueCourses, "Komputer und Kreativitat"), [catalogueCourses[2]]);
+assert.deepEqual(findCatalogueCourses(catalogueCourses, "WI001056_1"), [publicModules[1]]);
+assert.deepEqual(findCatalogueCourses(catalogueCourses, "ei 04021"), [publicModules[0]]);
+assert.deepEqual(findCatalogueCourses(catalogueCourses, "EI04022"), []);
+assert.deepEqual(findCatalogueCourses([catalogueCourses[2]], "Simulaton"), []);
 const tasks = parseStudyTasks("Chapter 1 | 2\nMock exam | 1,5 | Break", [{ id: "holiday", name: "Break" }]);
 assert.deepEqual(tasks.map(item => [item.hours, item.blockId]), [[2, ""], [1.5, "holiday"]]);
 assert.equal(parseStudyTasks("Chapter 1 | 2 | Typo", [])[0].blockId, null);

@@ -115,24 +115,6 @@ export function creditNumber(value) {
   return Number.isFinite(number) && number >= 0 && number <= 1000 ? number : null;
 }
 
-export function parseMeinStudium(text, catalogue) {
-  const official = new Map(catalogue.map(item => [normalizeModuleCode(item.code).toUpperCase(), item]));
-  const courses = new Map();
-  for (const raw of text.split(/\r?\n/)) {
-    const line = raw.trim();
-    if (!line) continue;
-    const columns = line.split(/[|｜\t]/).map(value => value.trim());
-    const code = normalizeModuleCode(columns[0]).toUpperCase();
-    if (/^(?:MODUL(?: ID|NUMMER)|MODULE CODE|模块编号)$/.test(code)) continue;
-    if (!/^[A-Z]{2,6}[- ]?\d{3,8}[A-Z]?(?:_\d{1,3})?$/.test(code)) throw new Error(line);
-    const [name, creditsText] = columns.length === 1 ? [official.get(code)?.name, official.get(code)?.credits] : columns.slice(1);
-    const credits = creditNumber(String(creditsText ?? "").replace(/\s*ECTS$/i, ""));
-    if (![1, 3].includes(columns.length) || !name || !credits) throw new Error(line);
-    courses.set(code, { code, name: name.slice(0, 180), credits });
-  }
-  return [...courses.values()];
-}
-
 function normalizeCourseSearch(text) {
   return text.normalize("NFKD").toLowerCase().replace(/\p{Diacritic}/gu, "").replaceAll("ß", "ss")
     .replace(/[^\p{L}\p{N}]+/gu, " ").trim();
@@ -149,7 +131,7 @@ function isSmallSpellingChange(typed, word) {
     (typed[index] === word[index + 1] && typed[index + 1] === word[index] && typed.slice(index + 2) === word.slice(index + 2));
 }
 
-export function findMeinStudiumCourses(courses, value) {
+export function findCatalogueCourses(courses, value) {
   const query = normalizeCourseSearch(value);
   if (query.length < 2) return [];
   const compact = query.replaceAll(" ", "");
