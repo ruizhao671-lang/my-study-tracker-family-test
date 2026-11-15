@@ -125,6 +125,14 @@ export function isEarned(course, semesters) {
   return courseTasks(course.courseId, semesters).some(task => task.id === course.passTaskId && task.done);
 }
 
+export function setProgressLink(course, courseId, passTaskId, semesters) {
+  if (course.passTaskId && (!passTaskId || course.courseId !== courseId)) {
+    course.passed = isEarned(course, semesters);
+  }
+  course.courseId = courseId;
+  course.passTaskId = passTaskId;
+}
+
 export function creditTotals(plan, semesters) {
   const modules = plan.modules.map(module => {
     const earned = Math.round(module.courses.reduce((total, course) =>

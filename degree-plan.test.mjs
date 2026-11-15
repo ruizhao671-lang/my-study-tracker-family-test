@@ -2,7 +2,7 @@ import assert from "node:assert/strict";
 import { makeSharedState } from "./public/cloud-core.js";
 import {
   addTumStudyPeriods, applyExamMatches, nextExam, scheduleNewExamCourse, creditTotals, examMatches, newCourse,
-  campusForVenue, normalizeModuleCode, parseStudyTasks, replaceTumMathChoice, revisionProgress, suggestProgressCourse, timeBlockCredits, useTumTemplate
+  campusForVenue, normalizeModuleCode, parseStudyTasks, replaceTumMathChoice, revisionProgress, setProgressLink, suggestProgressCourse, timeBlockCredits, useTumTemplate
 } from "./public/degree-core.js";
 
 const plan = useTumTemplate();
@@ -25,6 +25,11 @@ const stages = [{ courses: [{ id: "old-course", categories: [{ tasks: [ordinary,
 assert.equal(creditTotals(plan, stages).earned, 6);
 examTask.done = true;
 assert.equal(creditTotals(plan, stages).earned, 11);
+const reassigned = structuredClone(discrete);
+setProgressLink(reassigned, "another-progress-course", "", stages);
+assert.equal(reassigned.passed, true);
+assert.equal(reassigned.passTaskId, "");
+assert.equal(reassigned.courseId, "another-progress-course");
 examTask.done = false;
 
 plan.term = "WS 2026/27";

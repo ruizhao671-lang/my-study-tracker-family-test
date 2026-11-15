@@ -3,7 +3,7 @@ import {
   applyExamMatches, courseTasks, creditNumber, creditTotals, daysBetween, examMatches,
   addTumStudyPeriods, nextExam, scheduleNewExamCourse, suggestProgressCourse, isEarned, isTumMathChoice, makePlan, newCourse,
   newModule, normalizeModuleCode, parseStudyTasks, replaceTumMathChoice, useTumTemplate,
-  campusForVenue, linkedProgressCourse, revisionProgress, timeBlockCredits
+  campusForVenue, linkedProgressCourse, revisionProgress, setProgressLink, timeBlockCredits
 } from "./degree-core.js";
 
 const panel = document.querySelector("#degreePanel");
@@ -233,7 +233,7 @@ function renderCourse(course, module, plan, semesters, location, blockId = "") {
   const onTimeline = location === "timeline";
   const isUnscheduledCard = onTimeline && !blockId;
   const deleteButton = button(word("删除课程", "Delete course"), "delete-course");
-  const { existing: original, total, done } = revisionProgress(course, semesters);
+  const { linked, existing: original, total, done } = revisionProgress(course, semesters);
   const tasks = course.tasks.filter(task => !onTimeline || (task.blockId || course.blockId) === blockId);
   const exam = !isEarned(course, semesters) ? nextExam(course, plan, today()) : undefined;
   const remaining = exam ? daysBetween(today(), exam.date) : null;
@@ -282,6 +282,8 @@ function renderCourse(course, module, plan, semesters, location, blockId = "") {
       ${remainingHours ? `<span>${displayNumber(remainingHours)} h ${word("待学", "left")}</span>` : ""}</div>
       <progress value="${done}" max="${total}" aria-label="${word("复习进度", "Study progress")}"></progress></div>` : ""}
     ${isUnscheduledCard && plan.blocks.length && !earned ? `<div class="degree-quick-move">${moveField}</div>` : ""}
+    ${button(linked ? word("已关联学习进度", "Study progress linked") : word("关联学习进度", "Link study progress"),
+      "link-progress", linked ? `title="${escape(linked.name)}"` : "")}
     <details class="degree-course-details" data-key="${escape(location + "-" + blockId + "-" + course.id)}">
       <summary>${word("课程计划与学分", "Course plan and credits")}</summary>
       ${!onTimeline || blockId ? `<div class="degree-fields">${moveField}</div>` : ""}
@@ -581,18 +583,71 @@ function progressCourseSelect(semesters, selected = "") {
     semesters.flatMap(stage => stage.courses.map(item => option(item.id, stage.name + " · " + item.name, selected))).join(""));
 }
 
-function setProgressSuggestion(semesters) {
+function setProgressSuggestion(semesters, courseName = "") {
   const name = dialog.querySelector('[name="name"]');
   const link = dialog.querySelector('[name="courseId"]');
   const renderSuggestion = () => {
-    const suggested = suggestProgressCourse(name.value, semesters);
+    const suggested = suggestProgressCourse(name?.value ?? courseName, semesters);
     for (const item of link.options) {
       const label = item.textContent.replace(/^(同名课程 · |Same name · )/, "");
       item.textContent = item.value === suggested?.id ? word("同名课程 · ", "Same name · ") + label : label;
     }
   };
-  name.addEventListener("change", renderSuggestion);
+  name?.addEventListener("change", renderSuggestion);
   renderSuggestion();
+}
+
+function linkProgressDialog(course, semesters) {
+  const title = word("关联学习进度", "Link study progress");
+  if (!course.courseId && !semesters.some(stage => stage.courses.length)) {
+    showDialog(title, caption(word("先在「学习进度记录」添加一门课，就可以在这里关联。",
+      "Add a course under Study Progress to link it here.")),
+    bridge.openLearningProgress, word("打开学习进度", "Open Study Progress"));
+    return;
+  }
+  showDialog(title, `<p><strong>${escape(course.name)}</strong></p>` +
+    fields(progressCourseSelect(semesters, course.courseId)), data => {
+    const courseId = String(data.get("courseId") || "");
+    if (courseId !== course.courseId) editCourse(course.id, item => setProgressLink(item, courseId, "", semesters));
+  });
+  setProgressSuggestion(semesters, course.name);
+}
+
+function openProgressLinks(courseId) {
+  const { plan, semesters, editable } = get();
+  if (!editable) return;
+  const learning = semesters.flatMap(stage => stage.courses).find(course => course.id === courseId);
+  if (!learning) return;
+  const entries = (plan?.modules || []).flatMap(module => module.courses.map(course => ({ course, label: course.name + " · " + module.name })));
+  const title = word("关联毕业规划", "Link degree plan");
+  if (!entries.length) {
+    showDialog(title, caption(word("先在「毕业规划」添加课程，就可以在这里选择。", "Add a course to the degree plan to link it here.")),
+      bridge.openDegreePlanner, word("打开毕业规划", "Open Degree Planner"));
+    return;
+  }
+  const current = entries.filter(({ course }) => course.courseId === courseId);
+  const candidates = entries.filter(({ course }) => course.courseId !== courseId);
+  const choices = candidates.map(({ course, label }) => {
+    const previous = linkedProgressCourse(course, semesters);
+    return option(course.id, previous ? label + word(" · 目前关联到 ", " · Currently linked to ") + previous.name : label);
+  }).join("");
+  showDialog(title, `<p><strong>${escape(learning.name)}</strong></p>` +
+    (current.length ? caption(word("已关联的课程可取消勾选来解除。", "Uncheck a linked course to unlink it.")) +
+      current.map(({ course, label }) => `<div class="degree-row"><label><input type="checkbox" name="keep" value="${escape(course.id)}" checked>
+        ${escape(label)}</label></div>`).join("") : "") +
+    (choices ? fields(select(word("选择毕业规划中的课程", "Choose a course from the degree plan"), "add",
+      option("", word("选择课程", "Select course")) + choices)) : ""), data => {
+    const retained = new Set(data.getAll("keep"));
+    const remove = new Set(current.map(({ course }) => course.id).filter(id => !retained.has(id)));
+    const add = data.get("add");
+    if (!remove.size && !add) return;
+    update(draft => {
+      for (const course of allCourses(draft)) {
+        if (remove.has(course.id)) setProgressLink(course, "", "", semesters);
+        if (course.id === add) setProgressLink(course, courseId, "", semesters);
+      }
+    });
+  });
 }
 
 function deleteCourseDialog(course, module) {
@@ -628,7 +683,7 @@ function courseDialog(course, module, plan, semesters) {
       name, code: normalizeModuleCode(data.get("code")).slice(0, 40), credits: creditNumber(data.get("credits")) ?? 0, courseId, passTaskId, examTerm
     };
     if (course) editCourse(course.id, item => {
-      if (item.passTaskId && !passTaskId) item.passed = isEarned(item, semesters);
+      setProgressLink(item, courseId, passTaskId, semesters);
       Object.assign(item, next);
     });
     else update(draft => draft.modules.find(item => item.id === targetModule.id).courses.push(newCourse(next)));
@@ -895,6 +950,7 @@ panel.addEventListener("click", event => {
     case "import-tum": importTumExams(plan, semesters, target); break;
     case "module": moduleDialog(module); break;
     case "course": courseDialog(course, module, plan, semesters); break;
+    case "link-progress": if (course) linkProgressDialog(course, semesters); break;
     case "delete-course": {
       const group = plan?.modules.find(item => item.courses.includes(course));
       if (group) deleteCourseDialog(course, group);
@@ -971,5 +1027,5 @@ panel.addEventListener("dragend", () => {
   panel.querySelectorAll(".over").forEach(item => item.classList.remove("over"));
 });
 
-window.studyDegree = { render, attachCatalogue };
+window.studyDegree = { render, attachCatalogue, openProgressLinks };
 render();

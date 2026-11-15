@@ -4448,6 +4448,8 @@
       const tasks = getCourseTasks(course);
       const progress = getProgress(tasks);
       const linkedTemplate = state.courseTemplates.find(template => template.id === course.templateSourceId);
+      const canLinkDegree = !READ_ONLY_LINK && !window.studyCloud?.isReadOnly?.();
+      const linkedDegree = state.degreePlan?.modules.some(module => module.courses.some(item => item.courseId === course.id));
 
       courseEl.innerHTML = `
         <header class="course-header">
@@ -4456,6 +4458,8 @@
               <h2></h2>
               <span class="course-label" hidden></span>
               <span class="badge"></span>
+              ${canLinkDegree ? `<button class="btn secondary progress-link" type="button" data-action="link-degree-progress">
+                ${t(linkedDegree ? "已关联毕业规划" : "关联毕业规划")}</button>` : ""}
             </div>
             <div class="progress-bar" aria-hidden="true">
               <div class="progress-fill"></div>
@@ -6276,24 +6280,17 @@
         }
       }
 
+      if (action === "link-degree-progress" && course) {
+        window.studyDegree?.openProgressLinks(course.id);
+      }
+
       if (action === "edit-course" && course) {
-        const available = (state.degreePlan?.modules || []).flatMap(module => module.courses
-          .filter(item => !item.courseId).map(item => ({ value: item.id, label: item.name + " · " + module.name })));
         openEditModal("编辑课程", [
           { label: "课程名称", name: "name", value: course.name },
-          { label: "课程标签（可选，例如专业课、公共课）", name: "label", value: course.label || "", required: false },
-          ...(available.length ? [{
-            label: "关联毕业规划课程（可选）",
-            name: "degreeProgressCourse", value: "", required: false,
-            options: [{ value: "", label: "不新增关联" }, ...available]
-          }] : [])
+          { label: "课程标签（可选，例如专业课、公共课）", name: "label", value: course.label || "", required: false }
         ], values => {
           course.name = values.name;
           course.label = values.label;
-          if (values.degreeProgressCourse) {
-            const target = state.degreePlan?.modules.flatMap(group => group.courses).find(item => item.id === values.degreeProgressCourse);
-            if (target && !target.courseId) target.courseId = course.id;
-          }
           commit("课程已更新");
         });
         window.studyDegree?.attachCatalogue(els.modalBody.querySelector('[name="name"]'));
@@ -6674,6 +6671,8 @@
         syncDegreeCalendar(plan);
         commit();
       },
+      openLearningProgress: () => setActivePanel("system"),
+      openDegreePlanner: () => setActivePanel("degree"),
       openDegreeCalendar(courseId, examId) {
         if (READ_ONLY_LINK || window.studyCloud?.isReadOnly?.()) return;
         const key = JSON.stringify([courseId, examId]);
