@@ -329,7 +329,7 @@
     "阶段模板已删除": "Stage template deleted",
     "还没有保存的课程模板。": "No course templates saved yet.",
     "课程名称": "Course name",
-    "从 TUM 目录查找": "Find in TUM catalogue",
+    "从 Mein Studium 查找": "Find from Mein Studium",
     "关联毕业规划里的考试（可选）": "Link a degree planner exam (optional)",
     "手动填写": "Enter manually",
     "补考": "Retake",
