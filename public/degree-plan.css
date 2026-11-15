@@ -184,6 +184,47 @@ body.degree-mode .study-system-section { display: none; }
 
 #degreeDialog { border: 1px solid var(--line, #d9e2e0); border-radius: 14px; padding: 1rem; width: min(600px, 90vw); max-height: 88vh; }
 #degreeDialog::backdrop { background: #14252888; }
+#degreeDialog.degree-study-plan-dialog { width: min(850px, 94vw); }
+.plan-summary, .plan-period > summary {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  flex-wrap: wrap;
+  gap: .35rem .9rem;
+}
+.plan-summary { background: #e8f3ef; border-radius: 9px; padding: .7rem .9rem; }
+.plan-period, .plan-preview-period {
+  border: 1px solid var(--line, #d9e2e0);
+  border-radius: 9px;
+  margin-top: .55rem;
+  padding: .65rem .8rem;
+}
+.plan-period > summary { cursor: pointer; }
+.plan-period > summary strong::before { content: "▸ "; }
+.plan-period[open] > summary strong::before { content: "▾ "; }
+.plan-period [data-plan-hours], .plan-linked-task small, .plan-preview-period small {
+  color: var(--muted, #526863);
+  font-size: .82rem;
+}
+.plan-task-group h4, .plan-preview-period h4 { margin: .65rem 0 .35rem; }
+.plan-preview-period h4 small { margin-left: .5rem; }
+.plan-task, .plan-linked-task {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: end;
+  gap: .35rem .55rem;
+  border-top: 1px solid var(--line, #d9e2e0);
+  padding: .5rem 0;
+}
+.plan-task .plan-task-title { width: auto; flex: 1 1 180px; }
+.plan-task label { display: grid; gap: .2rem; flex: 1 1 7rem; font-size: .81rem; }
+.plan-task label.plan-task-done { display: grid; flex: 0 0 auto; min-height: 42px; place-items: center; }
+.plan-task .input, .plan-task .btn { min-height: 38px; }
+.plan-linked-task { align-items: center; }
+.plan-paste-label { display: grid; gap: .35rem; margin-top: .5rem; }
+.plan-paste-label textarea { min-height: 8rem; }
+.degree-study-card-actions { display: flex; flex-wrap: wrap; gap: .35rem; }
+.degree-study-card-actions .btn { min-height: 32px; padding: .25rem .45rem; font-size: .8rem; }
 #degreeDialog h3 { margin-top: 0; }
 #degreeDialog textarea { min-height: 105px; }
 #degreeDialog pre { overflow-wrap: anywhere; }

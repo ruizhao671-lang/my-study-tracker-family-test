@@ -6665,8 +6665,14 @@
         semesters: state.semesters,
         editable: !READ_ONLY_LINK && !window.studyCloud?.isReadOnly?.()
       }),
-      saveDegreePlan(plan) {
+      saveDegreePlan(plan, linkedChanges) {
         if (READ_ONLY_LINK || window.studyCloud?.isReadOnly?.()) return;
+        if (linkedChanges) {
+          const learningCourse = state.semesters.flatMap(stage => stage.courses).find(item => item.id === linkedChanges.courseId);
+          for (const task of learningCourse?.categories.flatMap(category => category.tasks) || []) {
+            if (linkedChanges.done.has(task.id)) task.done = linkedChanges.done.get(task.id);
+          }
+        }
         state.degreePlan = plan;
         syncDegreeCalendar(plan);
         commit();
@@ -6680,14 +6686,6 @@
         const existing = state.timer.calendarItems.find(item => item.degreeCourseId === courseId && item.degreeExamId === examId);
         setActivePanel("timer");
         openCalendarItemModal("exam", existing ?? null, key);
-      },
-      setDegreeLinkedTask(courseId, taskId, done) {
-        if (READ_ONLY_LINK || window.studyCloud?.isReadOnly?.()) return;
-        const course = state.semesters.flatMap(stage => stage.courses).find(item => item.id === courseId);
-        const task = course?.categories.flatMap(category => category.tasks).find(item => item.id === taskId);
-        if (!task) return;
-        task.done = done;
-        commit();
       },
       replaceState(nextState, options = {}) {
         state = normalizeState(nextState);

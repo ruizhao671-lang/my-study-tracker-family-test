@@ -260,13 +260,32 @@ export function daysBetween(start, end) {
 }
 
 export function parseStudyTasks(text, blocks) {
-  return text.split(/\r?\n/).filter(line => line.trim()).map(line => {
-    const [title, rawHours, blockName] = line.replace(/^\s*[-•]\s*/, "").split(/[|｜]/).map(value => value.trim());
-    const hours = creditNumber(rawHours?.replace(/\s*(h|hours?|小时|stunden?)$/i, ""));
-    const block = blockName ? blocks.find(item => item.name === blockName) : null;
-    if (!title || !rawHours || hours === null || (blockName && !block)) {
-      throw new Error(line);
+  const normalizePeriod = value => value.normalize("NFKC").toLowerCase().replace(/\s+/g, "");
+  const names = new Map();
+  for (const { id, name, aliases = [] } of blocks) {
+    for (const label of [name, ...aliases]) {
+      const key = normalizePeriod(label);
+      names.set(key, names.has(key) && names.get(key) !== id ? null : id);
     }
-    return { id: crypto.randomUUID(), title: title.slice(0, 180), hours, blockId: block?.id ?? "", done: false };
-  });
+  }
+  const tasks = [];
+  for (const raw of text.split(/\r?\n/)) {
+    const line = raw.trim();
+    if (!line || /^```/.test(line)) continue;
+    const columns = line.replace(/^(?:[-•]\s+|\d+[.)]\s+|[|｜])/, "").replace(/[|｜]$/, "")
+      .split(/[|｜]/).map(value => value.trim());
+    if (columns.every(value => /^:?-{2,}:?$/.test(value))) continue;
+    if (/^(?:时间块|study period)$/i.test(columns[0]) && columns.length === 4) continue;
+    const [blockName, group, title, rawHours] = columns.length === 4 ? columns : [columns[2], "", columns[0], columns[1]];
+    const hoursText = rawHours?.replace(/\s*(h|hours?|小时|stunden?)$/i, "").trim();
+    const hours = creditNumber(hoursText);
+    if (columns.length < 2 || columns.length > 4 || !title || !hoursText || hours === null) throw new Error(raw);
+    const followsCourse = !blockName || /^(?:跟随课程|use course placement)$/i.test(blockName);
+    tasks.push({
+      id: crypto.randomUUID(), title: title.slice(0, 180), group: group.slice(0, 100), hours,
+      blockId: followsCourse ? "" : names.get(normalizePeriod(blockName)) ?? null,
+      requestedPeriod: followsCourse ? "" : blockName, done: false
+    });
+  }
+  return tasks;
 }

@@ -67,7 +67,14 @@ assert.equal(discrete.exams.find(exam => exam.id === discrete.examId).date, "202
 
 const tasks = parseStudyTasks("Chapter 1 | 2\nMock exam | 1,5 | Break", [{ id: "holiday", name: "Break" }]);
 assert.deepEqual(tasks.map(item => [item.hours, item.blockId]), [[2, ""], [1.5, "holiday"]]);
-assert.throws(() => parseStudyTasks("Chapter 1 | 2 | Typo", []));
+assert.equal(parseStudyTasks("Chapter 1 | 2 | Typo", [])[0].blockId, null);
+assert.throws(() => parseStudyTasks("Chapter 1 | many hours", []));
+const importedTasks = parseStudyTasks(
+  "| 时间块 | 章节或类型 | 要做的事 | 预计用时 |\n| --- | --- | --- | --- |\n| 假期 | 第 3 章 | 做习题 | 1,5 小时 |",
+  [{ id: "break", name: "Vorlesungsfreie Zeit", aliases: ["假期"] }]
+);
+assert.deepEqual(importedTasks.map(task => [task.blockId, task.group, task.title, task.hours]), [["break", "第 3 章", "做习题", 1.5]]);
+assert.throws(() => parseStudyTasks("Chapter 1 | h", []));
 const shared = makeSharedState({ degreePlan: plan, timer: { calendarItems: [
   { id: "manual" }, { id: "linked", degreeExamId: "exam" }, { id: "was-linked", privateDegreeExam: true }
 ] } });

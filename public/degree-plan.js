@@ -113,12 +113,12 @@ function attachDegreeCatalogue() {
   attachCatalogue(form.elements.name, form.elements.code, form.elements.credits);
 }
 
-function update(change) {
+function update(change, linkedChanges) {
   const { plan, editable } = get();
   if (!editable || !plan) return;
   const draft = structuredClone(plan);
   change(draft);
-  bridge.saveDegreePlan(draft);
+  bridge.saveDegreePlan(draft, linkedChanges);
 }
 
 function editCourse(id, change) {
@@ -132,6 +132,7 @@ function showDialog(title, body, submit, submitLabel = word("保存", "Save")) {
   const version = ++dialogVersion;
   const owner = signedIn();
   const originalPlan = get().plan;
+  dialog.classList.remove("degree-study-plan-dialog");
   dialog.innerHTML = `<form>${heading(title)}${body}<p role="status" class="degree-error" hidden></p>
     <div class="degree-actions"><button class="btn" type="submit">${escape(submitLabel)}</button>
     <button class="btn secondary" type="button" data-close>${word("取消", "Cancel")}</button></div></form>`;
@@ -219,12 +220,12 @@ function formatPlannerDate(date) {
   }).format(new Date(date + "T00:00:00Z"));
 }
 
-function periodName(block) {
+function periodName(block, english = en()) {
   if (block.kind === "lecture" && block.name.endsWith(" · Vorlesungszeit")) {
-    return block.name.replace("Vorlesungszeit", word("上课期间", "Teaching period"));
+    return block.name.replace("Vorlesungszeit", english ? "Teaching period" : "上课期间");
   }
   if (block.kind === "break" && block.name.endsWith(" · Vorlesungsfreie Zeit")) {
-    return block.name.replace("Vorlesungsfreie Zeit", word("假期", "Semester break"));
+    return block.name.replace("Vorlesungsfreie Zeit", english ? "Semester break" : "假期");
   }
   return block.name;
 }
@@ -234,11 +235,9 @@ function renderCourse(course, module, plan, semesters, location, blockId = "") {
   const isUnscheduledCard = onTimeline && !blockId;
   const deleteButton = button(word("删除课程", "Delete course"), "delete-course");
   const { linked, existing: original, total, done } = revisionProgress(course, semesters);
-  const tasks = course.tasks.filter(task => !onTimeline || (task.blockId || course.blockId) === blockId);
   const exam = !isEarned(course, semesters) ? nextExam(course, plan, today()) : undefined;
   const remaining = exam ? daysBetween(today(), exam.date) : null;
-  const remainingHours = tasks.reduce((sum, task) => sum + (task.done ? 0 : task.hours), 0);
-  const progress = original.length ? word("学习进度列表 ", "Linked course tasks ") + original.filter(task => task.done).length + "/" + original.length : "";
+  const remainingHours = studyHours(course.tasks).remaining;
   const timing = remaining === 0 ? word("今天考试", "Today") :
     remaining > 0 ? word("还有 " + remaining + " 天", remaining + " days left") : "";
   const earned = isEarned(course, semesters);
@@ -279,11 +278,14 @@ function renderCourse(course, module, plan, semesters, location, blockId = "") {
           button(word("关联日历", "Link to calendar"), "link-calendar", `data-exam="${escape(item.id)}"`))}
       </div>`).join("")}</details>` : ""}
     ${total ? `<div class="degree-card-progress"><div><span>${word("复习进度", "Study progress")} ${done}/${total}</span>
-      ${remainingHours ? `<span>${displayNumber(remainingHours)} h ${word("待学", "left")}</span>` : ""}</div>
+      ${course.tasks.length ? `<span>${formatStudyHours(remainingHours)} ${word("待学", "left")}</span>` : ""}</div>
       <progress value="${done}" max="${total}" aria-label="${word("复习进度", "Study progress")}"></progress></div>` : ""}
     ${isUnscheduledCard && plan.blocks.length && !earned ? `<div class="degree-quick-move">${moveField}</div>` : ""}
-    ${button(linked ? word("已关联学习进度", "Study progress linked") : word("关联学习进度", "Link study progress"),
-      "link-progress", linked ? `title="${escape(linked.name)}"` : "")}
+    <div class="degree-study-card-actions">
+      ${button(word("学习计划", "Study plan"), "study-plan")}
+      ${button(linked ? word("已关联学习进度", "Study progress linked") : word("关联学习进度", "Link study progress"),
+        "link-progress", linked ? `title="${escape(linked.name)}"` : "")}
+    </div>
     <details class="degree-course-details" data-key="${escape(location + "-" + blockId + "-" + course.id)}">
       <summary>${word("课程计划与学分", "Course plan and credits")}</summary>
       ${!onTimeline || blockId ? `<div class="degree-fields">${moveField}</div>` : ""}
@@ -291,16 +293,10 @@ function renderCourse(course, module, plan, semesters, location, blockId = "") {
         button(word("添加考试", "Add exam"), "exam", courseRef) +
         (exam ? button(word("关联下一场到日历", "Link next exam to calendar"), "link-calendar",
           `data-exam="${escape(exam.id)}"`) : "") +
-        button(word("添加复习任务", "Add study task"), "add-study-task", courseRef) +
-        button(word("粘贴任务清单", "Paste task list"), "study-tasks", courseRef) +
         (isUnscheduledCard ? "" : deleteButton))}
       ${linkedTask ? caption(word("学分关联任务：", "Credit linked to: ") + (linkedTask.title || linkedTask.name)) :
         course.passTaskId ? caption(word("关联任务已找不到，请编辑课程重新选择。", "Linked task missing. Open Edit course to choose again.")) :
         `<div class="degree-pass"><label><input name="passed" type="checkbox" ${course.passed ? "checked" : ""}> ${word("已取得学分", "Credits earned")}</label></div>`}
-      ${progress ? `<details data-key="${escape("linked-" + location + "-" + blockId + "-" + course.id)}"><summary>${escape(progress)}</summary>${original.map(task => `<div class="degree-row" data-task="${escape(task.id)}"><label><input type="checkbox" name="linkedDone" ${task.done ? "checked" : ""}> ${escape(task.title || task.name)}</label></div>`).join("")}</details>` : ""}
-      ${tasks.map(task => `<div class="degree-row" data-task="${escape(task.id)}"><label>
-        <input type="checkbox" name="studyDone" ${task.done ? "checked" : ""}> ${escape(task.title)} · ${displayNumber(task.hours)} h
-        </label>${button(word("编辑", "Edit"), "study-task")}</div>`).join("")}
     </details>
   </article>`;
 }
@@ -751,46 +747,232 @@ function examDialog(course, plan, previous) {
   }));
 }
 
-function tasksDialog(course, plan) {
-  showDialog(word("粘贴任务清单", "Paste task list") + " · " + course.name,
-    caption(word("每行一项复习任务，例如「刷往年卷｜2」。第二格是预计小时，第三格可填时间块。", "One task per line, for example Past paper | 2. The second field is hours; the third can name a study period.")) +
-    `<textarea class="input" name="tasks" required maxlength="30000" placeholder="Kapitel 1 | 2"></textarea>`,
-    data => {
-      let tasks;
-      try { tasks = parseStudyTasks(data.get("tasks"), plan.blocks); }
-      catch (reason) { throw new Error(word("请检查这一行：", "Check this row: ") + reason.message); }
-      editCourse(course.id, item => {
-        const alreadyAdded = new Set(item.tasks.map(task => JSON.stringify([task.title, task.hours, task.blockId])));
-        item.tasks.push(...tasks.filter(task => {
-          const key = JSON.stringify([task.title, task.hours, task.blockId]);
-          if (alreadyAdded.has(key)) return false;
-          alreadyAdded.add(key);
-          return true;
-        }));
-      });
-    });
+function formatStudyHours(hours) {
+  return displayNumber(hours) + word(" 小时", " h");
 }
 
-function taskDialog(course, task, plan) {
-  showDialog(task ? word("编辑复习任务", "Edit study task") : word("添加复习任务", "Add study task"), fields(
-    field(word("任务名", "Task title"), "title", task?.title, "text", 'required maxlength="180"') +
-    field(word("预计小时", "Estimated hours"), "hours", task?.hours, "number", 'min="0" max="1000" step="0.01"') +
-    select(word("时间块", "Study period"), "blockId", option("", word("跟随课程", "Use course placement"), task?.blockId || "") +
-      plan.blocks.map(block => option(block.id, periodName(block), task?.blockId)).join(""))
-  ) + (task ? `<label><input type="checkbox" name="remove"> ${word("删除这个任务", "Delete this task")}</label>` : ""),
-  data => editCourse(course.id, item => {
-    if (task && data.has("remove")) {
-      item.tasks = item.tasks.filter(entry => entry.id !== task.id);
+function studyHours(tasks) {
+  return tasks.reduce((totals, task) => {
+    const hours = creditNumber(task.hours) || 0;
+    totals.planned += hours;
+    if (!task.done) totals.remaining += hours;
+    return totals;
+  }, { planned: 0, remaining: 0 });
+}
+
+function planTaskRow(task, options) {
+  const inputOptions = 'aria-label="' + escape(word("任务名", "Task title")) + '" maxlength="180"';
+  if (task.linked) return `<div class="plan-linked-task" data-plan-task="${escape(task.id)}">
+    <label><input type="checkbox" data-field="done" ${task.done ? "checked" : ""}> ${escape(task.title)}</label>
+    <small>${word("学习进度记录", "Study Progress")}</small></div>`;
+  return `<div class="plan-task" data-plan-task="${escape(task.id)}">
+    <label class="plan-task-done"><input type="checkbox" data-field="done" ${task.done ? "checked" : ""}
+      aria-label="${escape(word("完成任务", "Complete task") + " · " + task.title)}"></label>
+    <input class="input plan-task-title" data-field="title" value="${escape(task.title)}" ${inputOptions}
+      placeholder="${word("任务名", "Task title")}">
+    <label>${word("章节或类型", "Chapter or type")}<input class="input" data-field="group" value="${escape(task.group)}" maxlength="100"></label>
+    <label>${word("预计小时", "Estimated hours")}<input class="input" data-field="hours" inputmode="decimal"
+      value="${escape(task.hours)}"></label>
+    <label>${word("时间块", "Study period")}<select class="input" data-field="blockId">${options(task.blockId)}</select></label>
+    ${button(word("删除", "Delete"), "plan-remove")}
+    </div>`;
+}
+
+function openStudyPlan(course, plan, semesters) {
+  const defaultPeriod = course.blockId || "";
+  const periods = new Map(plan.blocks.map(block => [block.id, periodName(block)]));
+  const unknownPeriod = "__unmatched";
+  const periodLabel = id => periods.get(id) || word("待安排", "Unscheduled");
+  const blockOptions = id => option("", word("跟随课程", "Use course placement"), id) +
+    [...periods].map(([key, title]) => option(key, title, id)).join("");
+  const blockIdFor = task => task.blockId === null ? unknownPeriod :
+    periods.has(task.blockId || defaultPeriod) ? task.blockId || defaultPeriod : "";
+  const taskPeriods = tasks => {
+    const buckets = new Map([...periods.keys(), "", unknownPeriod].map(id => [id, []]));
+    for (const task of tasks) buckets.get(blockIdFor(task)).push(task);
+    return buckets;
+  };
+  const hoursLabel = tasks => {
+    const { planned, remaining } = studyHours(tasks);
+    return word("预计 ", "Planned ") + formatStudyHours(planned) + " · " +
+      word("剩余 ", "Remaining ") + formatStudyHours(remaining);
+  };
+
+  const own = course.tasks.map(task => ({ ...task }));
+  const linked = linkedProgressCourse(course, semesters);
+  const linkedTasks = linked?.categories.flatMap(category => category.tasks.filter(task => task.id !== course.passTaskId)
+    .map(task => ({ id: task.id, title: task.title || task.name, done: task.done, group: category.name, blockId: "", linked: true }))) || [];
+  const changedDone = new Map();
+  let preview = null;
+  const taskKey = task => JSON.stringify([clean(task.title), clean(task.group, 100), creditNumber(task.hours), blockIdFor(task)]);
+  const additions = tasks => {
+    const seen = new Set(tasks.map(taskKey));
+    return (preview || []).filter(task => {
+      if (task.blockId === null) return true;
+      const key = taskKey(task);
+      if (seen.has(key)) return false;
+      seen.add(key);
+      return true;
+    });
+  };
+
+  const earned = isEarned(course, semesters);
+  const exam = !earned ? nextExam(course, plan, today()) : undefined;
+  const countdown = exam ? daysBetween(today(), exam.date) : null;
+  const examSummary = exam ? examLabel(exam) + " · " +
+    (countdown === 0 ? word("今天考试", "Today") : word("还有 " + countdown + " 天", countdown + " days left"))
+    : earned ? word("已取得学分", "Credits earned") : word("考试日期待定", "Exam date pending");
+  const fallbackBlock = plan.blocks.find(block => block.id === defaultPeriod) || plan.blocks[0];
+  const examplePeriod = fallbackBlock ? periodLabel(fallbackBlock.id) : word("跟随课程", "Use course placement");
+  const sample = (en() ? ["Study period | Chapter or type | Task | Estimated hours", examplePeriod + " | Chapter 3 | Practice problems | 2 h"] :
+    ["时间块 | 章节或类型 | 要做的事 | 预计用时", examplePeriod + " | 第 3 章 | 做习题 | 2 小时"]).join("\n");
+
+  showDialog(word("学习计划", "Study plan") + " · " + course.name, `
+    <div class="plan-summary"><strong>${escape(examSummary)}</strong><span data-plan-total></span></div>
+    <div class="plan-periods" data-plan-periods></div>
+    ${actions(button(word("添加复习任务", "Add study task"), "plan-add"))}
+    <details class="degree-advanced"><summary>${word("粘贴任务清单", "Paste task list")}</summary>
+      <label class="plan-paste-label">${word("每行一项，按「时间块｜章节或类型｜任务｜预计用时」填写。", "Use one task per line: Study period | Chapter or type | Task | Estimated hours.")}
+        <textarea class="input" name="paste" maxlength="30000" placeholder="${escape(sample)}"></textarea></label>
+      ${actions(button(word("预览导入", "Preview import"), "plan-preview") +
+        button(word("取消导入", "Cancel import"), "plan-reset", "hidden"))}
+      <p data-plan-import-error aria-live="polite" class="degree-error" hidden></p>
+      <div data-plan-preview aria-live="polite"></div>
+    </details>`, () => {
+    const paste = form.elements.paste.value.trim();
+    if (paste && !preview) throw new Error(word("请先预览粘贴的清单，或点取消导入。", "Preview the pasted list or cancel the import."));
+    if (preview?.some(task => task.blockId === null)) {
+      throw new Error(word("请为预览中未匹配的任务选择时间块。", "Choose a study period for unmatched tasks in the preview."));
+    }
+    const tasks = own.map(task => {
+      const title = requireValue(clean(task.title), word("请填写每条任务的名称。", "Enter a title for each task."));
+      const hours = creditNumber(task.hours);
+      if (hours === null) throw new Error(word("请检查任务用时。", "Check the estimated task hours.") + " · " + title);
+      return { ...task, title, hours, group: clean(task.group, 100) };
+    });
+    for (const { requestedPeriod, ...task } of additions(tasks)) tasks.push(task);
+    update(draft => {
+      allCourses(draft).find(item => item.id === course.id).tasks = tasks;
+    }, linked && changedDone.size ? { courseId: linked.id, done: changedDone } : undefined);
+  }, word("保存计划", "Save plan"));
+
+  dialog.classList.add("degree-study-plan-dialog");
+  const form = dialog.querySelector("form");
+  const planPeriods = form.querySelector("[data-plan-periods]");
+  const previewPanel = form.querySelector("[data-plan-preview]");
+  const importError = form.querySelector("[data-plan-import-error]");
+  const submit = form.querySelector('[type="submit"]');
+
+  function refreshHours() {
+    const tasks = [...own, ...linkedTasks];
+    form.querySelector("[data-plan-total]").textContent = hoursLabel(tasks) +
+      " · " + word("已完成 ", "Completed ") + tasks.filter(task => task.done).length + "/" + tasks.length;
+    const buckets = taskPeriods(tasks);
+    for (const node of planPeriods.querySelectorAll("[data-plan-hours]")) {
+      node.textContent = hoursLabel(buckets.get(node.dataset.planHours));
+    }
+  }
+
+  function drawPlan(expand) {
+    const expanded = new Set([...planPeriods.querySelectorAll("details[open]")].map(node => node.dataset.planPeriod));
+    if (expand !== undefined) expanded.add(expand);
+    planPeriods.innerHTML = [...taskPeriods([...own, ...linkedTasks])].filter(([id, tasks]) =>
+      id !== unknownPeriod && (tasks.length || id === blockIdFor({ blockId: "" }))).map(([id, tasks]) => {
+      const groups = new Map();
+      for (const task of tasks) {
+        const name = clean(task.group, 100) || word("未分组", "Ungrouped");
+        if (!groups.has(name)) groups.set(name, []);
+        groups.get(name).push(task);
+      }
+      return `<details class="plan-period" data-plan-period="${escape(id)}" ${expanded.has(id) ? "open" : ""}>
+        <summary><strong>${escape(periodLabel(id))}</strong><span data-plan-hours="${escape(id)}"></span></summary>
+        ${tasks.length ? [...groups].map(([group, rows]) => `<section class="plan-task-group"><h4>${escape(group)}</h4>
+          ${rows.map(task => planTaskRow(task, blockOptions)).join("")}</section>`).join("") :
+          caption(word("这个时间块还没有任务。", "No tasks planned in this period."))}
+      </details>`;
+    }).join("");
+    refreshHours();
+  }
+
+  function drawPreview() {
+    submit.textContent = preview ? word("确认导入并保存", "Confirm import and save") : word("保存计划", "Save plan");
+    form.querySelector('[data-degree="plan-reset"]').hidden = !form.elements.paste.value.trim();
+    const newTasks = additions(own);
+    const duplicates = (preview?.length || 0) - newTasks.length;
+    const skipped = duplicates ? caption(word("会跳过 " + duplicates + " 条重复任务。", duplicates + " duplicate tasks will be skipped.")) : "";
+    previewPanel.innerHTML = skipped + [...taskPeriods(newTasks)].filter(([, tasks]) => tasks.length).map(([id, tasks]) =>
+      `<section class="plan-preview-period"><h4>${escape(id === unknownPeriod ? word("待匹配时间块", "Unmatched periods") : periodLabel(id))}
+        <small>${formatStudyHours(studyHours(tasks).planned)}</small></h4>
+        ${tasks.map(task => `<div class="degree-row">
+          <span>${escape([task.group, task.title].filter(Boolean).join(" · "))} · ${formatStudyHours(task.hours)}</span>
+          ${task.blockId === null ? `<label>${escape(task.requestedPeriod)}<select class="input" data-preview-task="${escape(task.id)}">
+            ${option(unknownPeriod, word("选择时间块", "Choose a period"), unknownPeriod)}${blockOptions("")}</select></label>` : ""}
+        </div>`).join("")}</section>`).join("");
+    previewPanel.querySelectorAll("select[data-preview-task]").forEach(input => { input.value = unknownPeriod; });
+  }
+
+  form.addEventListener("click", event => {
+    const target = event.target.closest("[data-degree]");
+    if (!target) return;
+    if (target.dataset.degree === "plan-add") {
+      const task = { id: crypto.randomUUID(), title: "", group: "", hours: "", blockId: "", done: false };
+      own.push(task);
+      drawPlan(blockIdFor(task));
+      planPeriods.querySelector('[data-plan-task="' + task.id + '"] [data-field="title"]').focus();
+    } else if (target.dataset.degree === "plan-remove") {
+      const id = target.closest("[data-plan-task]").dataset.planTask;
+      own.splice(own.findIndex(task => task.id === id), 1);
+      drawPlan();
+    } else if (target.dataset.degree === "plan-preview") {
+      preview = null;
+      importError.hidden = true;
+      try {
+        const blocks = plan.blocks.map(block => ({ ...block, aliases: [periodName(block, false), periodName(block, true)] }));
+        const parsed = parseStudyTasks(form.elements.paste.value, blocks);
+        if (parsed.length) preview = parsed;
+        else throw new Error(word("请先粘贴至少一条任务。", "Paste at least one task."));
+      } catch (error) {
+        importError.textContent = word("请检查清单 · ", "Check list · ") + error.message;
+        importError.hidden = false;
+      }
+      drawPreview();
+    } else if (target.dataset.degree === "plan-reset") {
+      form.elements.paste.value = "";
+      preview = null;
+      importError.hidden = true;
+      drawPreview();
+    }
+  });
+
+  form.addEventListener("input", event => {
+    const input = event.target;
+    if (input.name === "paste") {
+      preview = null;
+      importError.hidden = true;
+      drawPreview();
       return;
     }
-    const values = {
-      title: requireValue(clean(data.get("title")), word("请填写任务名称。", "Enter a task name.")),
-      hours: creditNumber(data.get("hours")) ?? 0,
-      blockId: data.get("blockId")
-    };
-    if (task) Object.assign(item.tasks.find(entry => entry.id === task.id), values);
-    else item.tasks.push({ id: crypto.randomUUID(), done: false, ...values });
-  }));
+    const id = input.closest("[data-plan-task]")?.dataset.planTask;
+    if (!id || !input.dataset.field) return;
+    const task = (input.closest(".plan-linked-task") ? linkedTasks : own).find(item => item.id === id);
+    const field = input.dataset.field;
+    task[field] = field === "done" ? input.checked : input.value;
+    if (task.linked) changedDone.set(id, task.done);
+    if (field === "done" || field === "hours") refreshHours();
+  });
+  form.addEventListener("change", event => {
+    const input = event.target;
+    if (input.dataset.previewTask && preview) {
+      preview.find(task => task.id === input.dataset.previewTask).blockId = input.value === unknownPeriod ? null : input.value;
+      drawPreview();
+    } else if (input.dataset.field === "blockId") {
+      drawPlan(blockIdFor({ blockId: input.value }));
+      if (preview) drawPreview();
+    } else if (input.dataset.field && input.dataset.field !== "done" && preview) {
+      drawPreview();
+    }
+  });
+  drawPlan();
 }
 
 async function loadSource(data, mode) {
@@ -960,9 +1142,7 @@ panel.addEventListener("click", event => {
     case "exam": examDialog(course, plan); break;
     case "edit-exam": examDialog(course, plan, course.exams.find(item => item.id === target.dataset.exam)); break;
     case "link-calendar": bridge.openDegreeCalendar?.(course.id, target.dataset.exam); break;
-    case "study-tasks": tasksDialog(course, plan); break;
-    case "add-study-task": taskDialog(course, null, plan); break;
-    case "study-task": taskDialog(course, course.tasks.find(item => item.id === target.closest("[data-task]")?.dataset.task), plan); break;
+    case "study-plan": if (course) openStudyPlan(course, plan, semesters); break;
     case "import-programme": importProgramme(false); break;
     case "import-programme-pdf": importProgramme(true); break;
     case "import-exams":
@@ -983,17 +1163,6 @@ panel.addEventListener("change", event => {
     }); break;
     case "mathChoice": update(plan => replaceTumMathChoice(plan, id, input.value)); break;
     case "planThisTerm": editCourse(id, (course, plan) => { course.examTerm = input.checked ? currentExamTerm(plan) : ""; }); break;
-    case "linkedDone": {
-      const { plan, semesters } = get();
-      const course = allCourses(plan).find(item => item.id === id);
-      const linked = course && linkedProgressCourse(course, semesters);
-      if (linked) bridge.setDegreeLinkedTask(linked.id, input.closest("[data-task]")?.dataset.task, input.checked);
-      break;
-    }
-    case "studyDone": editCourse(id, course => {
-      const task = course.tasks.find(item => item.id === input.closest("[data-task]")?.dataset.task);
-      if (task) task.done = input.checked;
-    }); break;
   }
 });
 
