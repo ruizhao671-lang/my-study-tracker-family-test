@@ -126,6 +126,12 @@ body.degree-mode .study-system-section { display: none; }
   gap: .34rem;
 }
 .degree-course-top, .degree-card-progress > div { justify-content: space-between; }
+.degree-course-top [data-degree="delete-course"] {
+  min-height: 32px;
+  padding: .25rem .45rem;
+  margin-inline-start: auto;
+  font-size: .78rem;
+}
 .degree-tag, .degree-code {
   display: inline-block;
   border-radius: 8px;

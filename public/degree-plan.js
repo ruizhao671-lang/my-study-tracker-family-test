@@ -231,6 +231,8 @@ function periodName(block) {
 
 function renderCourse(course, module, plan, semesters, location, blockId = "") {
   const onTimeline = location === "timeline";
+  const isUnscheduledCard = onTimeline && !blockId;
+  const deleteButton = button(word("删除课程", "Delete course"), "delete-course");
   const { existing: original, total, done } = revisionProgress(course, semesters);
   const tasks = course.tasks.filter(task => !onTimeline || (task.blockId || course.blockId) === blockId);
   const exam = !isEarned(course, semesters) ? nextExam(course, plan, today()) : undefined;
@@ -254,6 +256,7 @@ function renderCourse(course, module, plan, semesters, location, blockId = "") {
         <span class="degree-tag degree-ects">${displayNumber(course.credits)} ECTS</span>
         ${normalizeModuleCode(course.code) ? `<bdi dir="ltr" class="degree-code">${escape(normalizeModuleCode(course.code))}</bdi>` : ""}
       </div>
+      ${isUnscheduledCard ? deleteButton : ""}
       ${onTimeline ? '<span class="degree-drag-handle" aria-hidden="true">⠿</span>' : ""}
     </div>
     ${mathChoice ? `<div class="degree-math-choice">${select(word("数学二选一", "Mathematics choice"), "mathChoice",
@@ -277,7 +280,7 @@ function renderCourse(course, module, plan, semesters, location, blockId = "") {
     ${total ? `<div class="degree-card-progress"><div><span>${word("复习进度", "Study progress")} ${done}/${total}</span>
       ${remainingHours ? `<span>${displayNumber(remainingHours)} h ${word("待学", "left")}</span>` : ""}</div>
       <progress value="${done}" max="${total}" aria-label="${word("复习进度", "Study progress")}"></progress></div>` : ""}
-    ${onTimeline && !blockId && plan.blocks.length && !earned ? `<div class="degree-quick-move">${moveField}</div>` : ""}
+    ${isUnscheduledCard && plan.blocks.length && !earned ? `<div class="degree-quick-move">${moveField}</div>` : ""}
     <details class="degree-course-details" data-key="${escape(location + "-" + blockId + "-" + course.id)}">
       <summary>${word("课程计划与学分", "Course plan and credits")}</summary>
       ${!onTimeline || blockId ? `<div class="degree-fields">${moveField}</div>` : ""}
@@ -286,7 +289,8 @@ function renderCourse(course, module, plan, semesters, location, blockId = "") {
         (exam ? button(word("关联下一场到日历", "Link next exam to calendar"), "link-calendar",
           `data-exam="${escape(exam.id)}"`) : "") +
         button(word("添加复习任务", "Add study task"), "add-study-task", courseRef) +
-        button(word("粘贴任务清单", "Paste task list"), "study-tasks", courseRef))}
+        button(word("粘贴任务清单", "Paste task list"), "study-tasks", courseRef) +
+        (isUnscheduledCard ? "" : deleteButton))}
       ${linkedTask ? caption(word("学分关联任务：", "Credit linked to: ") + (linkedTask.title || linkedTask.name)) :
         course.passTaskId ? caption(word("关联任务已找不到，请编辑课程重新选择。", "Linked task missing. Open Edit course to choose again.")) :
         `<div class="degree-pass"><label><input name="passed" type="checkbox" ${course.passed ? "checked" : ""}> ${word("已取得学分", "Credits earned")}</label></div>`}
@@ -588,6 +592,20 @@ function setProgressSuggestion(semesters) {
   renderSuggestion();
 }
 
+function deleteCourseDialog(course, module) {
+  showDialog(word("删除课程？", "Delete course?"),
+    `<p><strong>${escape(course.name)}</strong> · ${escape(module.name)}</p>` +
+    caption(word("将从毕业规划删除这门课及其学分、考试和复习任务。",
+      "This removes the course and its credits, exams and study tasks from the degree plan.")),
+    () => update(draft => {
+      const group = draft.modules.find(item => item.id === module.id);
+      group.courses = group.courses.filter(item => item.id !== course.id);
+    }),
+    word("确认删除", "Confirm delete"));
+  dialog.querySelector('[type="submit"]').classList.add("danger");
+  dialog.querySelector("[data-close]").focus();
+}
+
 function courseDialog(course, module, plan, semesters) {
   const targetModule = module || plan.modules.find(item => item.courses.some(candidate => candidate.id === course.id));
   showDialog(word("课程与学分", "Course and credits"), fields(
@@ -598,15 +616,7 @@ function courseDialog(course, module, plan, semesters) {
     select(word("确认取得学分的任务", "Task that confirms earned credits"), "passTaskId", "") +
     (targetModule.kind === "elective" ? field(word("计划考试学期", "Planned exam semester"), "examTerm", course?.examTerm || "", "text",
       `placeholder="${escape(plan.term || "WS 2026/27")}" maxlength="40"`) : "")
-  ) + caption(word("只选择确认考试通过的任务。其他任务用于显示复习进度。", "Pick the task that confirms you passed. Other tasks track preparation.")) +
-    (course ? `<label><input type="checkbox" name="remove"> ${word("删除这门课的学分和规划记录", "Remove this course from the degree plan")}</label>` : ""), data => {
-    if (course && data.has("remove")) {
-      update(draft => {
-        const group = draft.modules.find(item => item.id === targetModule.id);
-        group.courses = group.courses.filter(item => item.id !== course.id);
-      });
-      return;
-    }
+  ) + caption(word("只选择确认考试通过的任务。其他任务用于显示复习进度。", "Pick the task that confirms you passed. Other tasks track preparation.")), data => {
     const name = requireValue(clean(data.get("name")), word("请填写课程名称。", "Enter a course name."));
     const courseId = clean(data.get("courseId"));
     const passTaskId = courseId ? clean(data.get("passTaskId")) : "";
@@ -882,6 +892,11 @@ panel.addEventListener("click", event => {
     case "import-tum": importTumExams(plan, semesters, target); break;
     case "module": moduleDialog(module); break;
     case "course": courseDialog(course, module, plan, semesters); break;
+    case "delete-course": {
+      const group = plan?.modules.find(item => item.courses.includes(course));
+      if (group) deleteCourseDialog(course, group);
+      break;
+    }
     case "block": blockDialog(block); break;
     case "exam": examDialog(course, plan); break;
     case "edit-exam": examDialog(course, plan, course.exams.find(item => item.id === target.dataset.exam)); break;
