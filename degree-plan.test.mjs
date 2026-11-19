@@ -1,10 +1,22 @@
 import assert from "node:assert/strict";
 import { makeSharedState } from "./public/cloud-core.js";
 import {
-  addTumStudyPeriods, applyExamMatches, nextExam, scheduleNewExamCourse, creditTotals, examMatches, newCourse,
+  addTumStudyPeriods, applyExamMatches, nextExam, scheduleNewExamCourse, creditTotals, examCountdown, examMatches, newCourse,
   campusForVenue, findCatalogueCourses, normalizeModuleCode, parseStudyTasks, replaceTumMathChoice, revisionProgress, setProgressLink, studyPlanFromLink, suggestProgressCourse, timeBlockCredits, useTumTemplate
 } from "./public/degree-core.js";
 
+const clock = examCountdown({ date: "2027-02-10", time: "14:30" }, new Date("2027-02-10T13:00"));
+assert.equal(clock.expired, false);
+assert.equal(clock.days, 0);
+assert.equal(clock.hours, 1);
+assert.equal(clock.minutes, 30);
+assert.equal(examCountdown({ date: "2027-02-10", time: "12:00" }, new Date("2027-02-10T13:00")).expired, true);
+const unknownTime = examCountdown({ date: "2027-02-10", time: "" }, new Date("2027-02-10T23:59"));
+assert.equal(unknownTime.expired, false);
+assert.equal(unknownTime.dateOnly, true);
+assert.equal(unknownTime.days, 0);
+assert.equal(examCountdown({ date: "2027-02-10" }, new Date("2027-02-11T00:00")).expired, true);
+assert.equal(examCountdown(null), null);
 const plan = useTumTemplate();
 assert.equal(plan.requiredCredits, 180);
 assert.equal(plan.modules.reduce((sum, module) => sum + module.requiredCredits, 0), 180);

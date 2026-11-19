@@ -98,6 +98,25 @@ export function nextExam(course, plan, date) {
     .sort((left, right) => left.date.localeCompare(right.date) || (left.time || "24:00").localeCompare(right.time || "24:00"))[0];
 }
 
+export function examCountdown(exam, now = new Date()) {
+  if (!exam?.date) return null;
+  const start = new Date(exam.date + "T00:00:00");
+  if (!Number.isFinite(start.getTime())) return null;
+  const dateOnly = !exam.time;
+  const target = dateOnly ? new Date(start) : new Date(exam.date + "T" + exam.time);
+  if (dateOnly) target.setDate(target.getDate() + 1);
+  if (!Number.isFinite(target.getTime())) return null;
+  const milliseconds = target.getTime() - now.getTime();
+  const minutes = Math.max(0, Math.ceil(milliseconds / 60000));
+  const dayStart = Date.UTC(now.getFullYear(), now.getMonth(), now.getDate());
+  const calendarDays = Math.round((Date.UTC(start.getFullYear(), start.getMonth(), start.getDate()) - dayStart) / 86400000);
+  return {
+    dateOnly, expired: milliseconds <= 0, milliseconds,
+    days: dateOnly ? Math.max(0, calendarDays) : Math.floor(minutes / 1440),
+    hours: Math.floor(minutes / 60) % 24, minutes: minutes % 60
+  };
+}
+
 export function scheduleNewExamCourse(course, plan, date) {
   if (course.examPlacement === "manual" || (course.blockId && course.examPlacement !== "auto")) return;
   const exam = nextExam({ ...course, blockId: "" }, plan, date);

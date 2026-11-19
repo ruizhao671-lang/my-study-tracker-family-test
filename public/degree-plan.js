@@ -1,4 +1,5 @@
 import { TUM_EI_BACHELOR } from "./degree-templates.js";
+import { renderExamHourglass, openExamHourglass } from "./exam-hourglass.js";
 import {
   applyExamMatches, courseTasks, creditNumber, creditTotals, daysBetween, examMatches,
   addTumStudyPeriods, nextExam, scheduleNewExamCourse, suggestProgressCourse, isEarned, isTumMathChoice, makePlan, newCourse,
@@ -163,6 +164,7 @@ dialog.addEventListener("close", () => { if (!dialog.open) dialogVersion++; });
 
 function render() {
   const state = get();
+  renderExamHourglass(state);
   if (currentSnapshot && currentSnapshot.plan !== state.plan && dialog.open) dialog.close();
   currentSnapshot = state;
   if (!state.editable || panel.hidden) {
@@ -261,7 +263,7 @@ function renderCourse(course, module, plan, semesters, location, blockId = "") {
     </div>
     ${mathChoice ? `<div class="degree-math-choice">${select(word("数学二选一", "Mathematics choice"), "mathChoice",
       TUM_EI_BACHELOR.modules[0].choices.map(choice => option(choice.code, choice.name + " (" + choice.code + ")", normalizeModuleCode(course.code))).join(""))}</div>` :
-      `<h4>${escape(course.name)}</h4>`}
+      `<h4><button type="button" class="degree-course-title" data-degree="hourglass">${escape(course.name)}</button></h4>`}
     ${earned ? `<div class="degree-course-date"><strong>${word("✓ 已获学分", "✓ Credits earned")}</strong></div>` :
       exam ? `<div class="degree-course-date"><div><span>${kindName(exam.kind)}</span>
       <strong>${formatPlannerDate(exam.date)}${exam.time ? " · " + escape(exam.time) : ""}</strong></div>
@@ -282,6 +284,7 @@ function renderCourse(course, module, plan, semesters, location, blockId = "") {
       <progress value="${done}" max="${total}" aria-label="${word("复习进度", "Study progress")}"></progress></div>` : ""}
     ${isUnscheduledCard && plan.blocks.length && !earned ? `<div class="degree-quick-move">${moveField}</div>` : ""}
     <div class="degree-study-card-actions">
+      ${button(word("考试沙漏", "Exam hourglass"), "hourglass")}
       ${button(word("学习计划", "Study plan"), "study-plan")}
       ${button(linked ? word("已关联学习进度", "Study progress linked") : word("关联学习进度", "Link study progress"),
         "link-progress", linked ? `title="${escape(linked.name)}"` : "")}
@@ -1199,6 +1202,7 @@ panel.addEventListener("click", event => {
     case "exam": examDialog(course, plan); break;
     case "edit-exam": examDialog(course, plan, course.exams.find(item => item.id === target.dataset.exam)); break;
     case "link-calendar": bridge.openDegreeCalendar?.(course.id, target.dataset.exam); break;
+    case "hourglass": if (course) openExamHourglass(course.id); break;
     case "study-plan": if (course) openStudyPlan(course, plan, semesters); break;
     case "incoming-study-plan": showIncomingStudyPlan(true); break;
     case "import-programme": importProgramme(false); break;
@@ -1254,7 +1258,14 @@ panel.addEventListener("dragend", () => {
   panel.querySelectorAll(".over").forEach(item => item.classList.remove("over"));
 });
 
-window.studyDegree = { render, attachCatalogue, openProgressLinks };
+window.studyDegree = {
+  render, attachCatalogue, openProgressLinks,
+  openCourseStudyPlan(courseId) {
+    const { plan, semesters, editable } = get();
+    const course = plan && allCourses(plan).find(item => item.id === courseId);
+    if (editable && course) openStudyPlan(course, plan, semesters);
+  }
+};
 render();
 window.addEventListener("hashchange", receiveStudyPlanLink);
 receiveStudyPlanLink();

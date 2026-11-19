@@ -5,6 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>My Study Tracker</title>
   <link rel="stylesheet" href="degree-plan.css">
+  <link rel="stylesheet" href="exam-hourglass.css">
   <style>
     :root {
       --bg: #f3f6f5;
@@ -2040,6 +2041,7 @@
       <button class="panel-tab" id="degreePanelBtn" type="button" hidden>毕业规划</button>
     </nav>
 
+    <section id="examHourglass" aria-label="Exam countdown" hidden></section>
     <section id="degreePanel" aria-labelledby="degreePanelBtn" hidden></section>
 
     <section class="toolbar study-system-section" aria-label="学习系统操作">
@@ -2330,6 +2332,7 @@
   </div>
 
   <dialog id="degreeDialog" aria-label="Degree planner"></dialog>
+  <dialog id="examHourglassDialog" aria-label="Exam countdown"></dialog>
   <div class="toast" id="toast" role="status"></div>
 
   <script src="cloud-bootstrap.js"></script>

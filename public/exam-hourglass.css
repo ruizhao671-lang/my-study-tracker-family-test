@@ -1,0 +1,67 @@
+#examHourglass { margin: 1.1rem 0 1.5rem; }
+body.timer-mode #examHourglass { display: none; }
+.hourglass-layout {
+  display: grid;
+  grid-template-columns: minmax(180px, .65fr) minmax(0, 1.8fr);
+  gap: clamp(1.25rem, 3vw, 3.5rem);
+  align-items: center;
+  padding: clamp(1.2rem, 3vw, 2.3rem);
+  border: 1px solid #cbded5;
+  border-radius: 22px;
+  background: linear-gradient(115deg, #edf5ed 0%, #f7f9f3 65%, #f9f5e9 100%);
+  color: #1e4037;
+}
+.hourglass-visual { display: grid; justify-items: center; min-width: 0; }
+.hourglass-canvas { display: block; width: min(100%, 240px); height: auto; }
+.hourglass-sand-note { font-size: .72rem; color: #627768; text-align: center; max-width: 15rem; }
+.hourglass-content { min-width: 0; }
+.hourglass-heading { display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: .6rem; }
+.hourglass-heading > span { font-size: .88rem; color: #587465; }
+.hourglass-picker { display: grid; gap: .3rem; font-size: .76rem; color: #587465; max-width: 100%; }
+.hourglass-picker select { max-width: 22rem; min-width: 0; width: 100%; font-size: .8rem; padding: .4rem .6rem; min-height: 36px; background: #ffffffb0; }
+.hourglass-course { margin: .85rem 0 .4rem; font-size: clamp(1.3rem, 2.6vw, 1.8rem); line-height: 1.25; overflow-wrap: anywhere; }
+.hourglass-exam { margin: 0; color: #547466; font-size: .88rem; }
+.hourglass-countdown { display: flex; align-items: baseline; gap: .7rem; margin: .6rem 0 0; line-height: 1; }
+.hourglass-countdown strong { font-size: clamp(4rem, 6vw, 6rem); font-weight: 700; letter-spacing: -.05em; font-variant-numeric: tabular-nums; }
+.hourglass-countdown > span { font-size: 1.15rem; color: #476b5b; }
+.hourglass-clock { margin-top: .45rem; color: #587465; font-variant-numeric: tabular-nums; }
+.hourglass-pending { font-size: 1.6rem; margin: 1.1rem 0; color: #587465; }
+.hourglass-metrics { display: grid; grid-template-columns: 1fr 1fr; gap: .8rem; margin-top: 1.3rem; }
+.hourglass-metrics > div { display: grid; align-content: start; gap: .2rem; border-top: 1px solid #cbded5; padding-top: .65rem; }
+.hourglass-metrics span, .hourglass-progress span { font-size: .8rem; color: #587465; }
+.hourglass-metrics strong { font-size: 1.05rem; }
+.hourglass-metrics small { font-size: .72rem; color: #627768; }
+.hourglass-progress { margin-top: 1.05rem; }
+.hourglass-progress > div { display: flex; justify-content: space-between; gap: .5rem; align-items: baseline; margin-bottom: .3rem; }
+.hourglass-progress > progress { display: block; appearance: none; width: 100%; height: 8px; border: 0; border-radius: 20px; accent-color: #397c62; overflow: hidden; background: #dce8df; }
+.hourglass-progress progress::-webkit-progress-bar { background: #dce8df; border-radius: 20px; }
+.hourglass-progress progress::-webkit-progress-value { background: #397c62; border-radius: 20px; }
+.hourglass-progress > span { display: block; margin-top: .35rem; }
+.hourglass-plan-button { margin-top: .85rem; }
+.hourglass-empty { color: #587465; margin-top: 1rem; }
+#examHourglassDialog { width: min(880px, 94vw); max-height: 92vh; padding: 1rem; border: 1px solid #cbded5; border-radius: 20px; color: #1e4037; }
+#examHourglassDialog::backdrop { background: #14252888; }
+.hourglass-modal-header { display: flex; align-items: center; justify-content: space-between; gap: 1rem; margin-bottom: .8rem; }
+.hourglass-modal-header h2 { font-size: 1rem; margin: 0; }
+#examHourglassDialog .hourglass-layout { padding: 1rem; gap: 1.3rem; }
+.degree-course-title { color: inherit; font: inherit; font-weight: inherit; border: 0; background: transparent; text-align: left; padding: 0; cursor: pointer; }
+.degree-course-title:hover { color: #0f766e; text-decoration: underline; text-underline-offset: .18em; }
+.degree-course-title:focus-visible { outline: 2px solid #0f766e; outline-offset: 3px; border-radius: 3px; }
+@media (max-width: 620px) {
+  .hourglass-layout, #examHourglassDialog .hourglass-layout { grid-template-columns: minmax(0, 1fr) 100px; gap: .55rem .5rem; padding: 1.1rem; }
+  .hourglass-content { display: contents; }
+  .hourglass-heading, .hourglass-course, .hourglass-exam, .hourglass-metrics,
+  .hourglass-progress, .hourglass-plan-button, .hourglass-empty { grid-column: 1 / -1; }
+  .hourglass-visual { grid-row: 4; grid-column: 2; }
+  [data-hourglass-clock] { grid-row: 4; grid-column: 1; align-self: center; }
+  .hourglass-canvas { width: 100px; }
+  .hourglass-sand-note { display: none; }
+  .hourglass-plan-button { justify-self: start; }
+  .hourglass-heading { align-items: flex-start; }
+  .hourglass-picker { max-width: 100%; width: 100%; }
+  .hourglass-picker select { max-width: 100%; }
+  .hourglass-course { font-size: 1.35rem; }
+  .hourglass-countdown strong { font-size: 4.5rem; }
+  .hourglass-metrics { gap: .7rem; margin-top: .4rem; }
+}
+@media print { #examHourglass, #examHourglassDialog { display: none !important; } }
