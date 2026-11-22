@@ -182,7 +182,14 @@ body.degree-mode .study-system-section { display: none; }
 .degree-row:last-child { border-bottom: 0; }
 .degree-row label { display: flex; align-items: center; gap: .4rem; }
 
-#degreeDialog { border: 1px solid var(--line, #d9e2e0); border-radius: 14px; padding: 1rem; width: min(600px, 90vw); max-height: 88vh; }
+#degreeDialog { border: 1px solid var(--line, #d9e2e0); border-radius: 14px; padding: 0; width: min(600px, 90vw); max-height: 88vh; max-height: 88dvh; overflow: hidden; box-sizing: border-box; }
+#degreeDialog > form { display: flex; flex-direction: column; max-height: 88vh; max-height: 88dvh; margin: 0; min-height: 0; }
+.degree-dialog-header { display: flex; align-items: center; justify-content: space-between; gap: 1rem; padding: 1rem; border-bottom: 1px solid var(--line, #d9e2e0); flex: 0 0 auto; background: var(--panel, #fff); }
+#degreeDialog .degree-dialog-header h3 { margin: 0; min-width: 0; overflow-wrap: anywhere; }
+#degreeDialog .degree-dialog-close { width: 44px; height: 44px; min-width: 44px; padding: 0; font-size: 1.5rem; flex-shrink: 0; }
+.degree-dialog-body { padding: 1rem; overflow-y: auto; overscroll-behavior: contain; min-height: 0; }
+#degreeDialog .degree-dialog-footer { padding: .8rem 1rem; margin-top: 0; border-top: 1px solid var(--line, #d9e2e0); flex: 0 0 auto; justify-content: flex-end; background: var(--panel, #fff); }
+@media (max-width: 600px) { #degreeDialog .degree-dialog-footer { gap: .45rem; } #degreeDialog .degree-dialog-footer .btn { padding: .55rem .7rem; } }
 #degreeDialog::backdrop { background: #14252888; }
 #degreeDialog.degree-study-plan-dialog { width: min(850px, 94vw); }
 .plan-summary, .plan-period > summary {

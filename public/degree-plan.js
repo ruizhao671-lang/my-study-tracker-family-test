@@ -135,17 +135,19 @@ function showDialog(title, body, submit, submitLabel = word("保存", "Save")) {
   const owner = signedIn();
   const originalPlan = get().plan;
   dialog.classList.remove("degree-study-plan-dialog");
-  dialog.innerHTML = `<form>${heading(title)}${body}<p role="status" class="degree-error" hidden></p>
-    <div class="degree-actions"><button class="btn" type="submit">${escape(submitLabel)}</button>
-    <button class="btn secondary" type="button" data-close>${word("取消", "Cancel")}</button></div></form>`;
-  dialog.querySelector("[data-close]").onclick = () => dialog.close();
+  dialog.innerHTML = `<form><header class="degree-dialog-header">${heading(title)}
+      <button class="btn secondary degree-dialog-close" type="button" data-dialog-close aria-label="${word("关闭", "Close")}">×</button></header>
+    <div class="degree-dialog-body">${body}<p role="status" class="degree-error" hidden></p></div>
+    <footer class="degree-actions degree-dialog-footer"><button class="btn" type="submit">${escape(submitLabel)}</button>
+    <button class="btn secondary" type="button" data-close>${word("取消", "Cancel")}</button></footer></form>`;
+  dialog.querySelectorAll("[data-close], [data-dialog-close]").forEach(button=>{button.onclick=()=>dialog.close();});
   if (!dialog.open) dialog.showModal();
   const form = dialog.querySelector("form");
   form.onsubmit = async event => {
     event.preventDefault();
-    const submitButton = form.querySelector('[type="submit"]');
+    const submitButtons = [...form.querySelectorAll('[type="submit"]')];
     const error = form.querySelector('[role="status"]');
-    submitButton.disabled = true;
+    submitButtons.forEach(button=>{button.disabled=true;});
     error.hidden = true;
     try {
       if (signedIn() !== owner || originalPlan !== get().plan || !get().editable) {
@@ -157,8 +159,9 @@ function showDialog(title, body, submit, submitLabel = word("保存", "Save")) {
     } catch (reason) {
       error.textContent = reason.message || word("保存失败", "Could not save.");
       error.hidden = false;
+      error.scrollIntoView({block:"nearest"});
     } finally {
-      submitButton.disabled = false;
+      submitButtons.forEach(button=>{button.disabled=false;});
     }
   };
   return form;

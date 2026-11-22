@@ -105,6 +105,45 @@ try{
   assert.ok((await page.locator('#degreeDialog').innerText()).includes("Chapter 3"));
   assert.equal(await page.locator('[data-schedule="task-timer"]').count(),1);
   console.log("PASS browser: v2 linked time block opens its content task with unknown estimate");
+  await page.locator("#degreeDialog [data-dialog-close]").click();
+  await page.evaluate(()=>{
+    const s=studyTrackerBridge.getState(),linked=s.degreePlan.modules[0].courses[0].courseId;
+    const learning=s.semesters.flatMap(stage=>stage.courses).find(c=>c.id===linked);
+    learning.categories.push({id:"long-list",name:"Chapters",tasks:Array.from({length:36},(_,i)=>({id:"long-task-"+i,title:"Kapitel "+(i+1),done:false,detail:"",note:"",attachments:[],privatePlanTask:true}))});
+    studyTrackerBridge.replaceState(s);
+  });
+  async function assertDialogControls(){
+    const controls=await page.locator('#degreeDialog').evaluate(dialog=>{
+      const bounds=dialog.getBoundingClientRect();
+      return [...dialog.querySelectorAll('[data-dialog-close],.degree-dialog-footer button')].map(button=>{
+        const r=button.getBoundingClientRect(),hit=document.elementFromPoint(r.x+r.width/2,r.y+r.height/2);
+        return {visible:r.top>=bounds.top && r.bottom<=bounds.bottom && r.top>=0 && r.bottom<=innerHeight,
+          clickable:hit===button || button.contains(hit)};
+      });
+    });
+    assert.ok(controls.every(c=>c.visible&&c.clickable),"Close, Save and Cancel must stay visible and clickable without scrolling");
+  }
+  for(const viewport of [{width:1440,height:900},{width:390,height:700}]){
+    await page.setViewportSize(viewport);
+    await page.evaluate(()=>studyDegree.openCourseStudyPlan("kc"));
+    await assertDialogControls();
+    await page.locator('.plan-tasks [data-field="title"]').first().fill("Unsaved draft only");
+    await page.locator('.degree-dialog-body').evaluate(body=>{body.scrollTop=body.scrollHeight;});
+    await assertDialogControls();
+    if(viewport.width===390)await page.screenshot({path:process.env.TEMP+"/studytracker-dialog-controls.png"});
+    await page.locator('#degreeDialog [data-dialog-close]').click();
+    assert.equal(await page.locator('#degreeDialog[open]').count(),0);
+    assert.equal(await page.evaluate(()=>studyTrackerBridge.getState().semesters.flatMap(s=>s.courses).flatMap(c=>c.categories).flatMap(c=>c.tasks).some(t=>t.title==="Unsaved draft only")),false);
+    await page.evaluate(()=>studyDegree.openCourseStudyPlan("kc"));
+    await page.keyboard.press("Escape");
+    assert.equal(await page.locator('#degreeDialog[open]').count(),0);
+  }
+  await page.evaluate(()=>studyDegree.openCourseStudyPlan("kc"));
+  await page.locator('[data-plan-action="save-schedule"]').click();
+  assert.equal(await page.locator('#degreeDialog[open]').count(),0);
+  assert.ok(await page.locator(".study-schedule").isVisible());
+  assert.ok(await page.locator(".schedule-flexible .schedule-event").count()>=36);
+  console.log("PASS browser: long editor keeps close/save/cancel visible on desktop and mobile; closing discards drafts; Escape and Save & view timetable work");
   assert.deepEqual(errors,[]);
   console.log("PASS browser: reload persists all associations; mobile layout fits; no page errors");
 }finally{await browser.close();}

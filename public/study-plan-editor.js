@@ -29,9 +29,10 @@ export function openPlanEditor({course,plan,semesters,received,showDialog,bridge
   let preview = null;
   let additions = null;
   let previewText = "";
+  let saveDestination = "";
   const links = [["",w("独立计划，不关联进度","Independent plan")],["__new",w("新建这门课的学习记录","Create progress record for this course")],
     ...semesters.flatMap(s=>s.courses.map(c=>[c.id,s.name+" / "+c.name]))];
-  const body = `<p class="degree-help">${w("任务与学习进度共用完成状态；预计工时与实际计时分别记录。保存后可直接查看时间表和学习进度。","Tasks share progress status. Estimates and recorded time stay separate. Open the timetable or progress after saving.")}</p>
+  const body = `<p class="degree-help">${w("这里编辑任务和安排；查看周课表，请点下方「保存并查看时间表」。未指定日期的任务会放在时间表的「待安排」区。","Edit tasks and events here. Use Save & view timetable below for the week view. Undated tasks appear in the flexible work area.")}</p>
     <label>${w("关联学习进度","Link learning progress")}<select class="input" name="progressLink">${opts(links,course.courseId || suggestProgressCourse(course.name,semesters)?.id || "__new")}</select></label>
     <details class="plan-import" ${received ? "open" : ""}><summary>${w("从 ChatGPT 导入计划","Import a ChatGPT plan")}</summary>
       <p class="degree-help">${w("支持旧版四列文本和 v2 JSON。每周任务未指定日期时，只放入该周待安排列表。请确认重复范围；只跳过你填写的停课日期。","Supports four-column text and v2 JSON. Flexible weekly tasks remain unscheduled. Confirm recurrence dates and explicit holidays.")}</p>
@@ -49,6 +50,7 @@ export function openPlanEditor({course,plan,semesters,received,showDialog,bridge
     const plannedRange = readRange();
     bridge.saveCourseStudyPlan(course.id,{tasks,events,link:form.elements.progressLink.value,range:plannedRange});
     onSaved?.();
+    if(saveDestination==="schedule"){window.studyDegree.openSchedule(course.id,plannedRange.start);return;}
     setTimeout(() => {
       const current = bridge.getDegreeWorkspace().plan?.modules.flatMap(m=>m.courses).find(c=>c.id===course.id);
       if (!current) return;
@@ -66,6 +68,12 @@ export function openPlanEditor({course,plan,semesters,received,showDialog,bridge
     },0);
   },w("保存计划","Save plan"));
   document.querySelector("#degreeDialog").classList.add("degree-study-plan-dialog");
+  const viewSchedule=document.createElement("button");
+  viewSchedule.type="button";viewSchedule.className="btn secondary";
+  viewSchedule.dataset.planAction="save-schedule";
+  viewSchedule.textContent=w("保存并查看时间表","Save & view timetable");
+  form.querySelector(".degree-dialog-footer").insertBefore(viewSchedule,form.querySelector("[data-close]"));
+  form.querySelector('[type="submit"]').onclick=()=>{saveDestination="";};
   function readRange() { const q = key=>form.querySelector('[data-field="'+key+'"]').value;
     return {start:q("rangeStart"),end:q("rangeEnd"),exceptDates:q("excludeDates").split(/[,，\s]+/).filter(Boolean)}; }
   function readRows() {
@@ -133,6 +141,7 @@ export function openPlanEditor({course,plan,semesters,received,showDialog,bridge
   form.addEventListener("click",event=>{
     const action=event.target.closest("[data-plan-action]")?.dataset.planAction;
     if(!action)return;
+    if(action==="save-schedule"){saveDestination="schedule";form.requestSubmit();return;}
     if(action==="preview"){showPreview();return;}
     if(action==="copy-format"){
       const format={course:course.code||"",period:readRange(),tasks:[{id:"stable-task-id",title:"任务名称",group:"章节或类型",hours:null,date:"",deadline:""}],
