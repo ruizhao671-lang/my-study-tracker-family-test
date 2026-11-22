@@ -1,4 +1,4 @@
-import { studyScheduleEntries, courseStudyTasks, taskActualHours, addPlanDays, planWeek } from "./study-plan-core.js";
+import { studyPlanFocusDate, studyScheduleEntries, courseStudyTasks, taskActualHours, addPlanDays, planWeek } from "./study-plan-core.js";
 const en=()=>window.studyI18n?.getLanguage?.()==="en";
 const w=(zh,english)=>en()?english:zh;
 const esc=v=>String(v??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"})[c]);
@@ -119,7 +119,7 @@ export function bindStudySchedule(panel,{bridge,showDialog,render}){
     if(action==="week"||action==="day")mode=action;
     render();
   });
-  root.addEventListener("change",e=>{if(e.target.matches("[data-schedule-filter]")){filter=e.target.value;render();}if(e.target.matches("[data-schedule-date]")&&e.target.value){selectedDate=e.target.value;render();}});
+  root.addEventListener("change",e=>{if(e.target.matches("[data-schedule-filter]")){filter=e.target.value;const course=state.degreePlan.modules.flatMap(m=>m.courses).find(c=>c.id===filter);if(course)selectedDate=studyPlanFocusDate(course,state.semesters,today());render();}if(e.target.matches("[data-schedule-date]")&&e.target.value){selectedDate=e.target.value;render();}});
   root.addEventListener("dragstart",e=>{const card=e.target.closest("[data-entry]");if(card){dragging=card.dataset.entry;e.dataTransfer.setData("text/study-plan",dragging);e.stopPropagation();}});
   root.addEventListener("dragend",()=>{dragging="";});
   root.addEventListener("dragover",e=>{if(dragging&&e.target.closest("[data-drop-date],[data-unschedule]"))e.preventDefault();});

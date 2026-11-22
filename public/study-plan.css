@@ -25,3 +25,5 @@
 body.study-schedule-mode #examHourglass{display:none}
 
 .calendar-plan-name{background:#e8f0fb!important;color:#3a5d91!important;border-left:3px solid #718bc1}
+
+.degree-saved-study{margin:.75rem 0 .4rem;padding:.65rem .75rem;border-radius:9px;background:#edf5f1;color:#315e53;font-size:.82rem;line-height:1.5}

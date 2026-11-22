@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { makePlan,newCourse,newModule,revisionProgress,studyPlanFromLink } from "./public/degree-core.js";
-import { parseCoursePlan,mergeImportedPlan,applyCourseStudyPlan,courseStudyTasks,studyScheduleEntries,taskActualHours,scheduleOccurrences } from "./public/study-plan-core.js";
+import { studyPlanFocusDate,parseCoursePlan,mergeImportedPlan,applyCourseStudyPlan,courseStudyTasks,studyScheduleEntries,taskActualHours,scheduleOccurrences } from "./public/study-plan-core.js";
 import { makeSharedState } from "./public/cloud-core.js";
 const plan=makePlan("Test",180);
 const course=newCourse({name:"Komputer & Creativität",code:"EI04001"});
@@ -12,6 +12,10 @@ const imported=parseCoursePlan(input,course,plan,range);
 assert.equal(imported.tasks.length,10);
 assert.ok(imported.tasks.every(t=>!t.date && t.weekOf && t.hours===2));
 assert.equal(imported.events.filter(e=>e.type==="milestone").length,3);
+assert.equal(studyPlanFocusDate({...course,planEvents:imported.events},[],"2026-11-22"),"2026-11-25");
+assert.equal(studyPlanFocusDate({...course,planEvents:imported.events},[],"2028-01-01"),"2027-01-27");
+assert.equal(studyPlanFocusDate({...course,tasks:imported.tasks},[],"2026-11-24"),"2026-11-23");
+assert.equal(studyPlanFocusDate({...course,planRange:range},[],"2026-11-22"),"2026-11-23");
 const occurrences=imported.events.flatMap(e=>scheduleOccurrences(e,range.start,range.end));
 assert.equal(occurrences.filter(e=>e.type==="class").length,9);
 assert.equal(occurrences.filter(e=>e.date==="2026-12-09").length,1);

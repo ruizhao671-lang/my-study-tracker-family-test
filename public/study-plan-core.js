@@ -38,6 +38,21 @@ export function courseStudyTasks(course, semesters) {
   return result;
 }
 
+export function studyPlanFocusDate(course, semesters, currentDate) {
+  const dated = new Set();
+  for (const event of course.planEvents || []) {
+    if (!validPlanDate(event.date)) continue;
+    for (const occurrence of scheduleOccurrences(event,event.date,event.repeat?.until || event.date)) dated.add(occurrence.date);
+  }
+  const tasks=courseStudyTasks(course,semesters);
+  for(const task of tasks)for(const date of [task.date,task.deadline])if(validPlanDate(date))dated.add(date);
+  const dates=[...dated].sort();
+  if(dates.length)return dates.find(date=>date>=currentDate) || dates.at(-1);
+  const weeks=[...new Set(tasks.map(task=>task.weekOf).filter(validPlanDate))].sort();
+  if(weeks.length)return weeks.find(week=>week>=planWeek(currentDate)) || weeks.at(-1);
+  return validPlanDate(course.planRange?.start) ? course.planRange.start : currentDate;
+}
+
 function normalizeTask(task) {
   const title = text(task.title, 180);
   const rawHours = task.estimatedHours ?? task.hours;

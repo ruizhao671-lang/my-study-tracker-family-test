@@ -144,6 +144,14 @@ try{
   assert.ok(await page.locator(".study-schedule").isVisible());
   assert.ok(await page.locator(".schedule-flexible .schedule-event").count()>=36);
   console.log("PASS browser: long editor keeps close/save/cancel visible on desktop and mobile; closing discards drafts; Escape and Save & view timetable work");
+  await page.setViewportSize({width:1440,height:900});
+  await page.locator('[data-degree="timeline"]').click();
+  const savedCourse=page.locator('.degree-course[data-course="kc"]').first();
+  assert.ok((await savedCourse.locator("[data-saved-plan-summary]").innerText()).includes("已保存"));
+  await savedCourse.locator('[data-degree="view-study-plan"]').click();
+  await page.waitForFunction(()=>{const r=document.querySelector(".schedule-controls")?.getBoundingClientRect();return r&&r.top>=0&&r.top<innerHeight;});
+  assert.ok(await page.locator(".schedule-day-grid .schedule-event,.schedule-all-day .schedule-event").count()>0);
+  console.log("PASS browser: course card shows saved content and opens a populated week with controls scrolled into view");
   assert.deepEqual(errors,[]);
   console.log("PASS browser: reload persists all associations; mobile layout fits; no page errors");
 }finally{await browser.close();}

@@ -1,5 +1,5 @@
 import { openPlanEditor } from "./study-plan-editor.js";
-import { courseStudyTasks, applyCourseStudyPlan } from "./study-plan-core.js";
+import { courseStudyTasks, applyCourseStudyPlan, studyPlanFocusDate } from "./study-plan-core.js";
 import { renderStudySchedule, bindStudySchedule, selectStudySchedule, planCalendarItems } from "./study-schedule.js";
 import { TUM_EI_BACHELOR } from "./degree-templates.js";
 import { renderExamHourglass, openExamHourglass } from "./exam-hourglass.js";
@@ -252,6 +252,14 @@ function renderCourse(course, module, plan, semesters, location, blockId = "") {
   const remaining = exam ? daysBetween(today(), exam.date) : null;
   const plannedTasks = courseStudyTasks(course, semesters);
   const remainingHours = studyHours(plannedTasks).remaining;
+  const savedEvents=course.planEvents || [];
+  const hasSavedStudyPlan=Boolean(savedEvents.length || course.planRange || course.tasks.length ||
+    plannedTasks.some(task=>task.importKey || task.date || task.weekOf));
+  const savedStudyLabel=hasSavedStudyPlan ?
+    word("已保存："+savedEvents.length+" 项日程（含重复安排）· "+plannedTasks.length+" 个学习任务",
+      "Saved: "+savedEvents.length+" event plans · "+plannedTasks.length+" study tasks") :
+    word("已有 "+plannedTasks.length+" 个进度任务，尚未保存学习日程",
+      plannedTasks.length+" progress tasks; no saved schedule");
   const timing = remaining === 0 ? word("今天考试", "Today") :
     remaining > 0 ? word("还有 " + remaining + " 天", remaining + " days left") : "";
   const earned = isEarned(course, semesters);
@@ -295,9 +303,11 @@ function renderCourse(course, module, plan, semesters, location, blockId = "") {
       ${plannedTasks.length ? `<span>${formatStudyHours(remainingHours)} ${word("待学", "left")}</span>` : ""}</div>
       <progress value="${done}" max="${total}" aria-label="${word("复习进度", "Study progress")}"></progress></div>` : ""}
     ${isUnscheduledCard && plan.blocks.length && !earned ? `<div class="degree-quick-move">${moveField}</div>` : ""}
+    ${hasSavedStudyPlan || plannedTasks.length ? `<p class="degree-saved-study" data-saved-plan-summary>${escape(savedStudyLabel)}</p>` : ""}
     <div class="degree-study-card-actions">
       ${button(word("考试沙漏", "Exam hourglass"), "hourglass")}
-      ${button(word("学习计划", "Study plan"), "study-plan")}
+      ${button(word("查看学习计划", "View study plan"), "view-study-plan", "", hasSavedStudyPlan)}
+      ${button(word("编辑计划 / 导入", "Edit / import plan"), "study-plan")}
       ${button(linked ? word("已关联学习进度", "Study progress linked") : word("关联学习进度", "Link study progress"),
         "link-progress", linked ? `title="${escape(linked.name)}"` : "")}
     </div>
@@ -968,7 +978,7 @@ panel.addEventListener("click", event => {
   const block = plan?.blocks.find(item => item.id === target.dataset.block);
   switch (target.dataset.degree) {
     case "timeline": view = "timeline"; render(); break;
-    case "schedule": view = "schedule"; render(); break;
+    case "schedule": view = "schedule"; render(); panel.scrollIntoView({block:"start"}); break;
     case "credits": view = "credits"; render(); break;
     case "settings": settingsDialog(plan); break;
     case "add-elective": addElective(plan, semesters); break;
@@ -996,6 +1006,7 @@ panel.addEventListener("click", event => {
     case "edit-exam": examDialog(course, plan, course.exams.find(item => item.id === target.dataset.exam)); break;
     case "link-calendar": bridge.openDegreeCalendar?.(course.id, target.dataset.exam); break;
     case "hourglass": if (course) openExamHourglass(course.id); break;
+    case "view-study-plan": if(course) window.studyDegree.openSchedule(course.id); break;
     case "study-plan": if (course) openStudyPlan(course, plan, semesters); break;
     case "incoming-study-plan": showIncomingStudyPlan(true); break;
     case "import-programme": importProgramme(false); break;
@@ -1055,7 +1066,11 @@ window.studyDegree = {
   render, attachCatalogue, openProgressLinks, applyCourseStudyPlan, planCalendarItems,
   openSchedule(courseId="",date="") {
     if(!get().editable)return;
-    selectStudySchedule(courseId,date); view="schedule"; bridge.openDegreePlanner(); render();
+    const current=get();
+    const course=current.plan?.modules.flatMap(module=>module.courses).find(course=>course.id===courseId);
+    const targetDate=date || (course ? studyPlanFocusDate(course,current.semesters,today()) : "");
+    selectStudySchedule(courseId,targetDate); view="schedule"; bridge.openDegreePlanner(); render();
+    requestAnimationFrame(()=>panel.scrollIntoView({block:"start"}));
   },
   openCourseStudyPlan(courseId) {
     const { plan, semesters, editable } = get();
