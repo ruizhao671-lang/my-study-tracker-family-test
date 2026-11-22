@@ -124,7 +124,7 @@ export function openPlanEditor({course,plan,semesters,received,showDialog,bridge
       const merged=mergeImportedPlan(tasks,events,preview);
       const current=readRange();
       const occurrences=preview.events.flatMap(e=>scheduleOccurrences(e,current.start,current.end)).sort((a,b)=>a.date.localeCompare(b.date));
-      form.querySelector(".plan-preview").innerHTML=`<strong>${w("预览成功。保存时新增 ","Preview ready. On save add ")}${merged.addedTasks} ${w("个任务，","tasks, ")}${merged.addedEvents} ${w("条安排规则。相同内容不会重复添加。","event rules. Matching entries are merged.")}</strong>
+      form.querySelector(".plan-preview").innerHTML=`<strong>${w("预览成功。保存时新增 ","Preview ready. On save add ")}${merged.addedTasks} ${w("个任务，","tasks, ")}${merged.addedEvents} ${w("条安排规则。相同内容不会重复添加。","event rules. Matching entries are merged.")}</strong>${merged.convertedTasks ? `<p>${w("将 "+merged.convertedTasks+" 个旧文字日程转成时间安排，保留原完成状态，不再重复列为内容任务。",merged.convertedTasks+" legacy schedule rows become events, keeping their original status.")}</p>` : ""}
         <ul>${occurrences.map(e=>`<li>${esc(e.date+" "+(e.startTime||"")+" "+e.title)}</li>`).join("")}</ul>
         <ul>${preview.tasks.map(t=>`<li>${esc(t.date || (t.weekOf ? t.weekOf+" "+w("所在周 · 待安排","week · flexible") : w("待安排","Unscheduled")))} · ${esc(t.title)} · ${esc(hours(t.hours))}</li>`).join("")}</ul>`;
       error.textContent="";

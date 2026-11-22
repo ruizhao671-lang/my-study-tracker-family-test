@@ -96,7 +96,7 @@ export function bindStudySchedule(panel,{bridge,showDialog,render}){
       <div class="degree-fields">${field(w("日期（任务可留空）","Date (optional for tasks)"),"date",entry.date||"","date")}${field(w("开始","Start"),"startTime",entry.startTime||"","time")}${field(w("结束","End"),"endTime",entry.endTime||"","time")}</div>
       ${task?`<h4>${esc(task.group||"")} · ${esc(task.title)}</h4><p>${esc(task.detail||"")}</p><p>${w("预计","Estimate")} ${task.hours==null?w("未估算","Not estimated"):task.hours+" h"} · ${w("实际","Actual")} ${taskActualHours(state,task.id).toFixed(1)} h</p>
       <label><input type="checkbox" name="done" ${task.done?"checked":""}> ${w("任务已完成（同步学习进度）","Task completed (sync progress)")}</label>${task.canonical?btn(w("开始此任务计时","Start task timer"),"task-timer"):""}`:""}
-      <p>${esc(entry.detail||"")}</p>${btn(w("编辑整门课计划","Edit course plan"),"edit-source")}`,data=>{
+      <p>${esc(entry.detail||"")}</p>${entry.migratedTaskId?`<p>${w("旧文字清单状态：","Original checklist status: ")}${entry.legacyTaskDone?w("已完成","Completed"):w("未完成","Incomplete")}</p>`:""}${btn(w("编辑整门课计划","Edit course plan"),"edit-source")}`,data=>{
         if(entry.kind!=="task"&&!data.get("date"))throw new Error(w("请填写日期。","Date is required."));
         const values={date:data.get("date"),startTime:data.get("startTime"),endTime:data.get("endTime")};
         if(entry.kind==="task")values.done=data.has("done");

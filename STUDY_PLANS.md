@@ -2,7 +2,7 @@
 
 The degree course links to an existing progress course through courseId. Content tasks use the existing semesters → courses → categories → tasks entity, and its ID is also used by timer sessions. Completion uses done; estimates use estimatedHours (number or null). Actual time remains in timer.sessions.
 
-Additional task fields: plannedDate, plannedStart, plannedEnd, weekOf (Monday for flexible weekly workload), deadline, planBlockId, planImportKey. Legacy degree-course tasks migrate only on a confirmed save. Independent plans remain available.
+Additional task fields: plannedDate, plannedStart, plannedEnd, weekOf (Monday for flexible weekly workload), deadline, planBlockId, planImportKey. Legacy degree-course tasks migrate only on a confirmed save. When reimporting, old unlinked class/Workshop rows with an exact title match become schedule events; their original task ID and completion flag are retained as event metadata. Existing linked progress tasks are not silently removed. Independent plans remain available.
 
 Fixed/recurring events live in degreeCourse.planEvents. Calendar occurrences are virtual and generated only for the displayed range. They are never copied into timer.calendarItems. Moving a recurring occurrence adds an excluded date and a replacement event. Editing the course plan changes the whole series.
 

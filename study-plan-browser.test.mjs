@@ -7,6 +7,11 @@ const errors=[];page.on("pageerror",e=>errors.push(e.message));
 const course={id:"kc",name:"Komputer & Creativität",code:"EI04001",credits:6,passed:false,courseId:"",passTaskId:"",blockId:"winter",examTerm:"",exams:[],examId:"",tasks:[]};
 const fixture={ownerName:"Plan test",semesters:[],courseTemplates:[],degreePlan:{name:"Test",requiredCredits:180,term:"WS 2026/27",modules:[{id:"elective",name:"Electives",requiredCredits:30,kind:"elective",courses:[course]}],blocks:[{id:"winter",name:"Winter",start:"2026-10-12",end:"2027-02-05"}]},timer:{sessions:[],calendarItems:[],scheduleStartMinute:0,scheduleEndMinute:0}};
 const input={course:"",tasks:"每周三 13:15–16:15 | 课堂 | 参加 Komputer & Creativität 课程（12月2日项目 Kickoff/Pitch；1月13日中期展示；1月27日最终展示） | 3\n跟随课程 | 作业 | 完成当周作业 | 2\n2026-12-09 13:15–16:30 | Workshop | 参加必修 Improtheater-Workshop III（替代当周常规课堂，不额外累计） | 3.25"};
+course.tasks=[
+  {id:"legacy-class",title:input.tasks.split("\n")[0].split("|")[2].trim(),group:"课堂",hours:3,done:true,blockId:"winter"},
+  {id:"legacy-workshop",title:input.tasks.split("\n")[2].split("|")[2].trim(),group:"Workshop",hours:3.25,done:false,blockId:"winter"},
+  {id:"legacy-homework",title:"完成当周作业",group:"作业",hours:2,done:false,blockId:"winter"}
+];
 const hash="#study-plan-v1="+Buffer.from(JSON.stringify(input)).toString("base64url");
 try{
   await page.addInitScript(f=>{if(!localStorage.getItem("study-tracker-online-guest-v1"))localStorage.setItem("study-tracker-online-guest-v1",JSON.stringify(f));localStorage.setItem("study-tracker-language-v1","zh-CN");},fixture);
@@ -21,7 +26,9 @@ try{
   assert.equal(await page.locator('[name="progressLink"]').inputValue(),"__new");
   await page.locator('#degreeDialog button[type="submit"]').click();
   await page.locator('[data-plan-action="schedule"]').waitFor();
-  console.log("PASS browser: incoming legacy plan previews and saves to canonical progress");
+  assert.equal(await page.evaluate(()=>studyTrackerBridge.getState().degreePlan.modules[0].courses[0].planEvents.find(e=>e.type==="class").legacyTaskDone),true);
+  assert.equal(await page.evaluate(()=>{const s=studyTrackerBridge.getState(),id=s.degreePlan.modules[0].courses[0].courseId;return s.semesters.flatMap(s=>s.courses).find(c=>c.id===id).categories.flatMap(c=>c.tasks).length;}),10);
+  console.log("PASS browser: legacy saved rows migrate to events without duplicate tasks; original status preserved");
   await page.locator('[data-plan-action="schedule"]').click();
   await page.locator(".study-schedule").waitFor();
   await page.locator("[data-schedule-date]").fill("2026-12-07");

@@ -17,6 +17,15 @@ assert.equal(occurrences.filter(e=>e.type==="class").length,9);
 assert.equal(occurrences.filter(e=>e.date==="2026-12-09").length,1);
 assert.equal(occurrences.find(e=>e.date==="2026-12-09").endTime,"16:30");
 assert.ok(occurrences.every(e=>e.date<=range.end));
+const legacyRows=[
+  {id:"old-class",title:input.tasks.split("\n")[0].split("|")[2].trim(),group:"课堂",hours:3,done:true,canonical:false},
+  {id:"old-workshop",title:input.tasks.split("\n")[2].split("|")[2].trim(),group:"Workshop",hours:3.25,done:false,canonical:false}
+];
+const converted=mergeImportedPlan(legacyRows,[],imported);
+assert.equal(converted.convertedTasks,2);
+assert.equal(converted.tasks.length,10);
+assert.equal(converted.events.find(e=>e.type==="class").legacyTaskDone,true);
+assert.equal(converted.events.find(e=>e.type==="workshop").migratedTaskId,"old-workshop");
 const holiday=parseCoursePlan(input,course,plan,{...range,exceptDates:["2026-12-23","2026-12-30"]});
 assert.equal(holiday.events.flatMap(e=>scheduleOccurrences(e,range.start,range.end)).filter(e=>e.type==="class").length,7);
 const state={ownerName:"Test",degreePlan:plan,semesters:[],timer:{sessions:[]}};

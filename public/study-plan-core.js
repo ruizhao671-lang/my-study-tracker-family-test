@@ -80,7 +80,8 @@ function normalizeEvent(event) {
   }
   return { id: event.id || crypto.randomUUID(), title, type, date, startTime, endTime,
     detail: text(event.detail, 4000), taskId: text(event.taskId, 100), repeat,
-    importKey: text(event.importKey, 1000) || sourceKey([type, title, date, startTime]) };
+    importKey: text(event.importKey, 1000) || sourceKey([type, title, date, startTime]),
+    ...(event.migratedTaskId ? {migratedTaskId:text(event.migratedTaskId,100),legacyTaskDone:event.legacyTaskDone===true} : {}) };
 }
 
 export function scheduleOccurrences(event, from, until) {
@@ -186,7 +187,15 @@ export function parseCoursePlan(input, course, plan, range) {
 }
 
 export function mergeImportedPlan(existingTasks, existingEvents, imported) {
-  const tasks = existingTasks.map(task => ({ ...task }));
+  let convertedTasks=0;
+  const importedEvents=imported.events.map(event=>({...event}));
+  const tasks = existingTasks.filter(task=>{
+    if(task.canonical!==false)return true;
+    const type=/workshop/i.test(task.group||"")?"workshop":/^(课堂|上课|课程|class|lecture)$/i.test(task.group||"")?"class":"";
+    const event=type && importedEvents.find(event=>event.type===type && event.title===task.title);
+    if(!event)return true;
+    event.migratedTaskId=task.id;event.legacyTaskDone=task.done===true;convertedTasks++;return false;
+  }).map(task => ({ ...task }));
   const events = existingEvents.map(event => ({ ...event }));
   let addedTasks = 0;
   let addedEvents = 0;
@@ -197,12 +206,12 @@ export function mergeImportedPlan(existingTasks, existingEvents, imported) {
     if (previous) { const arranged = previous.userScheduled ? { date: previous.date, startTime: previous.startTime, endTime: previous.endTime, userScheduled: true } : {}; Object.assign(previous, task, { id: previous.id, done: previous.done, canonical: previous.canonical }, arranged); }
     else { tasks.push(task); addedTasks++; }
   }
-  for (const event of imported.events) {
+  for (const event of importedEvents) {
     const previous = events.find(item => item.importKey === event.importKey);
     if (previous) { const repeat = event.repeat ? { ...event.repeat, exceptDates: [...new Set([...(previous.repeat?.exceptDates || []), ...event.repeat.exceptDates])] } : undefined; Object.assign(previous, event, { id: previous.id, repeat }); }
     else { events.push(event); addedEvents++; }
   }
-  return { tasks, events, addedTasks, addedEvents };
+  return { tasks, events, addedTasks, addedEvents, convertedTasks };
 }
 
 export function applyCourseStudyPlan(state, courseId, input) {
