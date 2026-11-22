@@ -1,6 +1,6 @@
 import { openPlanEditor } from "./study-plan-editor.js";
 import { courseStudyTasks, applyCourseStudyPlan, studyPlanFocusDate, patchStudyScheduleEntry } from "./study-plan-core.js";
-import { renderStudySchedule, bindStudySchedule, selectStudySchedule, planCalendarItems } from "./study-schedule.js";
+import { renderStudySchedule, bindStudySchedule, selectStudySchedule, planCalendarItems, calendarStatusClass, calendarStatusBadge, renderCalendarLegend } from "./study-schedule.js";
 import { TUM_EI_BACHELOR } from "./degree-templates.js";
 import { renderExamHourglass, openExamHourglass } from "./exam-hourglass.js";
 import {
@@ -1063,7 +1063,7 @@ panel.addEventListener("dragend", () => {
 });
 
 window.studyDegree = {
-  render, attachCatalogue, openProgressLinks, applyCourseStudyPlan, planCalendarItems, patchStudyScheduleEntry,
+  render, attachCatalogue, openProgressLinks, applyCourseStudyPlan, planCalendarItems, patchStudyScheduleEntry, calendarStatusClass, calendarStatusBadge, renderCalendarLegend,
   openSchedule(courseId="",date="") {
     if(!get().editable)return;
     const current=get();

@@ -88,3 +88,30 @@ body.study-schedule-mode .app{width:min(1480px,calc(100% - 36px))}
 .schedule-plan-list{position:sticky;top:1rem;max-height:calc(100vh - 2rem);max-height:calc(100dvh - 2rem);overflow-y:auto;overscroll-behavior:contain;box-sizing:border-box}
 .schedule-plan-list>.plan-section-title{position:sticky;top:-1rem;z-index:1;background:#f9fcfa;padding:.4rem 0}
 @media(max-width:1150px){.schedule-plan-list{position:static;max-height:560px}.schedule-plan-list>.plan-section-title{top:-1rem}}
+
+/* Shared calendar status colors, with text labels for every state. */
+.study-status-complete{--study-status-bg:#e8f5ed;--study-status-border:#459568;--study-status-ink:#245e3a}
+.study-status-overdue{--study-status-bg:#fff0ec;--study-status-border:#cd6955;--study-status-ink:#8e3b2b}
+.study-status-pending{--study-status-bg:#edf2ff;--study-status-border:#6b80cb;--study-status-ink:#354f95}
+.study-status-exam{--study-status-bg:#f1eaff;--study-status-border:#9671c3;--study-status-ink:#63418a}
+.study-status-record{--study-status-bg:#f3f5f6;--study-status-border:#7f8a93;--study-status-ink:#495860}
+.study-status-date{--study-status-bg:#fff0f7;--study-status-border:#be7a9e;--study-status-ink:#895474}
+.schedule-event[class*="study-status-"],.schedule-agenda-item[class*="study-status-"],.day-item-card[class*="study-status-"],.time-block[class*="study-status-"],.schedule-actual.study-status-record{
+  background:var(--study-status-bg);border-color:var(--study-status-border);color:var(--study-status-ink);opacity:1;box-shadow:none
+}
+.schedule-event[class*="study-status-"]{border-left-width:4px}
+.schedule-agenda-item[class*="study-status-"]{border-left:4px solid var(--study-status-border)}
+.calendar-exam-name[class*="study-status-"]{background:var(--study-status-bg)!important;color:var(--study-status-ink)!important;border-left:3px solid var(--study-status-border)}
+.schedule-actual.study-status-record,.time-block.study-status-record{border:2px dashed var(--study-status-border)}
+.calendar-day .day-total{color:#596873}
+.reminder-dot.study-status-date{background:var(--study-status-border);border-color:var(--study-status-border)}
+.study-status-badge{display:inline-flex;align-self:flex-start;align-items:center;font-size:.72rem;line-height:1.4;font-weight:650;background:var(--study-status-bg,#f1f5f4);color:var(--study-status-ink,#49685c);border:1px solid var(--study-status-border,#b8cec4);border-radius:5px;padding:2px 6px;margin:4px 0}
+.study-calendar-legend{display:flex;gap:10px 18px;flex-wrap:wrap;margin:14px 0 18px;font-size:.78rem;color:#4f6860}
+.study-legend-item{display:inline-flex;align-items:center;gap:6px;line-height:1.5}
+.study-legend-item i{width:13px;height:13px;box-sizing:border-box;border:2px solid var(--study-status-border);border-radius:4px;background:var(--study-status-bg)}
+.study-legend-item.study-status-record i{border-style:dashed}
+.schedule-day-grid .schedule-event>.study-status-badge{display:none}
+.schedule-day-grid .schedule-event-open{flex-shrink:1;min-height:0}
+.schedule-day-grid .schedule-event-open>strong,.schedule-day-grid .schedule-event-open>b{flex-shrink:0}
+.schedule-event .schedule-execution,.schedule-agenda-item .schedule-execution{display:flex;flex:0 0 auto;min-height:0;height:auto;color:inherit}
+@media(max-width:600px){.study-calendar-legend{gap:8px 12px;font-size:.72rem}}

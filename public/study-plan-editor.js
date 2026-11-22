@@ -97,7 +97,7 @@ export function openPlanEditor({course,plan,semesters,received,showDialog,bridge
   function taskLinks(selected){
     const available=[...tasks,...(preview?.tasks||[])];const seen=new Set(),series=new Map();
     const result=[["",w("不关联内容任务","No task association")]];
-    for(const t of available){if(!seen.has(t.id)){result.push([t.id,describe(t)]);seen.add(t.id);}if(t.seriesKey)series.set(t.seriesKey,t.title);}
+    for(const t of available){if(!seen.has(t.id)){result.push([t.id,describe(t)]);seen.add(t.id);}if(t.seriesKey)series.set(t.seriesKey,[t.group,t.title].filter(Boolean).join(" · "));}
     for(const [key,title] of series)result.push(["series:"+key,title+" · "+w("按周关联","match each week")]);
     if(selected&&!result.some(item=>item[0]===selected))result.push([selected,w("原关联任务不在此课程，请重新选择","Previous task is not in this course; choose again")]);
     return opts(result,selected);

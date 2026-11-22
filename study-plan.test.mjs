@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { makePlan,newCourse,newModule,revisionProgress,studyPlanFromLink } from "./public/degree-core.js";
-import { patchStudyScheduleEntry,studySessionHours,studyPlanFocusDate,parseCoursePlan,mergeImportedPlan,applyCourseStudyPlan,courseStudyTasks,studyScheduleEntries,taskActualHours,scheduleOccurrences } from "./public/study-plan-core.js";
+import { studyEntryStatus,studyExamEntries,patchStudyScheduleEntry,studySessionHours,studyPlanFocusDate,parseCoursePlan,mergeImportedPlan,applyCourseStudyPlan,courseStudyTasks,studyScheduleEntries,taskActualHours,scheduleOccurrences } from "./public/study-plan-core.js";
 import { makeSharedState } from "./public/cloud-core.js";
 const plan=makePlan("Test",180);
 const course=newCourse({name:"Komputer & Creativität",code:"EI04001"});
@@ -148,3 +148,40 @@ assert.equal(sameImport.tasks[0].scheduleExecuted,true);
 assert.equal(studySessionHours({...sameImport.tasks[0],kind:"task"}),2);
 assert.equal(sameImport.tasks[0].hours,4);
 console.log("PASS weekly task-to-session association and legacy scheduled-task execution retention");
+
+const statusNow=new Date(2026,10,22,17,0);
+assert.equal(studyEntryStatus({kind:"task",title:"Week 1",done:true},statusNow),"complete");
+assert.equal(studyEntryStatus({kind:"task",title:"Week 1",done:false},statusNow),"pending");
+assert.equal(studyEntryStatus({kind:"task",done:false,weekOf:"2026-11-09"},statusNow),"overdue");
+assert.equal(studyEntryStatus({kind:"task",done:false,weekOf:"2026-11-16"},statusNow),"pending");
+assert.equal(studyEntryStatus({kind:"event",type:"study",date:"2026-11-21",done:true,contentDone:true,executed:false},statusNow),"overdue");
+assert.equal(studyEntryStatus({kind:"event",type:"study",date:"2026-11-23",done:true,executed:false},statusNow),"pending");
+assert.equal(studyEntryStatus({kind:"event",type:"class",date:"2026-11-21",executed:true},statusNow),"complete");
+assert.equal(studyEntryStatus({kind:"task",date:"2026-11-23",done:true,executed:false},statusNow),"pending");
+assert.equal(studyEntryStatus({kind:"event",type:"study",date:"2026-11-22",startTime:"09:00"},statusNow),"pending","No invented end time");
+assert.equal(studyEntryStatus({kind:"event",type:"study",date:"2026-11-22",endTime:"16:00"},statusNow),"overdue");
+assert.equal(studyEntryStatus({kind:"event",type:"study",date:"2026-11-22",endTime:"18:00"},statusNow),"pending");
+assert.equal(studyEntryStatus({kind:"event",type:"study",date:"2026-11-22",endTime:"12:00",statusEndTime:""},statusNow),"pending","Inferred calendar height must not invent an overdue boundary");
+assert.equal(studyEntryStatus({kind:"event",type:"deadline",sourceTask:true,done:true,date:"2026-11-21"},statusNow),"complete");
+assert.equal(studyEntryStatus({kind:"event",type:"deadline",sourceTask:true,done:false,date:"2026-11-21"},statusNow),"overdue");
+assert.equal(studyEntryStatus({type:"milestone",date:"2026-11-21"},statusNow),"date");
+assert.equal(studyEntryStatus({type:"study",planType:"milestone",date:"2026-11-21"},statusNow),"date");
+assert.equal(studyEntryStatus({type:"exam",date:"2026-11-21"},statusNow),"exam");
+assert.equal(studyEntryStatus({kind:"record",date:"2026-11-21"},statusNow),"record");
+const examState=structuredClone(state);
+const examCourse=examState.degreePlan.modules[0].courses[0];
+examCourse.blockId="b1";examCourse.passed=false;examCourse.passTaskId="";
+examCourse.exams=[{id:"exam-1",date:"2026-11-25",time:"10:00",location:"Garching",kind:"first"},
+{id:"exam-2",date:"2027-03-25",time:"14:00",kind:"retake"}];
+examState.timer.calendarItems=[{id:"saved-exam",degreeCourseId:examCourse.id,title:examCourse.name,type:"exam",date:"2026-11-25",startTime:"10:00",requirements:"Calculator allowed"},
+{id:"other-exam",title:"Independent exam",type:"exam",date:"2026-11-26",startTime:"14:00"}];
+const examBefore=JSON.stringify(examState),calendarExams=studyExamEntries(examState,"2026-11-23","2026-11-29");
+assert.equal(calendarExams.length,2,"Saved exam and planned exam are not duplicated");
+assert.equal(calendarExams.find(e=>e.course.id===examCourse.id).sourceCalendarId,"saved-exam");
+assert.equal(calendarExams.find(e=>e.course.id===examCourse.id).detail,"Calculator allowed");
+assert.equal(studyExamEntries({...examState,timer:{calendarItems:[]}},"2026-11-23","2026-11-29")[0].location,"Garching");
+assert.equal(studyExamEntries({...examState,timer:{calendarItems:[]}},"2027-03-22","2027-03-28").length,0,"Exam outside assigned time block is not selected");
+assert.equal(JSON.stringify(examState),examBefore,"Calendar projection never writes exam or task records");
+const changedTime=structuredClone(examState);changedTime.timer.calendarItems[0].degreeExamId="exam-1";changedTime.timer.calendarItems[0].startTime="11:00";
+assert.equal(studyExamEntries(changedTime,"2026-11-23","2026-11-29").length,2,"Explicit exam link deduplicates even when saved time differs");
+console.log("PASS calendar status: content completion vs execution, overdue boundaries, undated tasks, exam deduplication and read-only projection");

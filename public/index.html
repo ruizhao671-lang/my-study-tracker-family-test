@@ -2181,6 +2181,7 @@
               <button class="btn secondary" id="addExamBtn" type="button">+ 添加考试</button>
               <button class="btn secondary" id="addReminderBtn" type="button">+ 添加事项</button>
             </div>
+            <div id="timerCalendarLegend"></div>
             <div class="calendar-grid" id="timerCalendarGrid"></div>
           </div>
 
@@ -3811,14 +3812,14 @@
         const visibleExams = exams.slice(0, 2);
         const examNames = visibleExams.map(item => {
           const sizeClass = item.title.length > 18 ? "tiny" : item.title.length > 10 ? "compact" : "";
-          return `<button class="calendar-exam-name ${sizeClass}" type="button" data-action="select-calendar-item" data-item-id="${item.id}" data-date="${key}" title="${escapeHtml(item.title)}">${escapeHtml(item.title)}</button>`;
+          return `<button class="calendar-exam-name ${sizeClass} ${window.studyDegree?.calendarStatusClass?.(item)||'study-status-exam'}" type="button" data-action="select-calendar-item" data-item-id="${item.id}" data-date="${key}" title="${escapeHtml(item.title)}">${escapeHtml(item.title)}</button>`;
         }).join("");
         const moreExams = exams.length > visibleExams.length
           ? `<button class="calendar-exam-name compact" type="button" data-action="select-timer-date" data-date="${key}" title="${escapeHtml(exams.slice(2).map(item => item.title).join("、"))}">+${exams.length - visibleExams.length}</button>`
           : "";
         const reminderDots = reminders.map(item => `
           <button
-            class="reminder-dot ${item.id === selectedCalendarItemId ? "selected" : ""}"
+            class="reminder-dot study-status-date ${item.id === selectedCalendarItemId ? "selected" : ""}"
             type="button"
             data-action="select-calendar-item"
             data-item-id="${item.id}"
@@ -3833,16 +3834,17 @@
               <span class="day-number">${date.getDate()}</span>
               <span class="day-total">${total ? formatDurationShort(total) : ""}</span>
             </button>
-            <div class="calendar-exams">${examNames}${moreExams}${plans.slice(0,2).map(item=>`<button class="calendar-exam-name calendar-plan-name" type="button" data-action="select-calendar-item" data-item-id="${item.id}" data-date="${key}" title="${escapeHtml(item.title)}">${escapeHtml(item.title)}</button>`).join("")}${plans.length>2?`<button class="calendar-exam-name calendar-plan-name" type="button" data-action="select-timer-date" data-date="${key}">+${plans.length-2}</button>`:""}</div>
+            <div class="calendar-exams">${examNames}${moreExams}${plans.slice(0,2).map(item=>`<button class="calendar-exam-name calendar-plan-name ${window.studyDegree?.calendarStatusClass?.(item)||''}" type="button" data-action="select-calendar-item" data-item-id="${item.id}" data-date="${key}" title="${escapeHtml(item.title)}">${escapeHtml(item.title)}</button>`).join("")}${plans.length>2?`<button class="calendar-exam-name calendar-plan-name" type="button" data-action="select-timer-date" data-date="${key}">+${plans.length-2}</button>`:""}</div>
             <div class="calendar-reminders">${reminderDots}</div>
           </div>
         `);
       }
       els.timerCalendarGrid.innerHTML = cells.join("");
+      document.getElementById("timerCalendarLegend").innerHTML = window.studyDegree?.renderCalendarLegend?.() || "";
     }
 
     function calendarItemDetailsHtml(item, includeActions = true) {
-      if(item.type==="study") return `<strong>${escapeHtml(item.title)}</strong><p>${escapeHtml(item.startTime?(item.startTime+" – "+(item.endTime||"")):t("全天事项"))}</p>
+      if(item.type==="study") return `<strong>${escapeHtml(item.title)}</strong>${window.studyDegree?.calendarStatusBadge?.(item)||""}<p>${escapeHtml(item.startTime?(item.startTime+" – "+(item.endTime||"")):t("全天事项"))}</p>
         ${item.executionAvailable?`<label><input type="checkbox" data-action="execute-planned-session" ${item.executed?"checked":""}> ${t("已按计划执行")}</label>`:""}
         ${item.taskId?`<p>${t("内容任务")}：${t(item.done?"已完成":"未完成")}</p>`:""}
         <div class="actions">${item.canonical?`<button class="btn secondary" data-action="time-planned-task" type="button">${t("开始任务计时")}</button>`:""}
@@ -3856,6 +3858,7 @@
         : t("全天事项");
       return `
         <strong>${escapeHtml(item.title)}</strong>
+        ${window.studyDegree?.calendarStatusBadge?.(item)||""}
         <p>${t(item.type === "exam" ? "考试时间" : "事项时间")}${separator}${escapeHtml(timeText)}</p>
         ${path ? `<p>${t("关联课程")}${separator}${escapeHtml(path)}</p>` : ""}
         ${item.type === "exam" && item.location ? `<p>${t("考试地点")}${separator}${escapeHtml(item.location)}</p>` : ""}
@@ -3882,7 +3885,7 @@
       els.timerSelectedDateTitle.textContent = formatDateLabel(dateKey);
       els.timerDaySummary.textContent = `${t("总计")} ${formatDurationShort(total)}`;
       els.timerDayItems.innerHTML = allDayItems.map(item => `
-        <article class="day-item-card ${item.type} ${item.id === selectedCalendarItemId ? "selected" : ""}" data-calendar-item-id="${item.id}">
+        <article class="day-item-card ${item.type} ${window.studyDegree?.calendarStatusClass?.(item)||""} ${item.id === selectedCalendarItemId ? "selected" : ""}" data-calendar-item-id="${item.id}">
           ${calendarItemDetailsHtml(item)}
         </article>
       `).join("");
@@ -3908,7 +3911,7 @@
         const partLabel = session.partTotal > 1 ? `${session.partIndex}/${session.partTotal}` : "";
         const segmentRanges = formatSegmentRanges(session);
         parts.push(`
-          <article class="time-block" style="top:${top}px;height:${height}px" data-session-id="${session.id}">
+          <article class="time-block study-status-record" style="top:${top}px;height:${height}px" data-session-id="${session.id}">
             <strong>${partLabel ? `<span class="time-part">${escapeHtml(partLabel)}</span> ` : ""}${escapeHtml(title)} · ${formatDurationWithSeconds(session.durationMs)}${session.source === "manual" ? `<span class="record-source">${t("手动记录")}</span>` : ""}</strong>
             <p>${formatClock(session.startAt)} - ${formatClock(session.endAt)}</p>
             ${segmentRanges ? `<p>${t("学习段")}：${escapeHtml(segmentRanges)}</p>` : ""}
@@ -3931,7 +3934,7 @@
         const minHeight = item.type === "exam" ? 156 : 112;
         const height = Math.max(minHeight, (blockMinutes / 60) * hourHeight - 4);
         parts.push(`
-          <article class="time-block ${item.type}-block ${item.id === selectedCalendarItemId ? "selected" : ""}" style="top:${top}px;height:${height}px" data-calendar-item-id="${item.id}">
+          <article class="time-block ${item.type}-block ${window.studyDegree?.calendarStatusClass?.(item)||""} ${item.id === selectedCalendarItemId ? "selected" : ""}" style="top:${top}px;height:${height}px" data-calendar-item-id="${item.id}">
             ${calendarItemDetailsHtml(item)}
           </article>
         `);

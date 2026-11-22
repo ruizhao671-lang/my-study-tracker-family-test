@@ -1,4 +1,4 @@
-import { creditNumber, parseStudyTasks, setProgressLink } from "./degree-core.js";
+import { creditNumber, parseStudyTasks, setProgressLink, nextExam, isEarned } from "./degree-core.js";
 
 export function validPlanDate(value) {
   return typeof value === "string" && /^\d{4}-\d{2}-\d{2}$/.test(value) &&
@@ -328,8 +328,8 @@ export function studyScheduleEntries(state, from, until) {
       const occurrences=event.date ? scheduleOccurrences(event,from,until) :
         (!event.weekOf || (event.weekOf<=until && addPlanDays(event.weekOf,6)>=from)) ? [{...event,executed:event.executed===true}] : [];
       for (const occurrence of occurrences) {
-        const task=event.taskSeriesKey ? tasks.find(task=>task.seriesKey===event.taskSeriesKey && task.weekOf===planWeek(occurrence.date || occurrence.weekOf || from)) : null;
-        entries.push({ ...occurrence, taskId:task?.id || occurrence.taskId, course, kind: "event", id: "plan-event:" + event.id + ":" + (occurrence.date || "flexible") });
+        const task=event.taskSeriesKey ? tasks.find(task=>task.seriesKey===event.taskSeriesKey && task.weekOf===planWeek(occurrence.date || occurrence.weekOf || from)) : tasks.find(task=>task.id===occurrence.taskId);
+        entries.push({ ...occurrence, taskId:task?.id || occurrence.taskId, taskGroup:task?.group||"", taskTitle:task?.title||"", contentDone:task?.done===true, course, kind: "event", id: "plan-event:" + event.id + ":" + (occurrence.date || "flexible") });
       }
     }
     for (const task of tasks) {
@@ -413,4 +413,46 @@ export function patchStudyScheduleEntry(state,courseId,entryId,date,changes) {
     }else Object.assign(event,changes);
   }
   applyCourseStudyPlan(state,courseId,{tasks,events,link:course.courseId||"",range:course.planRange});
+}
+
+export function studyEntryStatus(entry,now=new Date()) {
+  const type=entry.planType || entry.type;
+  if(entry.kind==="exam" || type==="exam")return "exam";
+  if(entry.kind==="record" || type==="record")return "record";
+  const content=(entry.kind==="task" && !entry.date) || entry.sourceTask;
+  if((type==="milestone" || type==="deadline" || type==="reminder") && !entry.sourceTask)return "date";
+  if(content ? entry.done : entry.executed)return "complete";
+  const current=[now.getFullYear(),String(now.getMonth()+1).padStart(2,"0"),String(now.getDate()).padStart(2,"0")].join("-");
+  const due=content ? entry.deadline || entry.date || (entry.weekOf?addPlanDays(entry.weekOf,6):"") :
+    entry.date || (entry.weekOf?addPlanDays(entry.weekOf,6):"");
+  if(validPlanDate(due) && due<current)return "overdue";
+  const endTime=entry.statusEndTime??entry.endTime;
+  if(due===current && endTime && /^([01]\d|2[0-3]):[0-5]\d$/.test(endTime)){
+    const end=Number(endTime.slice(0,2))*60+Number(endTime.slice(3));
+    if(end<=now.getHours()*60+now.getMinutes())return "overdue";
+  }
+  return "pending";
+}
+
+export function studyExamEntries(state,from,until) {
+  if(!state.degreePlan)return [];
+  const courses=state.degreePlan.modules.flatMap(module=>module.courses),result=new Map();
+  const key=entry=>JSON.stringify([entry.course.id,entry.date,entry.startTime||""]);
+  for(const course of courses){
+    if(isEarned(course,state.semesters))continue;
+    const exam=nextExam(course,state.degreePlan,from);
+    if(!exam || exam.date<from || exam.date>until)continue;
+    const entry={id:"plan-exam:"+course.id+":"+exam.id,kind:"exam",type:"exam",title:course.name,course,examId:exam.id,
+      date:exam.date,startTime:exam.time||"",endTime:exam.endTime||"",location:exam.location||"",examKind:exam.kind||"",detail:exam.requirements||""};
+    result.set(key(entry),entry);
+  }
+  for(const item of state.timer?.calendarItems||[]){
+    if(item.type!=="exam" || item.date<from || item.date>until)continue;
+    const course=courses.find(course=>course.id===item.degreeCourseId || (item.courseId && course.courseId===item.courseId)) ||
+      {id:"",name:item.courseName||item.title};
+    const entry={...item,id:"calendar-exam:"+item.id,kind:"exam",type:"exam",course,title:item.title,detail:item.requirements||item.details||"",sourceCalendarId:item.id,examId:item.degreeExamId||""};
+    if(entry.examId && course.id)for(const [existingKey,existing] of result)if(existing.course.id===course.id && existing.examId===entry.examId)result.delete(existingKey);
+    result.set(course.id?key(entry):"manual:"+item.id,entry);
+  }
+  return [...result.values()];
 }
