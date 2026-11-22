@@ -80,6 +80,12 @@ private_state = {
     ],
 }
 
+private_state["semesters"][0]["courses"][0]["categories"][0]["tasks"].append(
+    {"id": "plan-task", "title": "PRIVATE_PLANNED_TASK", "privatePlanTask": True, "estimatedHours": None}
+)
+private_state["semesters"][0]["courses"].append(
+    {"id": "generated-plan-course", "name": "PRIVATE_GENERATED_COURSE", "degreePlanGenerated": True, "categories": []}
+)
 
 with TestClient(app) as client:
     health_response = client.get("/api/health")
@@ -119,6 +125,7 @@ with TestClient(app) as client:
     share = client.put("/api/share", headers=auth(token_a), json={"enabled": True}).json()
     shared = client.get(f"/api/shared/{share['token']}").json()["state"]
     serialized = json.dumps(shared, ensure_ascii=False)
+    assert "PRIVATE_PLANNED_TASK" not in serialized and "PRIVATE_GENERATED_COURSE" not in serialized
     assert "PRIVATE_STAGE_NOTE" not in serialized
     assert "private-stage.pdf" not in serialized
     assert "private-template" not in serialized

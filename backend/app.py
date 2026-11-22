@@ -263,13 +263,14 @@ def shared_state(source: dict[str, Any]) -> dict[str, Any]:
                                         "note": "",
                                         "attachments": [],
                                     }
-                                    for task in category.get("tasks", [])
+                                    for task in category.get("tasks", []) if not task.get("privatePlanTask")
                                 ],
                             }
                             for category in course.get("categories", [])
+                            if not category.get("degreePlanGenerated") or any(not task.get("privatePlanTask") for task in category.get("tasks", []))
                         ],
                     }
-                    for course in semester.get("courses", [])
+                    for course in semester.get("courses", []) if not course.get("degreePlanGenerated")
                 ],
             }
             for semester in source.get("semesters", [])

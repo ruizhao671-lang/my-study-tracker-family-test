@@ -5,6 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>My Study Tracker</title>
   <link rel="stylesheet" href="degree-plan.css">
+  <link rel="stylesheet" href="study-plan.css">
   <link rel="stylesheet" href="exam-hourglass.css">
   <style>
     :root {
@@ -3512,13 +3513,19 @@
     }
 
     function calendarItemsForDate(dateKey) {
-      return (state.timer.calendarItems || [])
+      return [...(state.timer.calendarItems || []), ...(!READ_ONLY_LINK ? window.studyDegree?.planCalendarItems(state,dateKey) || [] : [])]
         .filter(item => item.date === dateKey)
         .sort((left, right) => (left.startTime || "00:00").localeCompare(right.startTime || "00:00"));
     }
 
     function findCalendarItem(itemId) {
-      return (state.timer.calendarItems || []).find(item => item.id === itemId);
+      return (state.timer.calendarItems || []).find(item => item.id === itemId) || calendarItemsForDate(state.timer.selectedDate).find(item => item.id === itemId);
+    }
+
+    function handlePlanCalendarAction(action,item,target) {
+      if(action==="complete-planned-task")window.studyTrackerBridge.setPlannedTaskDone(item.degreeCourseId,item.taskId,target.checked);
+      if(action==="time-planned-task")window.studyTrackerBridge.startPlannedTaskTimer(item.degreeCourseId,item.taskId);
+      if(action==="edit-plan-source")window.studyDegree.openCourseStudyPlan(item.degreeCourseId);
     }
 
     function degreeCalendarChoices(plan) {
@@ -3800,6 +3807,7 @@
         const items = calendarItemsForDate(key);
         const exams = items.filter(item => item.type === "exam");
         const reminders = items.filter(item => item.type === "reminder");
+        const plans = items.filter(item=>item.type==="study");
         const visibleExams = exams.slice(0, 2);
         const examNames = visibleExams.map(item => {
           const sizeClass = item.title.length > 18 ? "tiny" : item.title.length > 10 ? "compact" : "";
@@ -3825,7 +3833,7 @@
               <span class="day-number">${date.getDate()}</span>
               <span class="day-total">${total ? formatDurationShort(total) : ""}</span>
             </button>
-            <div class="calendar-exams">${examNames}${moreExams}</div>
+            <div class="calendar-exams">${examNames}${moreExams}${plans.slice(0,2).map(item=>`<button class="calendar-exam-name calendar-plan-name" type="button" data-action="select-calendar-item" data-item-id="${item.id}" data-date="${key}" title="${escapeHtml(item.title)}">${escapeHtml(item.title)}</button>`).join("")}${plans.length>2?`<button class="calendar-exam-name calendar-plan-name" type="button" data-action="select-timer-date" data-date="${key}">+${plans.length-2}</button>`:""}</div>
             <div class="calendar-reminders">${reminderDots}</div>
           </div>
         `);
@@ -3834,6 +3842,10 @@
     }
 
     function calendarItemDetailsHtml(item, includeActions = true) {
+      if(item.type==="study") return `<strong>${escapeHtml(item.title)}</strong><p>${escapeHtml(item.startTime?(item.startTime+" – "+(item.endTime||"")):t("全天事项"))}</p>
+        ${item.taskId?`<label><input type="checkbox" data-action="complete-planned-task" ${item.done?"checked":""}> ${t("任务已完成")}</label>`:""}
+        <div class="actions">${item.canonical?`<button class="btn secondary" data-action="time-planned-task" type="button">${t("开始任务计时")}</button>`:""}
+        <button class="btn secondary" data-action="edit-plan-source" type="button">${t("编辑课程计划")}</button></div>`;
       const path = [item.semesterName, item.courseName].filter(Boolean).join(" / ");
       const separator = currentLocale() === "en-US" ? ": " : "：";
       const timeText = item.startTime
@@ -4476,7 +4488,8 @@
               <span class="course-label" hidden></span>
               <span class="badge"></span>
               ${canLinkDegree ? `<button class="btn secondary progress-link" type="button" data-action="link-degree-progress">
-                ${t(degreeLabel ? "已关联毕业规划" : "关联毕业规划")}</button>` : ""}
+                ${t(degreeLabel ? "已关联毕业规划" : "关联毕业规划")}</button>
+                ${degreeLabel?'<button class="btn secondary" type="button" data-action="open-linked-study-plan">'+t("编辑课程计划")+'</button>':""}` : ""}
             </div>
             <div class="progress-bar" aria-hidden="true">
               <div class="progress-fill"></div>
@@ -6122,6 +6135,7 @@
       const itemBlock = event.target.closest("[data-calendar-item-id]");
       const calendarItem = itemBlock ? findCalendarItem(itemBlock.dataset.calendarItemId) : null;
       if (calendarItem) {
+        if(calendarItem.type === "study"){handlePlanCalendarAction(action,calendarItem,event.target);return;}
         if (action === "edit-calendar-item") openCalendarItemModal(calendarItem.type, calendarItem);
         if (action === "delete-calendar-item") deleteCalendarItem(calendarItem);
         return;
@@ -6137,6 +6151,7 @@
       const itemBlock = event.target.closest("[data-calendar-item-id]");
       const calendarItem = itemBlock ? findCalendarItem(itemBlock.dataset.calendarItemId) : null;
       if (!calendarItem) return;
+      if(calendarItem.type === "study"){handlePlanCalendarAction(action,calendarItem,event.target);return;}
       if (action === "edit-calendar-item") openCalendarItemModal(calendarItem.type, calendarItem);
       if (action === "delete-calendar-item") deleteCalendarItem(calendarItem);
     });
@@ -6298,6 +6313,10 @@
         }
       }
 
+      if(action==="open-linked-study-plan" && course){
+        const linked=state.degreePlan?.modules.flatMap(m=>m.courses).find(c=>c.courseId===course.id);
+        if(linked)window.studyDegree.openCourseStudyPlan(linked.id);
+      }
       if (action === "link-degree-progress" && course) {
         window.studyDegree?.openProgressLinks(course.id);
       }
@@ -6685,6 +6704,47 @@
         semesters: state.semesters,
         editable: !READ_ONLY_LINK && !window.studyCloud?.isReadOnly?.()
       }),
+      saveCourseStudyPlan(courseId, input) {
+        if (READ_ONLY_LINK || window.studyCloud?.isReadOnly?.()) return;
+        const draft = JSON.parse(JSON.stringify(state));
+        window.studyDegree.applyCourseStudyPlan(draft,courseId,input);
+        state = normalizeState(draft);
+        commit();
+      },
+      setPlannedTaskDone(courseId,taskId,done) {
+        if (READ_ONLY_LINK || window.studyCloud?.isReadOnly?.()) return;
+        const degreeCourse=state.degreePlan?.modules.flatMap(m=>m.courses).find(c=>c.id===courseId);
+        const learning=state.semesters.flatMap(s=>s.courses).find(c=>c.id===degreeCourse?.courseId);
+        const task=learning?.categories.flatMap(c=>c.tasks).find(t=>t.id===taskId) || degreeCourse?.tasks.find(t=>t.id===taskId);
+        if(task){task.done=done;commit();}
+      },
+      openCourseProgress(courseId) {
+        const stage=state.semesters.find(s=>s.courses.some(c=>c.id===courseId));
+        const course=stage?.courses.find(c=>c.id===courseId);
+        if(!course)return;
+        stage.collapsed=false;course.collapsed=false;
+        for(const category of course.categories)category.collapsed=false;
+        setActivePanel("system");render();
+        requestAnimationFrame(()=>document.querySelector('[data-course-id="'+CSS.escape(courseId)+'"]')?.scrollIntoView({block:"start"}));
+      },
+      openStudyCalendar(date) {
+        state.timer.selectedDate=date;state.timer.calendarMonth=date.slice(0,7);state.timer.dayOpen=true;setActivePanel("timer");
+      },
+      startPlannedTaskTimer(courseId,taskId) {
+        if (READ_ONLY_LINK || window.studyCloud?.isReadOnly?.()) return;
+        if(state.timer.active){setActivePanel("timer");return;}
+        const degreeCourse=state.degreePlan?.modules.flatMap(m=>m.courses).find(c=>c.id===courseId);
+        const stage=state.semesters.find(s=>s.courses.some(c=>c.id===degreeCourse?.courseId));
+        const learning=stage?.courses.find(c=>c.id===degreeCourse?.courseId);
+        const category=learning?.categories.find(c=>c.tasks.some(t=>t.id===taskId));
+        if(!category)return;
+        setActivePanel("timer");
+        els.timerSemester.value=stage.id;renderTimerFormOptions();
+        els.timerCourse.value=learning.id;renderTimerFormOptions();
+        els.timerCategory.value=category.id;renderTimerFormOptions();
+        els.timerTask.value=taskId;els.timerCompleteTask.checked=false;els.timerNote.value="";
+        startTimer();
+      },
       saveDegreePlan(plan, linkedChanges) {
         if (READ_ONLY_LINK || window.studyCloud?.isReadOnly?.()) return;
         if (linkedChanges) {

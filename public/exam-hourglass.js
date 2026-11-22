@@ -1,3 +1,4 @@
+import { courseStudyTasks } from "./study-plan-core.js";
 import { examCountdown, nextExam, isEarned, revisionProgress, creditNumber } from "./degree-core.js";
 
 const dashboard = document.querySelector("#examHourglass");
@@ -58,7 +59,7 @@ function renderFace(state, courseId, selection) {
   const progress = course && revisionProgress(course, state.semesters);
   const ratio = progress?.ratio || 0;
   const percent = Math.round(ratio * 100);
-  const tasks = course?.tasks || [];
+  const tasks = course ? courseStudyTasks(course,state.semesters) : [];
   const planned = tasks.reduce((sum, task) => sum + (creditNumber(task.hours) || 0), 0);
   const remaining = tasks.reduce((sum, task) => sum + (task.done ? 0 : creditNumber(task.hours) || 0), 0);
   const earned = course && isEarned(course, state.semesters);

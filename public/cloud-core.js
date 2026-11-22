@@ -23,7 +23,7 @@ export function makeSharedState(sourceState) {
       infoCollapsed: true,
       note: "",
       attachments: [],
-      courses: (semester.courses || []).map(course => ({
+      courses: (semester.courses || []).filter(course => !course.degreePlanGenerated).map(course => ({
         id: course.id,
         name: course.name || "",
         label: course.label || "",
@@ -31,14 +31,14 @@ export function makeSharedState(sourceState) {
         infoCollapsed: true,
         note: "",
         attachments: [],
-        categories: (course.categories || []).map(category => ({
+        categories: (course.categories || []).filter(category => !category.degreePlanGenerated || category.tasks.some(task => !task.privatePlanTask)).map(category => ({
           id: category.id,
           name: category.name || "",
           collapsed: Boolean(category.collapsed),
           infoCollapsed: true,
           note: "",
           attachments: [],
-          tasks: (category.tasks || []).map(task => ({
+          tasks: (category.tasks || []).filter(task => !task.privatePlanTask).map(task => ({
             id: task.id,
             title: task.title || "",
             detail: task.detail || "",

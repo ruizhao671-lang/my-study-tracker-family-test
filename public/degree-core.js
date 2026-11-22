@@ -329,16 +329,25 @@ export function daysBetween(start, end) {
 export const STUDY_PLAN_LINK_PREFIX = "#study-plan-v1=";
 
 export function studyPlanFromLink(hash) {
-  if (!hash.startsWith(STUDY_PLAN_LINK_PREFIX)) return null;
-  const encoded = hash.slice(STUDY_PLAN_LINK_PREFIX.length);
+  const match = hash.match(/^#study-plan-v([12])=(.*)$/);
+  if (!match) return null;
+  const encoded = match[2];
   if (encoded.length > 90000 || !/^[A-Za-z0-9_-]+$/.test(encoded)) throw new Error("Invalid study plan link");
   const bytes = Uint8Array.from(atob(encoded.replaceAll("-", "+").replaceAll("_", "/")), character => character.charCodeAt(0));
-  const { course, tasks } = JSON.parse(new TextDecoder("utf-8", { fatal: true }).decode(bytes)) || {};
-  if (typeof tasks !== "string" || !tasks.trim() || tasks.length > 30000 ||
+  const payload = JSON.parse(new TextDecoder("utf-8", { fatal: true }).decode(bytes)) || {};
+  const { course, tasks, events, period } = payload;
+  const validTasks = typeof tasks === "string" ? tasks.trim() && tasks.length <= 30000 :
+    Array.isArray(tasks) && tasks.length <= 500;
+  const validPeriod = !period || (!Array.isArray(period) && typeof period === "object" &&
+    typeof period.start === "string" && typeof period.end === "string" &&
+    /^\d{4}-\d{2}-\d{2}$/.test(period.start) && /^\d{4}-\d{2}-\d{2}$/.test(period.end) &&
+    (period.exceptDates === undefined || (Array.isArray(period.exceptDates) && period.exceptDates.every(date=>typeof date==="string"))));
+  if (!validPeriod || !validTasks || (events !== undefined && (!Array.isArray(events) || events.length > 500)) ||
       (course !== undefined && (typeof course !== "string" || course.length > 40))) {
     throw new Error("Invalid study plan data");
   }
-  return { course: normalizeModuleCode(course).toUpperCase(), tasks };
+  return { course: normalizeModuleCode(course).toUpperCase(), tasks,
+    ...(events ? { events } : {}), ...(period ? { period } : {}) };
 }
 
 export function parseStudyTasks(text, blocks) {
@@ -360,8 +369,9 @@ export function parseStudyTasks(text, blocks) {
     if (/^(?:时间块|study period)$/i.test(columns[0]) && columns.length === 4) continue;
     const [blockName, group, title, rawHours] = columns.length === 4 ? columns : [columns[2], "", columns[0], columns[1]];
     const hoursText = rawHours?.replace(/\s*(h|hours?|小时|stunden?)$/i, "").trim();
-    const hours = creditNumber(hoursText);
-    if (columns.length < 2 || columns.length > 4 || !title || !hoursText || hours === null) throw new Error(raw);
+    const unknownHours = /^(?:待定|待估算|未知|未估算|tbd|unknown|\?)$/i.test(hoursText || "");
+    const hours = unknownHours ? null : creditNumber(hoursText);
+    if (columns.length < 2 || columns.length > 4 || !title || !hoursText || (hours === null && !unknownHours)) throw new Error(raw);
     const followsCourse = !blockName || /^(?:跟随课程|use course placement)$/i.test(blockName);
     tasks.push({
       id: crypto.randomUUID(), title: title.slice(0, 180), group: group.slice(0, 100), hours,
