@@ -31,7 +31,9 @@ export function courseStudyTasks(course, semesters) {
         detail: task.detail || "", hours: task.estimatedHours ?? null, done: task.done,
         date: task.plannedDate || "", startTime: task.plannedStart || "", endTime: task.plannedEnd || "",
         weekOf: task.weekOf || "", deadline: task.deadline || "", blockId: task.planBlockId || "",
-        importKey: task.planImportKey || "", userScheduled: task.userScheduled === true
+        importKey: task.planImportKey || "", userScheduled: task.userScheduled === true,
+        seriesKey: task.planSeriesKey || "", scheduleExecuted: task.scheduleExecuted === true,
+        scheduleHours: task.scheduleHours ?? null, period: task.plannedPeriod || ""
       });
     }
   }
@@ -69,8 +71,10 @@ function normalizeTask(task) {
     !/^(?:待定|待估算|未知|未估算|tbd|unknown|\?)$/i.test(text(rawHours))) throw new Error(title);
   return {
     id: task.id || crypto.randomUUID(), title, group: text(task.group, 100), detail: text(task.detail, 4000),
-    hours, date, startTime, endTime, weekOf, deadline, blockId: task.blockId ?? "",
-    canonical: task.canonical === true, done: task.done === true, importKey: text(task.importKey, 1000), userScheduled: task.userScheduled === true
+    hours, date, startTime, endTime, weekOf:weekOf?planWeek(weekOf):"", deadline, blockId: task.blockId ?? "",
+    canonical: task.canonical === true, done: task.done === true, importKey: text(task.importKey, 1000), userScheduled: task.userScheduled === true,
+    seriesKey: text(task.seriesKey,1000), scheduleExecuted: task.scheduleExecuted === true,
+    scheduleHours: planHours(task.scheduleHours), period:text(task.period,80)
   };
 }
 
@@ -80,10 +84,16 @@ function normalizeEvent(event) {
   const startTime = text(event.startTime, 5);
   const endTime = text(event.endTime, 5);
   const type = ["class", "workshop", "deadline", "milestone", "study"].includes(event.type) ? event.type : "study";
-  if (!title || !validPlanDate(date) || !validTime(startTime) || !validTime(endTime) ||
+  const weekOf=text(event.weekOf,10);
+  const rawHours=event.hours ?? event.estimatedHours;
+  const hours=planHours(rawHours);
+  if(hours===null && rawHours!==null && rawHours!==undefined && text(rawHours) &&
+    !/^(?:待定|待估算|未知|未估算|tbd|unknown|\?)$/i.test(text(rawHours)))throw new Error("Invalid planned hours");
+  if (!title || (date ? !validPlanDate(date) : type!=="study") || (weekOf && !validPlanDate(weekOf)) || !validTime(startTime) || !validTime(endTime) ||
     (endTime && (!startTime || endTime <= startTime))) throw new Error(title || "Invalid event");
   let repeat;
   if (event.repeat) {
+    if(!date)throw new Error("Repeating events require a start date");
     if(event.repeat.frequency && event.repeat.frequency!=="weekly")throw new Error("Only weekly recurrence is supported");
     const until = event.repeat.until;
     const weekdays = event.repeat.weekdays || [new Date(date + "T12:00:00Z").getUTCDay() || 7];
@@ -94,20 +104,22 @@ function normalizeEvent(event) {
     repeat = { frequency: "weekly", until, weekdays: [...new Set(weekdays)], exceptDates: [...new Set(exceptDates)] };
   }
   return { id: event.id || crypto.randomUUID(), title, type, date, startTime, endTime,
-    detail: text(event.detail, 4000), taskId: text(event.taskId, 100), repeat,
+    detail: text(event.detail, 4000), taskId: text(event.taskId, 100), taskSeriesKey:text(event.taskSeriesKey,1000), repeat,
+    hours,weekOf:weekOf?planWeek(weekOf):"",period:text(event.period,80),executed:event.executed===true,
+    completedDates: [...new Set((event.completedDates || []).filter(validPlanDate))].slice(0,500),
     importKey: text(event.importKey, 1000) || sourceKey([type, title, date, startTime]),
     ...(event.migratedTaskId ? {migratedTaskId:text(event.migratedTaskId,100),legacyTaskDone:event.legacyTaskDone===true} : {}) };
 }
 
 export function scheduleOccurrences(event, from, until) {
-  if (!event.repeat) return event.date >= from && event.date <= until ? [{ ...event, occurrenceId: event.id + ":" + event.date }] : [];
+  if (!event.repeat) return event.date && event.date >= from && event.date <= until ? [{ ...event, occurrenceId: event.id + ":" + event.date, executed:event.executed===true }] : [];
   const result = [];
   const last = until < event.repeat.until ? until : event.repeat.until;
   const first = from > event.date ? from : event.date;
   for (let date = first; date <= last; date = addPlanDays(date, 1)) {
     const weekday = new Date(date + "T12:00:00Z").getUTCDay() || 7;
     if (event.repeat.weekdays.includes(weekday) && !event.repeat.exceptDates.includes(date)) {
-      result.push({ ...event, date, occurrenceId: event.id + ":" + date });
+      result.push({ ...event, date, occurrenceId: event.id + ":" + date, executed:(event.completedDates || []).includes(date) });
     }
   }
   return result;
@@ -128,7 +140,7 @@ export function parseCoursePlan(input, course, plan, range) {
   if (Array.isArray(input.tasks)) {
     for (const raw of input.tasks) {
       if(raw.repeat?.frequency && raw.repeat.frequency!=="weekly")throw new Error("Only weekly recurrence is supported");
-      const task = normalizeTask({ ...raw, id: crypto.randomUUID(), importKey: raw.id ? "task:" + raw.id : raw.importKey });
+      const task = normalizeTask({ ...raw, id: crypto.randomUUID(), importKey: raw.id ? "task:" + raw.id : raw.importKey, seriesKey:raw.repeat ? "task:"+(raw.id || raw.title) : "" });
       if (raw.repeat) weeklyTasks.push({ task, from: raw.repeat.from || start, until: raw.repeat.until || end,
         exceptDates: raw.repeat.exceptDates || [] });
       else tasks.push(task);
@@ -188,6 +200,13 @@ export function parseCoursePlan(input, course, plan, range) {
         importKey: sourceKey([weekly.task.importKey || weekly.task.title, weekly.task.group, week]) });
     }
   }
+  for(const event of events){
+    const bound=tasks.find(task=>task.id===event.taskId || task.importKey==="task:"+event.taskId);
+    if(bound)event.taskId=bound.id;
+    else if(event.taskId && tasks.some(task=>task.seriesKey==="task:"+event.taskId)){
+      event.taskSeriesKey="task:"+event.taskId;event.taskId="";
+    }
+  }
   for (const event of events.filter(event => !event.repeat && /替代|replaces?/i.test(event.title + " " + event.detail))) {
     for (const recurring of events.filter(item => item.repeat && item.type === "class")) {
       if (scheduleOccurrences(recurring, event.date, event.date).length) {
@@ -212,19 +231,22 @@ export function mergeImportedPlan(existingTasks, existingEvents, imported) {
     event.migratedTaskId=task.id;event.legacyTaskDone=task.done===true;convertedTasks++;return false;
   }).map(task => ({ ...task }));
   const events = existingEvents.map(event => ({ ...event }));
+  const taskIds=new Map();
   let addedTasks = 0;
   let addedEvents = 0;
   for (const task of imported.tasks) {
     const candidates=tasks.filter(item=>!item.importKey && item.title===task.title && (item.group||"")===(task.group||"") &&
       (!item.date || item.date===task.date) && (!item.weekOf || item.weekOf===task.weekOf));
-    const previous = tasks.find(item => taskKey(item) === taskKey(task)) || (candidates.length===1 ? candidates[0] : undefined);
-    if (previous) { const arranged = previous.userScheduled ? { date: previous.date, startTime: previous.startTime, endTime: previous.endTime, userScheduled: true } : {}; Object.assign(previous, task, { id: previous.id, done: previous.done, canonical: previous.canonical }, arranged); }
-    else { tasks.push(task); addedTasks++; }
+    const previous = task.forceNew ? undefined : tasks.find(item => item.id===(task.mergeIntoId || task.id) || taskKey(item) === taskKey(task)) || (candidates.length===1 ? candidates[0] : undefined);
+    taskIds.set(task.id,previous?.id || task.id);
+    if (previous) { const arranged = previous.userScheduled ? { date: previous.date, startTime: previous.startTime, endTime: previous.endTime, userScheduled: true } : {}; Object.assign(previous, task, { id: previous.id, done: task.doneEdited?task.done===true:previous.done, canonical: previous.canonical, scheduleExecuted:previous.scheduleExecuted===true, scheduleHours:previous.scheduleHours??task.scheduleHours }, arranged); }
+    else { tasks.push({...task, ...(task.forceNew ? {importKey:"copy:"+task.id} : {})}); addedTasks++; }
   }
   for (const event of importedEvents) {
-    const previous = events.find(item => item.importKey === event.importKey);
-    if (previous) { const repeat = event.repeat ? { ...event.repeat, exceptDates: [...new Set([...(previous.repeat?.exceptDates || []), ...event.repeat.exceptDates])] } : undefined; Object.assign(previous, event, { id: previous.id, repeat }); }
-    else { events.push(event); addedEvents++; }
+    if(taskIds.has(event.taskId))event.taskId=taskIds.get(event.taskId);
+    const previous = event.forceNew ? undefined : events.find(item => item.id===(event.mergeIntoId || event.id) || item.importKey === event.importKey);
+    if (previous) { const repeat = event.repeat ? { ...event.repeat, exceptDates: [...new Set([...(previous.repeat?.exceptDates || []), ...event.repeat.exceptDates])] } : undefined; Object.assign(previous, event, { id: previous.id, repeat, executed:event.executionEdited?event.executed===true:previous.executed===true, completedDates:[...(previous.completedDates||[])] }); }
+    else { events.push({...event,...(event.forceNew ? {importKey:"copy:"+event.id} : {})}); addedEvents++; }
   }
   return { tasks, events, addedTasks, addedEvents, convertedTasks };
 }
@@ -250,11 +272,11 @@ export function applyCourseStudyPlan(state, courseId, input) {
       learning = { id: crypto.randomUUID(), name: course.name, categories: [], label: "", degreePlanGenerated: true };
       stage.courses.push(learning);
     }
-    if(course.courseId!==learning.id && learning.categories.some(category=>category.tasks.length)) {
+    if(!input.replaceLinkedTasks && course.courseId!==learning.id && learning.categories.some(category=>category.tasks.length)) {
       const target=courseStudyTasks({...course,tasks:[],courseId:learning.id,passTaskId:""},state.semesters);
       tasks=mergeImportedPlan(target,[],{tasks,events:[]}).tasks;
     }
-    const before = courseStudyTasks(course, state.semesters).filter(task => task.canonical && course.courseId === learning.id);
+    const before = courseStudyTasks({...course,tasks:[],courseId:learning.id}, state.semesters).filter(task => task.canonical);
     const remapped = new Map();
     for(const task of tasks) {
       if(!learning.categories.some(category=>category.tasks.some(item=>item.id===task.id)) &&
@@ -278,6 +300,7 @@ export function applyCourseStudyPlan(state, courseId, input) {
         detail: task.detail, done: task.done, estimatedHours: task.hours, plannedDate: task.date,
         plannedStart: task.startTime, plannedEnd: task.endTime, weekOf: task.weekOf,
         deadline: task.deadline, planBlockId: task.blockId, planImportKey: task.importKey, userScheduled: task.userScheduled,
+        planSeriesKey:task.seriesKey,scheduleExecuted:task.scheduleExecuted,scheduleHours:task.scheduleHours,plannedPeriod:task.period,
         privatePlanTask: previous ? previous.privatePlanTask === true : true,
         note: previous?.note || "", attachments: previous?.attachments || [], collapsed: previous?.collapsed ?? true };
       if (previousCategory) previousCategory.tasks = previousCategory.tasks.filter(item => item.id !== saved.id);
@@ -300,20 +323,24 @@ export function studyScheduleEntries(state, from, until) {
   const entries = [];
   const seen = new Set();
   for (const course of state.degreePlan.modules.flatMap(module => module.courses)) {
+    const tasks=courseStudyTasks(course,state.semesters);
     for (const event of course.planEvents || []) {
-      for (const occurrence of scheduleOccurrences(event, from, until)) {
-        entries.push({ ...occurrence, course, kind: "event", id: "plan-event:" + event.id + ":" + occurrence.date });
+      const occurrences=event.date ? scheduleOccurrences(event,from,until) :
+        (!event.weekOf || (event.weekOf<=until && addPlanDays(event.weekOf,6)>=from)) ? [{...event,executed:event.executed===true}] : [];
+      for (const occurrence of occurrences) {
+        const task=event.taskSeriesKey ? tasks.find(task=>task.seriesKey===event.taskSeriesKey && task.weekOf===planWeek(occurrence.date || occurrence.weekOf || from)) : null;
+        entries.push({ ...occurrence, taskId:task?.id || occurrence.taskId, course, kind: "event", id: "plan-event:" + event.id + ":" + (occurrence.date || "flexible") });
       }
     }
-    for (const task of courseStudyTasks(course, state.semesters)) {
+    for (const task of tasks) {
       if (seen.has(task.id)) continue;
       seen.add(task.id);
       if(task.deadline && task.deadline>=from && task.deadline<=until) entries.push({...task,kind:"event",type:"deadline",sourceTask:true,date:task.deadline,startTime:"",endTime:"",course,taskId:task.id,id:"plan-deadline:"+task.id});
       if (task.date && (task.date < from || task.date > until)) continue;
       if (!task.date && task.weekOf && (addPlanDays(task.weekOf, 6) < from || task.weekOf > until)) continue;
       if(!task.date && entries.some(entry=>entry.course.id===course.id && entry.kind==="event" && entry.taskId===task.id &&
-        entry.startTime && entry.type==="study")) continue;
-      entries.push({ ...task, taskId: task.id, course, kind: "task", id: "plan-task:" + task.id });
+        entry.type==="study")) continue;
+      entries.push({ ...task, taskId: task.id, executed:task.scheduleExecuted===true, course, kind: "task", id: "plan-task:" + task.id });
     }
   }
   return entries;
@@ -327,4 +354,63 @@ export function taskActualHours(state, taskId, from, until) {
     const span = Math.max(1, session.endAt - session.startAt);
     return sum + Math.min(session.durationMs, overlap * session.durationMs / span) / 3600000;
   }, 0);
+}
+
+export function studySessionHours(entry) {
+  if(entry.kind==="task" && entry.scheduleHours!=null)return entry.scheduleHours;
+  if(entry.kind==="task" && entry.startTime && entry.endTime){
+    const minutes=time=>Number(time.slice(0,2))*60+Number(time.slice(3));
+    return Math.max(0,(minutes(entry.endTime)-minutes(entry.startTime))/60);
+  }
+  if(entry.hours!=null)return Number(entry.hours)||0;
+  if(entry.startTime && entry.endTime){
+    const minutes=time=>Number(time.slice(0,2))*60+Number(time.slice(3));
+    return Math.max(0,(minutes(entry.endTime)-minutes(entry.startTime))/60);
+  }
+  return 0;
+}
+
+export function patchStudyScheduleEntry(state,courseId,entryId,date,changes) {
+  const course=state.degreePlan?.modules.flatMap(module=>module.courses).find(course=>course.id===courseId);
+  if(!course)throw new Error("Course missing");
+  const tasks=courseStudyTasks(course,state.semesters),events=structuredClone(course.planEvents||[]);
+  const [kind,id]=entryId.split(":");
+  const {taskDone,...scheduleChanges}=changes;
+  changes=scheduleChanges;
+  if(typeof taskDone==="boolean"){
+    const entry=studyScheduleEntries(state,date||"0001-01-01",date||"9999-12-31").find(entry=>entry.id===entryId);
+    const target=tasks.find(task=>task.id===(kind==="plan-task"?id:entry?.taskId));
+    if(target)target.done=taskDone;
+  }
+  if(kind==="plan-task" || kind==="plan-deadline"){
+    const task=tasks.find(task=>task.id===id);
+    if(!task)throw new Error("Task missing");
+    if(kind==="plan-deadline"){if("date" in changes)task.deadline=changes.date;}
+    else{
+      for(const key of ["date","startTime","endTime","period"])if(key in changes)task[key]=changes[key];
+      if("hours" in changes)task.scheduleHours=changes.hours;
+      if("executed" in changes)task.scheduleExecuted=changes.executed===true;
+      task.userScheduled=true;
+    }
+  }else{
+    const event=events.find(event=>event.id===id);
+    if(!event)throw new Error("Time plan missing");
+    if(event.repeat){
+      const before={...event,date,executed:(event.completedDates||[]).includes(date)};
+      changes=Object.fromEntries(Object.entries(changes).filter(([key,value])=>JSON.stringify(value??"")!==JSON.stringify(before[key]??"")));
+    }
+    if(event.repeat && Object.keys(changes).every(key=>key==="executed")){
+      const dates=new Set(event.completedDates||[]);
+      if("executed" in changes){if(changes.executed)dates.add(date);else dates.delete(date);}
+      event.completedDates=[...dates];
+    }else if(event.repeat){
+      const already=(event.completedDates||[]).includes(date);
+      event.repeat.exceptDates=[...new Set([...event.repeat.exceptDates,date])];
+      const task=event.taskSeriesKey ? tasks.find(task=>task.seriesKey===event.taskSeriesKey && task.weekOf===planWeek(date)) : null;
+      events.push({...event,...changes,id:crypto.randomUUID(),date:changes.date??date,repeat:undefined,
+        taskId:task?.id || event.taskId,taskSeriesKey:"",executed:changes.executed??already,completedDates:[],
+        importKey:"moved:"+event.id+":"+date});
+    }else Object.assign(event,changes);
+  }
+  applyCourseStudyPlan(state,courseId,{tasks,events,link:course.courseId||"",range:course.planRange});
 }

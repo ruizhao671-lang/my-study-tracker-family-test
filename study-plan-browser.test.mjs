@@ -13,12 +13,17 @@ course.tasks=[
   {id:"legacy-homework",title:"完成当周作业",group:"作业",hours:2,done:false,blockId:"winter"}
 ];
 const hash="#study-plan-v1="+Buffer.from(JSON.stringify(input)).toString("base64url");
+async function openTaskDetails(){
+  const details=page.locator('#degreeDialog details').filter({has:page.locator('[name="done"]')});
+  if(await details.count() && !await details.evaluate(el=>el.open))await details.locator("summary").click();
+}
 try{
   await page.addInitScript(f=>{if(!localStorage.getItem("study-tracker-online-guest-v1"))localStorage.setItem("study-tracker-online-guest-v1",JSON.stringify(f));localStorage.setItem("study-tracker-language-v1","zh-CN");},fixture);
   await page.goto(url+"/"+hash,{waitUntil:"networkidle"});
   await page.locator('#degreeDialog[open] select[name="course"]').selectOption("kc");
   await page.locator('#degreeDialog button[type="submit"]').click();
-  await page.locator('.plan-paste').waitFor();
+  await page.locator('.plan-preview').waitFor();
+  await page.locator('.plan-import > summary').click();
   assert.equal(await page.locator('[data-field="rangeEnd"]').inputValue(),"2027-01-27");
   await page.locator('[data-field="rangeStart"]').fill("2026-11-23");
   await page.locator('[data-plan-action="preview"]').click();
@@ -37,20 +42,23 @@ try{
   assert.equal(await page.locator('.schedule-day-grid .schedule-event.class').count(),0);
   assert.equal(await page.locator('.schedule-flexible .schedule-event.plan-task').count(),1);
   await page.screenshot({path:process.env.TEMP+"/studytracker-week-plan.png",fullPage:true});
-  await page.locator(".schedule-flexible .schedule-event.plan-task").click();
+  await page.locator(".schedule-flexible .schedule-event.plan-task .schedule-event-open").click();
   await page.locator('#degreeDialog [name="date"]').fill("2026-12-08");
   await page.locator('#degreeDialog [name="startTime"]').fill("10:00");
   await page.locator('#degreeDialog [name="endTime"]').fill("12:00");
+  await openTaskDetails();
   await page.locator('#degreeDialog [name="done"]').check();
   await page.locator('#degreeDialog button[type="submit"]').click();
   assert.equal(await page.locator('.schedule-day-grid .schedule-event.plan-task.done').count(),1);
   const canonical=await page.evaluate(()=>{const s=studyTrackerBridge.getState(),c=s.degreePlan.modules[0].courses[0];return s.semesters.flatMap(s=>s.courses).find(l=>l.id===c.courseId).categories.flatMap(k=>k.tasks).find(t=>t.plannedDate==="2026-12-08");});
   assert.equal(canonical.done,true);assert.equal(canonical.estimatedHours,2);
   console.log("PASS browser: dates and completion save through the shared task");
-  await page.locator('.schedule-day-grid .schedule-event.plan-task').click();
+  await page.locator('.schedule-day-grid .schedule-event.plan-task .schedule-event-open').click();
+  await openTaskDetails();
   await page.locator('#degreeDialog [name="done"]').uncheck();
   await page.locator('#degreeDialog button[type="submit"]').click();
-  await page.locator('.schedule-day-grid .schedule-event.plan-task').click();
+  await page.locator('.schedule-day-grid .schedule-event.plan-task .schedule-event-open').click();
+  await openTaskDetails();
   await page.locator('[data-schedule="task-timer"]').click();
   if(await page.locator("#restModal.open").count())await page.locator("#restExtendBtn").click();
   await page.waitForFunction(()=>window.studyTrackerBridge.getState().timer.active);
@@ -70,6 +78,7 @@ try{
   await page.evaluate(hash=>{location.hash=hash;},hash);
   await page.locator('#degreeDialog[open] select[name="course"]').selectOption("kc");
   await page.locator('#degreeDialog button[type="submit"]').click();
+  await page.locator(".plan-import > summary").click();
   await page.locator('[data-plan-action="preview"]').click();
   assert.ok((await page.locator(".plan-preview").innerText()).includes("新增 0"));
   await page.locator('#degreeDialog button[type="submit"]').click();
@@ -84,7 +93,7 @@ try{
   assert.equal(reloaded.id,canonical.id);assert.equal(reloaded.done,true);
   await page.evaluate(()=>studyDegree.openSchedule("kc","2026-12-07"));
   const source=page.locator('.schedule-day-grid .schedule-event.plan-task');
-  await source.dragTo(page.locator('.schedule-all-day[data-drop-date="2026-12-10"]'));
+  await source.locator('.schedule-event-open').dragTo(page.locator('.schedule-all-day[data-drop-date="2026-12-10"]'));
   assert.equal(await page.locator('.schedule-all-day[data-drop-date="2026-12-10"] .plan-task').count(),1);
   await page.locator('[data-schedule="day"]').click();
   assert.equal(await page.locator(".schedule-day-grid").count(),1);
@@ -98,10 +107,10 @@ try{
     events:[{id:"ch3-session",title:"Chapter session",type:"study",date:"2026-12-16",startTime:"10:00",endTime:"12:00",taskId:"ch3"}]};
   await page.evaluate(hash=>{location.hash=hash;},"#study-plan-v2="+Buffer.from(JSON.stringify(v2)).toString("base64url"));
   await page.locator(".plan-preview").waitFor();
-  assert.ok((await page.locator(".plan-preview").innerText()).includes("未估算"));
+  assert.equal(await page.locator('[data-review-task] [data-field="hours"]').first().inputValue(),"");
   await page.locator('#degreeDialog button[type="submit"]').click();
   await page.locator('[data-plan-action="schedule"]').click();
-  await page.locator('.schedule-event.study').click();
+  await page.locator('.schedule-event.study .schedule-event-open').click();
   assert.ok((await page.locator('#degreeDialog').innerText()).includes("Chapter 3"));
   assert.equal(await page.locator('[data-schedule="task-timer"]').count(),1);
   console.log("PASS browser: v2 linked time block opens its content task with unknown estimate");

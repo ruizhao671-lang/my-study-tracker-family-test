@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { makePlan,newCourse,newModule,revisionProgress,studyPlanFromLink } from "./public/degree-core.js";
-import { studyPlanFocusDate,parseCoursePlan,mergeImportedPlan,applyCourseStudyPlan,courseStudyTasks,studyScheduleEntries,taskActualHours,scheduleOccurrences } from "./public/study-plan-core.js";
+import { patchStudyScheduleEntry,studySessionHours,studyPlanFocusDate,parseCoursePlan,mergeImportedPlan,applyCourseStudyPlan,courseStudyTasks,studyScheduleEntries,taskActualHours,scheduleOccurrences } from "./public/study-plan-core.js";
 import { makeSharedState } from "./public/cloud-core.js";
 const plan=makePlan("Test",180);
 const course=newCourse({name:"Komputer & Creativität",code:"EI04001"});
@@ -57,7 +57,7 @@ applyCourseStudyPlan(state,course.id,{...unknown,link:course.courseId,range});
 tasks=courseStudyTasks(course,state.semesters);
 assert.equal(course.planEvents[0].taskId,tasks[0].id);
 assert.equal(tasks.length,2);
-assert.equal(studyScheduleEntries(state,"2026-12-02","2026-12-02").length,3);
+assert.equal(studyScheduleEntries(state,"2026-12-02","2026-12-02").length,2);
 state.timer.sessions=[{taskId:tasks[0].id,startAt:new Date("2026-12-02T10:00").getTime(),endAt:new Date("2026-12-02T11:30").getTime(),durationMs:90*60000}];
 assert.equal(taskActualHours(state,tasks[0].id),1.5);
 assert.equal(tasks[0].done,false);
@@ -91,3 +91,60 @@ const newTarget={id:"other",name:"Other",categories:[]};state.semesters[0].cours
 applyCourseStudyPlan(state,existing.id,{tasks:courseStudyTasks(existing,state.semesters),events:[],link:newTarget.id,range});
 assert.notEqual(newTarget.categories.flatMap(c=>c.tasks).find(t=>t.title==="Public").id,"public");
 console.log("PASS study plans: real K&C import, workshop replacement, holidays, flexible workload, canonical progress, repeat import, manual placement, null estimates, timer separation, migration, v2 and privacy");
+
+const executionPlan=makePlan("Execution",180),executionCourse=newCourse({name:"Example course",code:"TEST"});
+executionPlan.modules=[newModule({courses:[executionCourse]})];executionPlan.blocks=[];
+const executionState={degreePlan:executionPlan,semesters:[],timer:{sessions:[]}};
+const executionInput={tasks:[{id:"chapter",title:"Chapter 3",group:"Chapter",hours:4}],events:[
+ {id:"evening",title:"Monday evening",type:"study",date:"2026-11-23",period:"晚上",hours:2,taskId:"chapter"},
+ {id:"independent",title:"Independent work",type:"study",date:"",weekOf:"2026-11-23",hours:1},
+ {id:"recurring",title:"Weekly study",type:"study",date:"2026-11-23",hours:1,repeat:{until:"2026-12-07",weekdays:[1]}}
+]};
+const executionImported=parseCoursePlan(executionInput,executionCourse,executionPlan,range);
+applyCourseStudyPlan(executionState,executionCourse.id,{...executionImported,link:"__new",range});
+const evening=executionCourse.planEvents.find(e=>e.title==="Monday evening");
+patchStudyScheduleEntry(executionState,executionCourse.id,"plan-event:"+evening.id+":2026-11-23","2026-11-23",{executed:true});
+let content=courseStudyTasks(executionCourse,executionState.semesters)[0];
+assert.equal(content.done,false);assert.equal(content.hours,4);
+assert.equal(executionState.timer.sessions.length,0);
+assert.equal(studySessionHours(executionCourse.planEvents.find(e=>e.id===evening.id)),2);
+assert.equal(studyScheduleEntries(executionState,"2026-11-23","2026-11-29").find(e=>e.id.includes(evening.id)).executed,true);
+assert.ok(studyScheduleEntries(executionState,"2026-11-23","2026-11-29").some(e=>e.title==="Independent work"&&!e.taskId));
+const recurring=executionCourse.planEvents.find(e=>e.title==="Weekly study");
+patchStudyScheduleEntry(executionState,executionCourse.id,"plan-event:"+recurring.id+":2026-11-23","2026-11-23",{executed:true});
+assert.deepEqual(executionCourse.planEvents.find(e=>e.id===recurring.id).completedDates,["2026-11-23"]);
+assert.equal(studyScheduleEntries(executionState,"2026-11-30","2026-11-30").find(e=>e.id.includes(recurring.id)).executed,false);
+const repeatImport=mergeImportedPlan(courseStudyTasks(executionCourse,executionState.semesters),executionCourse.planEvents,parseCoursePlan(executionInput,executionCourse,executionPlan,range));
+applyCourseStudyPlan(executionState,executionCourse.id,{...repeatImport,link:executionCourse.courseId,range});
+assert.equal(executionCourse.planEvents.find(e=>e.id===evening.id).executed,true);
+assert.deepEqual(executionCourse.planEvents.find(e=>e.id===recurring.id).completedDates,["2026-11-23"]);
+patchStudyScheduleEntry(executionState,executionCourse.id,"plan-event:"+evening.id+":2026-11-23","2026-11-23",{hours:3,taskId:""});
+assert.equal(executionCourse.planEvents.find(e=>e.id===evening.id).taskId,"");
+assert.equal(courseStudyTasks(executionCourse,executionState.semesters)[0].hours,4);
+const currentTasks=courseStudyTasks(executionCourse,executionState.semesters);
+const editedImport={tasks:[{id:"incoming",title:"Edited chapter",group:"Changed",hours:5,mergeIntoId:currentTasks[0].id}],events:[{id:"linked-review",title:"Review session",type:"study",date:"2026-11-26",taskId:"incoming"}]};
+const reviewMerged=mergeImportedPlan(currentTasks,[],editedImport);
+assert.equal(reviewMerged.tasks.length,1);
+assert.equal(reviewMerged.tasks[0].id,currentTasks[0].id);
+assert.equal(reviewMerged.tasks[0].title,"Edited chapter");
+assert.equal(reviewMerged.events[0].taskId,currentTasks[0].id);
+console.log("PASS editable merges, flexible/independent sessions, optional task links, per-occurrence execution, reimport retention, and separate estimates/progress/timer");
+
+const seriesCourse=newCourse({name:"Series"});
+executionPlan.modules[0].courses.push(seriesCourse);
+const seriesInput={tasks:[{id:"weekly-work",title:"Weekly assignment",hours:2,repeat:{from:"2026-11-23",until:"2026-12-07"}}],
+ events:[{id:"weekly-session",type:"study",title:"Weekly evening",date:"2026-11-23",hours:2,taskId:"weekly-work",repeat:{weekdays:[1],until:"2026-12-07"}}]};
+applyCourseStudyPlan(executionState,seriesCourse.id,{...parseCoursePlan(seriesInput,seriesCourse,executionPlan,range),link:"__new",range});
+const week1=studyScheduleEntries(executionState,"2026-11-23","2026-11-23").find(e=>e.course.id===seriesCourse.id&&e.kind==="event");
+const week2=studyScheduleEntries(executionState,"2026-11-30","2026-11-30").find(e=>e.course.id===seriesCourse.id&&e.kind==="event");
+assert.ok(week1.taskId&&week2.taskId);assert.notEqual(week1.taskId,week2.taskId);
+const legacyInput={tasks:[{id:"legacy-dated",title:"Dated task",hours:4,date:"2026-11-23",startTime:"19:00",endTime:"21:00"}],events:[]};
+const legacyParsed=parseCoursePlan(legacyInput,seriesCourse,executionPlan,range);
+applyCourseStudyPlan(executionState,seriesCourse.id,{...legacyParsed,link:seriesCourse.courseId,range});
+const dated=courseStudyTasks(seriesCourse,executionState.semesters)[0];
+patchStudyScheduleEntry(executionState,seriesCourse.id,"plan-task:"+dated.id,"2026-11-23",{executed:true});
+const sameImport=mergeImportedPlan(courseStudyTasks(seriesCourse,executionState.semesters),[],parseCoursePlan(legacyInput,seriesCourse,executionPlan,range));
+assert.equal(sameImport.tasks[0].scheduleExecuted,true);
+assert.equal(studySessionHours({...sameImport.tasks[0],kind:"task"}),2);
+assert.equal(sameImport.tasks[0].hours,4);
+console.log("PASS weekly task-to-session association and legacy scheduled-task execution retention");

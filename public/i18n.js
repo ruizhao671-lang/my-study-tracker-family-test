@@ -1,6 +1,9 @@
 (() => {
   const LANGUAGE_KEY = "study-tracker-language-v1";
   const english = {
+    "任务预览 / 导入": "Review tasks / import",
+    "已按计划执行": "Executed as planned",
+    "内容任务": "Content task",
     "任务已完成": "Task completed",
     "开始任务计时": "Start task timer",
     "编辑课程计划": "Edit course plan",

@@ -66,3 +66,33 @@ Run node check.mjs, node degree-plan.test.mjs, node cloud-core.test.mjs, node st
 For node study-plan-browser.test.mjs, configure PLAYWRIGHT_MODULE, BROWSER_EXECUTABLE and optionally STUDY_TRACKER_TEST_URL (default http://127.0.0.1:8096).
 
 The browser test uses an isolated guest context: K&C import, Workshop replacement, flexible work, progress, timer, existing calendar, reimport, persistence, dragging, day/week switching and mobile overflow. Screenshots go to the OS temporary directory.
+
+## Editable review and time-plan execution
+
+The course plan editor now has two sections: **Study tasks** and **Time plans**. Link, JSON and legacy text imports produce editable preview rows. Users can edit titles/types/hours, exclude rows, select an existing task/event to merge into, or explicitly keep a separate item. Nothing is written until Save. Existing progress IDs, completion, notes and attachments survive a merge. The progress course's task list is the source of truth.
+
+The timetable includes an editable **Time plans** list with an execution checkbox for each occurrence. Plan execution is independent of content task completion and timer sessions:
+
+- Non-repeating events use executed (boolean).
+- Repeating events use completedDates (ISO dates), so checking one week does not check the whole series.
+- Legacy dated tasks use scheduleExecuted and scheduleHours; their done and estimatedHours remain separate.
+- Dragging/editing an occurrence keeps the existing repeat exception mechanism.
+- Weekly task imports preserve planSeriesKey, allowing a repeating session's taskId to resolve to the matching week's task.
+- Reimporting keeps execution flags, completedDates and progress status.
+
+New v2 study-session fields:
+
+    {"id":"evening","type":"study","title":"Evening study",
+     "date":"2026-11-23","period":"Evening","hours":2,"taskId":"chapter3"}
+
+taskId is optional. startTime/endTime are optional. If the day is unknown, a study event may leave date blank and supply weekOf; hours and period still remain editable. weekOf is normalized to Monday. Unknown hours remain null. A known start/end interval can supply the displayed planned duration without creating an actual study record. Content estimated hours and session planned hours can differ.
+
+Do not set executed or completedDates in ChatGPT-generated future plans. These reflect user execution. The in-app **Copy instructions for ChatGPT** button describes the same schema used by the importer.
+
+The existing timer calendar projects these same plans and execution flags. It does not store a duplicate calendar copy or mark content tasks complete when execution is checked.
+
+Additional browser acceptance test:
+
+    node study-plan-review-browser.test.mjs
+
+Use the same PLAYWRIGHT_MODULE, BROWSER_EXECUTABLE and STUDY_TRACKER_TEST_URL variables. This test covers editable preview, exclusion, duplicate merge preserving notes/attachments, linked/unlinked sessions, per-occurrence execution, manual task/session creation, validation recovery, calendar sync, reload, reimport, mobile layout and the generated ChatGPT instructions.

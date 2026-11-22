@@ -3523,7 +3523,7 @@
     }
 
     function handlePlanCalendarAction(action,item,target) {
-      if(action==="complete-planned-task")window.studyTrackerBridge.setPlannedTaskDone(item.degreeCourseId,item.taskId,target.checked);
+      if(action==="execute-planned-session")window.studyTrackerBridge.patchStudyScheduleEntry(item.degreeCourseId,item.id,item.date,{executed:target.checked});
       if(action==="time-planned-task")window.studyTrackerBridge.startPlannedTaskTimer(item.degreeCourseId,item.taskId);
       if(action==="edit-plan-source")window.studyDegree.openCourseStudyPlan(item.degreeCourseId);
     }
@@ -3843,7 +3843,8 @@
 
     function calendarItemDetailsHtml(item, includeActions = true) {
       if(item.type==="study") return `<strong>${escapeHtml(item.title)}</strong><p>${escapeHtml(item.startTime?(item.startTime+" – "+(item.endTime||"")):t("全天事项"))}</p>
-        ${item.taskId?`<label><input type="checkbox" data-action="complete-planned-task" ${item.done?"checked":""}> ${t("任务已完成")}</label>`:""}
+        ${item.executionAvailable?`<label><input type="checkbox" data-action="execute-planned-session" ${item.executed?"checked":""}> ${t("已按计划执行")}</label>`:""}
+        ${item.taskId?`<p>${t("内容任务")}：${t(item.done?"已完成":"未完成")}</p>`:""}
         <div class="actions">${item.canonical?`<button class="btn secondary" data-action="time-planned-task" type="button">${t("开始任务计时")}</button>`:""}
         <button class="btn secondary" data-action="edit-plan-source" type="button">${t("编辑课程计划")}</button></div>`;
       const path = [item.semesterName, item.courseName].filter(Boolean).join(" / ");
@@ -4489,7 +4490,7 @@
               <span class="badge"></span>
               ${canLinkDegree ? `<button class="btn secondary progress-link" type="button" data-action="link-degree-progress">
                 ${t(degreeLabel ? "已关联毕业规划" : "关联毕业规划")}</button>
-                ${degreeLabel?'<button class="btn secondary" type="button" data-action="open-linked-study-plan">'+t("编辑课程计划")+'</button>':""}` : ""}
+                ${degreeLabel?'<button class="btn secondary" type="button" data-action="open-linked-study-plan">'+t("任务预览 / 导入")+'</button>':""}` : ""}
             </div>
             <div class="progress-bar" aria-hidden="true">
               <div class="progress-fill"></div>
@@ -6710,6 +6711,12 @@
         window.studyDegree.applyCourseStudyPlan(draft,courseId,input);
         state = normalizeState(draft);
         commit();
+      },
+      patchStudyScheduleEntry(courseId,entryId,date,changes) {
+        if (READ_ONLY_LINK || window.studyCloud?.isReadOnly?.()) return;
+        const draft=JSON.parse(JSON.stringify(state));
+        window.studyDegree.patchStudyScheduleEntry(draft,courseId,entryId,date,changes);
+        state=normalizeState(draft);commit();
       },
       setPlannedTaskDone(courseId,taskId,done) {
         if (READ_ONLY_LINK || window.studyCloud?.isReadOnly?.()) return;
