@@ -60,6 +60,27 @@
 @media(max-width:600px){.plan-task-mode-line{gap:3px}.schedule-week-heading{width:100%;order:-1}.schedule-week-heading small{line-height:1.5}}
 .task-brick-head{flex-wrap:wrap}.task-mode-button{font:inherit;font-size:.72rem;white-space:nowrap;color:#286b58;background:#fff;border:1px solid #bdd8ca;border-radius:6px;padding:4px 7px;cursor:pointer}.task-mode-button:hover{background:#e4f3eb}
 .schedule-version{align-self:center;margin-left:auto;color:#6b8175;font-size:.72rem;white-space:nowrap}
+
+/* Month, week and day share the same schedule entries and task shelf. */
+.study-schedule.is-month-view .schedule-workflow{display:none}
+@media(max-width:1150px){.study-schedule.is-month-view .schedule-plan-list{grid-row:2}.study-schedule.is-month-view .schedule-month-scroll{grid-row:1}}
+.schedule-view-switch{display:flex;gap:4px}.schedule-view-switch .btn[aria-pressed=true]{background:#157c70;color:#fff;border-color:#157c70}
+.schedule-month{display:grid;grid-template-columns:38px repeat(7,minmax(0,1fr));background:#fff}
+.schedule-month-weekday{padding:12px 4px;text-align:center;font-weight:650;background:#f0f7f3;color:#355e50;border-bottom:1px solid #d3e3d9;font-size:.82rem}
+.schedule-month-week{display:flex;flex-direction:column;align-items:center;justify-content:flex-start;gap:8px;padding:12px 3px;border:0;border-right:1px solid #d8e5dd;border-bottom:1px solid #d8e5dd;background:#f5f9f6;color:#567566;font:inherit;font-size:.8rem;cursor:pointer;min-width:0}
+.schedule-month-week small{font-size:.62rem;line-height:1.4;overflow-wrap:anywhere}
+.schedule-month-day{position:relative;padding:7px;min-height:125px;min-width:0;box-sizing:border-box;border-right:1px solid #dce7e1;border-bottom:1px solid #dce7e1;cursor:pointer}
+.schedule-month-day.is-outside{background:#f6f8f6;color:#a0afa5}.schedule-month-day.is-today{background:#f1faf5;box-shadow:inset 0 0 0 1px #82bba4}
+.schedule-month-date{display:block;margin:0 0 6px;padding:3px 6px;min-width:28px;min-height:28px;border:0;border-radius:7px;background:transparent;color:inherit;font:inherit;font-weight:650;font-size:.8rem;cursor:pointer}
+.schedule-month-day.is-today .schedule-month-date{background:#157c70;color:#fff}
+.schedule-month-events{display:grid;gap:5px;min-width:0}
+.schedule-month-entry{display:block;width:100%;box-sizing:border-box;min-width:0;text-align:left;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;border:1px solid var(--study-status-border,#c3d6ca);border-left:3px solid var(--study-course-color,#53826d);border-radius:5px;background:var(--study-status-bg,#eef5f1);color:var(--study-status-ink,#315e4c);padding:5px;font:inherit;font-size:.7rem;line-height:1.4;cursor:pointer}
+.schedule-month-entry[draggable=true]{cursor:grab}.schedule-month-entry:hover{filter:brightness(.97)}
+.schedule-month-more{font:inherit;font-size:.69rem;line-height:1.5;text-align:left;color:#417b62;background:none;border:0;padding:2px;cursor:pointer}
+.schedule-month-actual{display:block;font:inherit;font-size:.66rem;text-align:left;color:#536e68;border:1px dashed #80968c;background:#f6f9f7;border-radius:4px;margin-top:6px;padding:3px 5px;max-width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;cursor:pointer}
+.schedule-month-help{font-size:.76rem;line-height:1.6;color:#648173;margin:0;padding:12px 14px;background:#f8fbf9}
+@media(max-width:600px){.schedule-month{grid-template-columns:27px repeat(7,minmax(0,1fr))}.schedule-month-day{padding:3px;min-height:110px}.schedule-month-weekday{font-size:.65rem;padding:9px 0}.schedule-month-date{font-size:.7rem;margin-bottom:4px;padding:3px;min-width:25px;min-height:26px}.schedule-month-entry{font-size:.6rem;padding:3px 1px;border-left-width:2px}.schedule-month-week{font-size:.68rem;padding:9px 1px}.schedule-month-week small{font-size:.55rem}.schedule-month-actual{font-size:.55rem;padding:2px 1px}.schedule-month-more{font-size:.56rem}.schedule-month-help{font-size:.72rem;padding:10px}}
+
 /* Study plans share tasks with progress and display virtual recurring events. */
 .plan-edit-row{border:1px solid var(--border,#d4e2df);border-radius:12px;padding:14px;margin:10px 0;background:var(--surface,#fff)}
 .plan-edit-row label,.plan-import label{display:block;margin:8px 0}.plan-edit-row .degree-row{gap:8px;flex-wrap:wrap}

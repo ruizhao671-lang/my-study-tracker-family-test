@@ -533,10 +533,32 @@ export function studyCalendarEntries(state,from,until) {
   return entries;
 }
 
-export function monthTaskWeeks(state,month) {
+
+export function studySchedulePeriod(date,view="week"){
+  if(!validPlanDate(date))throw new Error("Invalid schedule date");
+  const first=view==="month"?date.slice(0,7)+"-01":view==="week"?planWeek(date):date;
+  let last;
+  if(view==="month"){const next=new Date(first+"T12:00:00Z");next.setUTCMonth(next.getUTCMonth()+1);last=addPlanDays(next.toISOString().slice(0,10),-1);}
+  else last=addPlanDays(first,view==="week"?6:0);
+  const count=1+Math.round((Date.parse(last)-Date.parse(first))/86400000);
+  return {first,last,dates:Array.from({length:count},(_,i)=>addPlanDays(first,i))};
+}
+export function shiftStudyScheduleDate(date,view,direction){
+  if(view!=="month")return addPlanDays(date,direction*(view==="week"?7:1));
+  const target=new Date(date.slice(0,7)+"-01T12:00:00Z");target.setUTCMonth(target.getUTCMonth()+direction);
+  const month=target.toISOString().slice(0,7),last=studySchedulePeriod(month+"-01","month").last;
+  return month+"-"+String(Math.min(Number(date.slice(8)),Number(last.slice(8)))).padStart(2,"0");
+}
+export function studyMonthEntries(state,first,last){
+  const entries=studyCalendarEntries(state,first,last).filter(e=>e.kind!=="exam");
+  for(let date=first;date<=last;date=addPlanDays(date,1))entries.push(...studyExamEntries(state,date,date));
+  return entries;
+}
+
+export function monthTaskWeeks(state,month,courseId="") {
   if(!/^\d{4}-(0[1-9]|1[0-2])$/.test(month))return [];
   const first=month+"-01",next=new Date(first+"T12:00:00Z");next.setUTCMonth(next.getUTCMonth()+1);
-  const last=addPlanDays(next.toISOString().slice(0,10),-1),tasks=studyTaskItems(state,first,last).filter(t=>!t.done),result=[];
+  const last=addPlanDays(next.toISOString().slice(0,10),-1),tasks=studyTaskItems(state,first,last).filter(t=>!t.done&&(!courseId||t.course.id===courseId)),result=[];
   for(let start=planWeek(first);start<=last;start=addPlanDays(start,7)){
     const end=addPlanDays(start,6),matching=tasks.filter(t=>t.window.start?t.window.start<=end&&(!t.window.end||t.window.end>=start):
       t.window.end&&t.window.end>=start&&t.window.end<=end);

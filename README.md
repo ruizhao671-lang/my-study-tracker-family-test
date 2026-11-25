@@ -21,6 +21,7 @@ The project started as a personal tool for organizing university courses, exam p
   - pause countdown
   - manual study time entry
   - day calendar and daily timeline
+- Study timetable with month, week and day views, course filters, task bricks, and shared planned/actual records.
 - Calendar items:
   - exams with subject, time, location, and requirements
   - general calendar items
@@ -116,6 +117,7 @@ node degree-plan.test.mjs
 node study-plan.test.mjs
 node study-plan-update.test.mjs
 node study-scheduling-mode.test.mjs
+node study-month.test.mjs
 node study-bricks.test.mjs
 node study-calendar-overview.test.mjs
 node open-source-check.mjs

@@ -4,12 +4,12 @@ const browser=await chromium.launch({executablePath:process.env.BROWSER_EXECUTAB
 const page=await browser.newPage({viewport:{width:1600,height:1100},timezoneId:"Europe/Berlin"});
 const url=process.env.STUDY_TRACKER_TEST_URL||"http://127.0.0.1:8096";
 const errors=[];page.on("pageerror",e=>errors.push(e.message));
-const c1={id:"c1",name:"Signaltheorie",code:"EI00330",credits:5,passed:false,courseId:"l1",blockId:"winter",tasks:[],exams:[{id:"exam",date:"2026-11-27",time:"14:00",location:"München"}],
-planEvents:[{id:"slot",type:"study",title:"Chapter 3 study",date:"2026-11-26",startTime:"18:00",endTime:"20:00",hours:2,taskId:"t1"}]};
+const c1={id:"c1",name:"Signaltheorie",code:"EI00330",credits:5,passed:false,courseId:"l1",blockId:"winter",tasks:[],exams:[{id:"exam",date:"2026-11-27",time:"14:00",location:"München"},{id:"retake",date:"2026-11-30",time:"10:00",location:"München"}],
+planEvents:[{id:"slot",type:"study",title:"Chapter 3 study",date:"2026-11-26",startTime:"18:00",endTime:"20:00",hours:2,taskId:"t1"},...Array.from({length:4},(_,i)=>({id:"milestone-"+i,type:"milestone",title:"Milestone "+i,date:"2026-11-20"}))]};
 const c2={id:"c2",name:"Komputer & Creativität",code:"EI04001",credits:6,passed:false,courseId:"l2",blockId:"winter",tasks:[],exams:[],planEvents:[{id:"class",type:"class",title:"K&C class",date:"2026-11-25",startTime:"13:15",endTime:"16:15",hours:3,taskId:"t2"}]};
 const fixture={ownerName:"Hub test",semesters:[{id:"s",name:"Winter",courses:[
 {id:"l1",name:c1.name,categories:[{id:"cat1",name:"Vorlesung",tasks:[{id:"t1",title:"Chapter 3",estimatedHours:4,done:false,weekOf:"2026-11-23"}]}]},
-{id:"l2",name:c2.name,categories:[{id:"cat2",name:"Hausaufgabe",tasks:[{id:"t2",title:"Week 7",estimatedHours:2,done:false,weekOf:"2026-11-23"},{id:"future",title:"Week 8",estimatedHours:2,done:false,weekOf:"2026-11-30"}]}]},
+{id:"l2",name:c2.name,categories:[{id:"cat2",name:"Hausaufgabe",tasks:[{id:"t2",title:"Week 7",estimatedHours:2,done:false,weekOf:"2026-11-23"},{id:"future",title:"Week 8",estimatedHours:2,done:false,weekOf:"2026-11-30"},{id:"undated",title:"Week 10",estimatedHours:null,done:false}]}]},
 {id:"ordinary",name:"Independent course",categories:[]}]}],degreePlan:{name:"Test",requiredCredits:180,modules:[{id:"m",name:"Required",kind:"required",requiredCredits:120,courses:[c1,c2]}],blocks:[{id:"winter",name:"Winter",start:"2026-10-12",end:"2027-02-05"}]},
 timer:{selectedDate:"2026-11-25",calendarMonth:"2026-11",dayOpen:false,scheduleStartMinute:0,scheduleEndMinute:0,
 calendarItems:[{id:"appointment",type:"reminder",title:"Office appointment",date:"2026-11-24",startTime:"09:00",endTime:"09:30",details:"Bring papers"}],
@@ -46,6 +46,57 @@ try{
  assert.equal(await page.locator(".schedule-event.exam").count(),1);
  assert.equal(await page.locator(".schedule-event.reminder").count(),1);
  assert.equal(await page.locator(".schedule-actual").count(),1,"All-courses view includes actual records from ordinary courses");
+
+ await page.locator('[data-schedule="month"]').click();
+ assert.equal(await page.locator(".schedule-month-day").count(),42);
+ assert.equal(await page.locator('[data-schedule="month"]').getAttribute("aria-pressed"),"true");
+ assert.ok((await page.locator(".schedule-summary").innerText()).includes("本月计划"));
+ assert.equal(await page.locator('.schedule-month-entry[data-entry="plan-exam:c1:exam"]').count(),1);
+ assert.equal(await page.locator('.schedule-month-entry[data-entry="plan-exam:c1:retake"]').count(),1,"Month includes every known sitting");
+ assert.equal(await page.locator('.schedule-month-entry[data-scheduling-mode="fixed"]').getAttribute("draggable"),"false");
+ assert.equal(await page.locator(".schedule-month-actual").count(),1);
+ const monthDay=date=>page.locator('[data-month-date="'+date+'"]');
+ assert.equal(await monthDay("2026-11-20").locator(".schedule-month-entry").count(),3);
+ await monthDay("2026-11-20").locator(".schedule-month-more").click();
+ assert.equal(await page.locator(".schedule-day-grid").count(),1);
+ assert.equal(await page.locator(".schedule-event.milestone").count(),4);
+ await page.locator('[data-schedule="month"]').click();
+ await monthDay("2026-11-26").locator('[data-entry="plan-event:slot:2026-11-26"]').click();
+ await page.locator('#degreeDialog [name="endTime"]').fill("21:00");await page.locator('#degreeDialog [name="endTime"]').blur();
+ await page.locator('#degreeDialog button[type="submit"]').click();
+ await monthDay("2026-11-26").locator('[data-entry="plan-event:slot:2026-11-26"]').dragTo(monthDay("2026-11-28"),{targetPosition:{x:80,y:100}});
+ assert.equal((await get()).degreePlan.modules[0].courses[0].planEvents[0].startTime,"18:00");
+ assert.equal((await get()).degreePlan.modules[0].courses[0].planEvents[0].endTime,"21:00");
+ await monthDay("2026-11-28").locator('[data-entry="plan-event:slot:2026-11-28"]').dragTo(monthDay("2026-11-26"),{targetPosition:{x:80,y:100}});
+ await page.locator('[data-task-bucket="all"]').click();
+ await page.locator('[data-task-source="t1"] strong').first().dragTo(monthDay("2026-11-29"),{targetPosition:{x:80,y:100}});
+ const newSlot=(await get()).degreePlan.modules[0].courses[0].planEvents.find(e=>e.taskId==="t1"&&e.id!=="slot");
+ assert.equal(newSlot.date,"2026-11-29");assert.equal(newSlot.startTime,"","Month task drops never invent a clock time");
+ await monthDay("2026-11-29").locator('[data-entry="plan-event:'+newSlot.id+':2026-11-29"]').click();
+ await page.locator('[data-schedule="unschedule"]').click();
+ await page.locator("[data-schedule-filter]").selectOption("c1");
+ assert.equal(await page.locator('.schedule-month-entry[data-scheduling-mode="fixed"]').count(),0);
+ assert.equal(await page.locator(".schedule-month-actual").count(),0);
+ assert.equal(await monthDay("2026-11-24").locator(".schedule-month-entry").count(),0);
+ await page.locator("[data-schedule-filter]").selectOption("");
+ await page.locator("[data-schedule-date]").fill("2027-01-31");await page.locator("[data-schedule-date]").dispatchEvent("change");
+ await page.locator('[data-schedule="next"]').click();assert.equal(await page.locator("[data-schedule-date]").inputValue(),"2027-02-28");
+ assert.equal(await page.locator(".schedule-month-day:not(.is-outside)").count(),28);
+ await page.locator('[data-schedule="today"]').click();
+ await page.locator(".schedule-controls").scrollIntoViewIfNeeded();
+ await page.screenshot({path:process.env.TEMP+"/studytracker-study-month.png"});
+ await page.setViewportSize({width:390,height:844});await page.locator(".schedule-month").scrollIntoViewIfNeeded();
+ assert.ok(await page.locator(".schedule-month").evaluate(el=>el.scrollWidth<=el.clientWidth+2));
+ assert.ok(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth+1));
+ await page.screenshot({path:process.env.TEMP+"/studytracker-study-month-mobile.png"});
+ await monthDay("2026-11-26").locator("[data-day]").first().click();assert.equal(await page.locator(".schedule-day-grid").count(),1);
+ await page.locator('[data-schedule="month"]').click();
+ await page.locator('[data-month-week="2026-11-23"]').click();assert.equal(await page.locator(".schedule-day-grid").count(),7);
+ await page.setViewportSize({width:1600,height:1100});
+ const unknown=(await get()).semesters[0].courses[1].categories[0].tasks.find(t=>t.id==="undated");
+ assert.equal(unknown.weekOf,undefined);assert.equal((await get()).timer.sessions.length,1);
+ console.log("PASS timetable month: actual navigation, all sittings, fixed locks, reminders and actual records, overflow/day/week links, edit and move without time loss, task split with no invented time, course filters, month/year navigation and mobile");
+
  await page.locator(".schedule-event.reminder .schedule-event-open").click();
  assert.ok((await page.locator("#degreeDialog").innerText()).includes("Bring papers"));
  await page.locator("#degreeDialog [data-dialog-close]").click();
