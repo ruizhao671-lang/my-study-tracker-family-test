@@ -115,3 +115,43 @@ body.study-schedule-mode .app{width:min(1480px,calc(100% - 36px))}
 .schedule-day-grid .schedule-event-open>strong,.schedule-day-grid .schedule-event-open>b{flex-shrink:0}
 .schedule-event .schedule-execution,.schedule-agenda-item .schedule-execution{display:flex;flex:0 0 auto;min-height:0;height:auto;color:inherit}
 @media(max-width:600px){.study-calendar-legend{gap:8px 12px;font-size:.72rem}}
+/* Task bricks: one canonical task, multiple linked time slots. */
+.schedule-workspace{grid-template-columns:minmax(0,1fr) 350px}
+.schedule-plan-list .schedule-flexible{margin:0}
+.schedule-plan-list .schedule-flexible-grid{grid-template-columns:minmax(0,1fr);padding:8px;gap:10px}
+.schedule-plan-list .schedule-flexible-grid:has(.plan-empty){min-height:100px}
+.task-bucket-tabs{display:flex;flex-wrap:wrap;gap:5px;margin:10px 0}
+.task-bucket-tabs button{border:1px solid #cddfd7;border-radius:7px;background:#fff;color:#476c60;font:inherit;font-size:.74rem;padding:5px 7px;cursor:pointer}
+.task-bucket-tabs button[aria-pressed=true]{background:#197c6e;color:#fff;border-color:#197c6e}
+.task-bucket-tabs b{font-size:.72rem;opacity:.85}
+.task-brick-filters{display:grid;grid-template-columns:minmax(0,1fr) 95px;gap:7px}
+.task-brick-filters label{display:grid;gap:4px;font-size:.72rem;color:#5a756a;min-width:0}
+.task-brick-filters .input{width:100%;box-sizing:border-box;min-width:0;font-size:.75rem;padding:7px 5px}
+.task-drop-duration{display:flex;align-items:center;gap:6px;font-size:.76rem;margin:10px 0}
+.task-drop-duration .input{width:65px;padding:5px;min-height:32px}
+.task-unscoped-note{font:inherit;font-size:.76rem;background:#fff5df;color:#765b26;border:1px solid #ead6a8;border-radius:7px;padding:8px;cursor:pointer;margin-bottom:10px;text-align:left}
+.task-brick{cursor:grab!important;border-top:4px solid var(--study-course-color)!important;gap:7px!important}
+.task-brick-head{display:flex;justify-content:space-between;align-items:center;gap:8px}
+.schedule-course-chip{font-size:.72rem;color:var(--study-course-color,#376c67);font-weight:650;line-height:1.4}
+.task-brick .task-brick-done{display:flex;align-items:center;gap:4px;flex:0 0 auto;font-size:.72rem;white-space:nowrap}
+.task-brick-done input{width:15px;height:15px;accent-color:#21775e}
+.task-window-label{padding:0;text-align:left;font:inherit;font-size:.73rem;background:transparent;border:0;color:#61766d;cursor:pointer;line-height:1.5}
+.task-hour-stats{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:5px;padding:8px;background:#ffffff9c;border-radius:7px}
+.task-hour-stats span{display:grid;gap:4px;font-size:.7rem;color:#64756d}.task-hour-stats b{color:#294e44;font-size:.8rem}
+.task-brick .study-status-badge{margin:0}.task-brick small{font-size:.72rem!important}
+.task-brick-actions{display:flex;flex-wrap:wrap;gap:6px}.task-brick-actions .btn{flex:1;min-height:34px;margin-top:3px!important;padding:5px;font-size:.72rem!important}
+.task-allocation-list{font-size:.72rem;color:#4b6e60}.task-allocation-list summary{cursor:pointer}
+.task-allocation-list button{display:block;background:#ffffff96;border:1px solid #cbded4;border-radius:5px;color:inherit;padding:5px;margin:5px 0;font:inherit;text-align:left;width:100%;cursor:pointer}
+.schedule-session-list{border-top:1px solid #ccddd4;margin-top:18px;padding-top:12px}.schedule-session-list>summary{cursor:pointer;font-size:.85rem;font-weight:700;color:#3d6757;margin-bottom:12px}
+.schedule-event:not(.task-brick),.schedule-agenda-item{border-top:3px solid var(--study-course-color,#678c80)!important}
+.schedule-event{position:relative}
+.schedule-drag-grip{position:absolute;top:3px;right:3px;width:16px;height:18px;min-height:0;padding:0;border:0;background:transparent;color:inherit;font-size:16px;line-height:1;cursor:grab;opacity:.7}
+.schedule-day-grid .schedule-event-open{padding-right:14px;box-sizing:border-box}
+.schedule-resize{position:absolute;bottom:0;left:20%;width:60%;height:8px;min-height:0;padding:0;background:transparent;border:0;border-bottom:3px solid currentColor;border-radius:3px;opacity:.4;cursor:ns-resize;touch-action:none}
+.schedule-resize:hover{opacity:1}.schedule-day-grid .schedule-event{padding-bottom:10px}
+.schedule-drop-over{outline:2px dashed #178876;outline-offset:-3px;background-color:#dcefe780}
+.course-color-note{font-size:.75rem;color:#62796d;margin:-7px 0 14px}
+.calendar-plan-name[style],.day-item-card.study[style],.time-block.study-block[style]{border-top:3px solid var(--study-course-color,#688f80)}
+.task-completion-window{font-size:.75rem;color:#557a68;margin:8px 0}
+@media(max-width:1150px){.schedule-workspace{grid-template-columns:minmax(0,1fr)}.schedule-plan-list{display:block}.schedule-plan-list .schedule-flexible-grid{grid-template-columns:repeat(auto-fit,minmax(230px,1fr))}.schedule-plan-list .plan-section-title{position:static}.task-brick-filters{grid-template-columns:minmax(0,1fr) 130px}}
+@media(max-width:600px){.schedule-plan-list .schedule-flexible-grid{grid-template-columns:minmax(0,1fr)}.schedule-plan-list{max-height:680px}.task-brick-filters{grid-template-columns:minmax(0,1fr) 95px}}

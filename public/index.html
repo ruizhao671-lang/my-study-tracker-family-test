@@ -3834,7 +3834,7 @@
               <span class="day-number">${date.getDate()}</span>
               <span class="day-total">${total ? formatDurationShort(total) : ""}</span>
             </button>
-            <div class="calendar-exams">${examNames}${moreExams}${plans.slice(0,2).map(item=>`<button class="calendar-exam-name calendar-plan-name ${window.studyDegree?.calendarStatusClass?.(item)||''}" type="button" data-action="select-calendar-item" data-item-id="${item.id}" data-date="${key}" title="${escapeHtml(item.title)}">${escapeHtml(item.title)}</button>`).join("")}${plans.length>2?`<button class="calendar-exam-name calendar-plan-name" type="button" data-action="select-timer-date" data-date="${key}">+${plans.length-2}</button>`:""}</div>
+            <div class="calendar-exams">${examNames}${moreExams}${plans.slice(0,2).map(item=>`<button class="calendar-exam-name calendar-plan-name ${window.studyDegree?.calendarStatusClass?.(item)||''}" style="${window.studyDegree?.calendarCourseStyle?.(item.course)||''}" type="button" data-action="select-calendar-item" data-item-id="${item.id}" data-date="${key}" title="${escapeHtml(item.title)}">${escapeHtml(item.title)}</button>`).join("")}${plans.length>2?`<button class="calendar-exam-name calendar-plan-name" type="button" data-action="select-timer-date" data-date="${key}">+${plans.length-2}</button>`:""}</div>
             <div class="calendar-reminders">${reminderDots}</div>
           </div>
         `);
@@ -3885,7 +3885,7 @@
       els.timerSelectedDateTitle.textContent = formatDateLabel(dateKey);
       els.timerDaySummary.textContent = `${t("总计")} ${formatDurationShort(total)}`;
       els.timerDayItems.innerHTML = allDayItems.map(item => `
-        <article class="day-item-card ${item.type} ${window.studyDegree?.calendarStatusClass?.(item)||""} ${item.id === selectedCalendarItemId ? "selected" : ""}" data-calendar-item-id="${item.id}">
+        <article class="day-item-card ${item.type} ${window.studyDegree?.calendarStatusClass?.(item)||""} ${item.id === selectedCalendarItemId ? "selected" : ""}" style="${item.type==="study"?window.studyDegree?.calendarCourseStyle?.(item.course)||"":""}" data-calendar-item-id="${item.id}">
           ${calendarItemDetailsHtml(item)}
         </article>
       `).join("");
@@ -3934,7 +3934,7 @@
         const minHeight = item.type === "exam" ? 156 : 112;
         const height = Math.max(minHeight, (blockMinutes / 60) * hourHeight - 4);
         parts.push(`
-          <article class="time-block ${item.type}-block ${window.studyDegree?.calendarStatusClass?.(item)||""} ${item.id === selectedCalendarItemId ? "selected" : ""}" style="top:${top}px;height:${height}px" data-calendar-item-id="${item.id}">
+          <article class="time-block ${item.type}-block ${window.studyDegree?.calendarStatusClass?.(item)||""} ${item.id === selectedCalendarItemId ? "selected" : ""}" style="${item.type==="study"?window.studyDegree?.calendarCourseStyle?.(item.course)||"":""}top:${top}px;height:${height}px" data-calendar-item-id="${item.id}">
             ${calendarItemDetailsHtml(item)}
           </article>
         `);
@@ -6719,6 +6719,18 @@
         if (READ_ONLY_LINK || window.studyCloud?.isReadOnly?.()) return;
         const draft=JSON.parse(JSON.stringify(state));
         window.studyDegree.patchStudyScheduleEntry(draft,courseId,entryId,date,changes);
+        state=normalizeState(draft);commit();
+      },
+      createTaskStudySession(courseId,taskId,values) {
+        if (READ_ONLY_LINK || window.studyCloud?.isReadOnly?.()) return;
+        const draft=JSON.parse(JSON.stringify(state));
+        const id=window.studyDegree.createTaskStudySession(draft,courseId,taskId,values);
+        state=normalizeState(draft);commit();return id;
+      },
+      removeStudyScheduleEntry(courseId,entryId,date) {
+        if (READ_ONLY_LINK || window.studyCloud?.isReadOnly?.()) return;
+        const draft=JSON.parse(JSON.stringify(state));
+        window.studyDegree.removeStudyScheduleEntry(draft,courseId,entryId,date);
         state=normalizeState(draft);commit();
       },
       setPlannedTaskDone(courseId,taskId,done) {

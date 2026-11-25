@@ -107,11 +107,16 @@ Do not commit real secrets. Use `.env.example` as the template.
 ```powershell
 node check.mjs
 node cloud-core.test.mjs
+node degree-plan.test.mjs
+node study-plan.test.mjs
+node study-bricks.test.mjs
 node open-source-check.mjs
 .\.venv\Scripts\python.exe api-test.py
 ```
 
-The checks cover frontend structure, translation coverage, timer behavior, account isolation, sharing privacy, backend API behavior, and public-release safety basics.
+The checks cover frontend structure, translation coverage, timer behavior, task windows and multiple planned sessions, account isolation, sharing privacy, backend API behavior, and public-release safety basics.
+
+Browser checks (with `PLAYWRIGHT_MODULE`, `BROWSER_EXECUTABLE` and `STUDY_TRACKER_TEST_URL` configured) include `study-plan-browser.test.mjs`, `study-plan-review-browser.test.mjs`, `calendar-status-browser.test.mjs` and `study-bricks-browser.test.mjs`. The task-brick check exercises imports, split sessions, dragging, resizing, unscheduling, timing, manual completion, reload persistence and mobile layout.
 
 ## Current Limitations
 

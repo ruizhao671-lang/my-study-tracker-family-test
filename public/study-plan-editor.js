@@ -1,5 +1,5 @@
 import { suggestProgressCourse, studyPlanFromLink } from "./degree-core.js";
-import { courseStudyTasks, parseCoursePlan, mergeImportedPlan, scheduleOccurrences, taskActualHours, addPlanDays, studySessionHours } from "./study-plan-core.js";
+import { courseStudyTasks, parseCoursePlan, mergeImportedPlan, scheduleOccurrences, taskActualHours, addPlanDays, studySessionHours,planWeek } from "./study-plan-core.js";
 const en=()=>window.studyI18n?.getLanguage?.()==="en";
 const w=(zh,english)=>en()?english:zh;
 const esc=value=>String(value??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"})[c]);
@@ -88,8 +88,8 @@ export function openPlanEditor({course,plan,semesters,received,showDialog,bridge
   }
   function taskFields(t){
     return `<div class="plan-task-main">${field(w("任务名称","Task"),"title",t.title)}${field(w("章节 / 类型","Chapter / type"),"group",t.group)}${field(w("预计小时","Estimated hours"),"hours",t.hours??"","number",'min="0" step="any" placeholder="'+w("未估算","Unknown")+'"')}</div>
-      <details class="plan-row-details"><summary>${w("说明、日期与完成状态","Details, dates and completion")}</summary>
-      <div class="degree-fields">${field(w("所属周（待安排）","Flexible week"),"weekOf",t.weekOf,"date")}${field(w("截止日期","Deadline"),"deadline",t.deadline,"date")}
+      <div class="degree-fields task-completion-window">${field(w("教学周编号（可选）","Teaching week (optional)"),"teachingWeek",t.teachingWeek??"","number",'min="1" max="100" step="1"')}${field(w("任务完成周（周一）","Completion week (Monday)"),"weekOf",t.weekOf,"date")}</div><details class="plan-row-details"><summary>${w("完成范围、期限与完成状态","Completion window, deadline and completion")}</summary>
+      <div class="degree-fields">${field(w("完成范围开始（可选）","Completion window starts"),"windowStart",t.windowStart,"date")}${field(w("完成范围结束（可选）","Completion window ends"),"windowEnd",t.windowEnd,"date")}${field(w("截止日期","Deadline"),"deadline",t.deadline,"date")}
         ${field(w("计划日期（兼容已有安排）","Planned date"),"date",t.date,"date")}${field(w("开始","Start"),"startTime",t.startTime,"time")}${field(w("结束","End"),"endTime",t.endTime,"time")}</div>
       <label>${w("任务说明","Details")}<textarea class="input" data-field="detail" rows="2">${esc(t.detail)}</textarea></label>
       <label class="plan-check"><input type="checkbox" data-field="done" ${t.done?"checked":""}> ${w("内容任务已完成（同步学习进度）","Content task completed (sync progress)")}</label></details>`;
@@ -205,11 +205,11 @@ export function openPlanEditor({course,plan,semesters,received,showDialog,bridge
     try{
       if(action==="preview"){showPreview();return;}
       if(action==="copy-format"){
-        const example={course:course.code||"",period:readRange(),tasks:[{id:"chapter-3",title:"学习第三章",group:"章节",hours:null}],
+        const example={course:course.code||"",period:readRange(),tasks:[{id:"chapter-3",title:"学习第三章",group:"章节",hours:null,weekOf:planWeek(readRange().start),teachingWeek:null}],
           events:[{id:"evening-session",type:"study",title:"晚间学习",date:readRange().start,period:"晚上",hours:2,taskId:"chapter-3"}]};
         const prompt="请按我们已确认的内容生成 StudyTracker v2 导入链接和原始 JSON。结构示例（替换为实际内容）："+JSON.stringify(example)+
           "\\n tasks 是学习进度里的内容任务；events 是时间安排。时段 type:study，可填 date、period（如晚上）、hours、可选 startTime/endTime；taskId 可关联 tasks 的稳定 id，不关联则留空。"+
-          "预计工时未知用 null，不编造日期或工时。每周任务可用 repeat:{from,until,exceptDates:[]}，只保留每周工作量；重复日程用 repeat:{frequency:'weekly',weekdays:[1],until,exceptDates:[]}。"+
+          "任务完成范围用 weekOf（该周周一）或 windowStart/windowEnd；teachingWeek 可记录教学周编号，deadline 只表示期限。这些字段不会占据具体日历小时，不要把完成周写入 date。一个任务可由多个 events 的 taskId 指向，分次安排而不复制任务。固定上课生成 class 事件，关联每周课堂任务；没定时刻的作业只生成 tasks。预计工时未知用 null，不编造日期或工时。每周任务可用 repeat:{from,until,exceptDates:[]}，只保留每周工作量；重复日程用 repeat:{frequency:'weekly',weekdays:[1],until,exceptDates:[]}。"+
           "上课用 class，Workshop 用 workshop，重要日期用 milestone，截止日期用 deadline。替代课在原重复安排的 exceptDates 中排除。任务 id、事件 id 在更新时保持不变。不要给计划勾完成或生成实际计时。"+
           "请实际计算 JSON 的 UTF-8 Base64URL（去掉 =），反向解码校验，链接为 "+location.origin+"/#study-plan-v2=<encoded>。";
         navigator.clipboard.writeText(prompt).then(()=>{form.querySelector(".plan-error").textContent=w("已复制，可发给制定计划的 ChatGPT。","Copied for your planning chat.");}).catch(()=>showError(w("复制失败，请检查剪贴板权限。","Clipboard permission unavailable.")));return;
@@ -230,6 +230,7 @@ export function openPlanEditor({course,plan,semesters,received,showDialog,bridge
   form.addEventListener("change",event=>{
     const reviewTask=event.target.closest("[data-review-task]"),reviewEvent=event.target.closest("[data-review-event]");
     if(reviewTask && event.target.dataset.field==="done")preview.tasks.find(t=>t.id===reviewTask.dataset.reviewTask).doneEdited=true;
+    if(reviewEvent && ["date","startTime","endTime","hours","period","weekOf"].includes(event.target.dataset.field))preview.events.find(e=>e.id===reviewEvent.dataset.reviewEvent).arrangementEdited=true;
     if(reviewEvent && event.target.dataset.field==="executed")preview.events.find(e=>e.id===reviewEvent.dataset.reviewEvent).executionEdited=true;
     if(["type","repeatUntil"].includes(event.target.dataset.field)){try{readRows();draw();}catch(error){showError(error.message);}return;}
     if(event.target.matches("[data-include]")){disableReview(event.target.closest(".plan-review-row"),!event.target.checked);try{refreshPreviewSummary();}catch(error){showError(error.message);}return;}

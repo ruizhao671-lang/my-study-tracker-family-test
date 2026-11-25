@@ -29,6 +29,7 @@ try{
  await page.goto(url,{waitUntil:"networkidle"});
  await page.waitForFunction(()=>window.studyDegree?.openSchedule);
  await page.evaluate(()=>studyDegree.openSchedule("kc","2026-11-18"));
+ await page.locator('[data-task-bucket="all"]').first().click();
  const flexible=page.locator(".schedule-flexible");
  assert.ok((await flexible.innerText()).includes("Vorlesung · Week 1"));
  assert.ok((await flexible.innerText()).includes("Hausaufgabe · Week 1"));
