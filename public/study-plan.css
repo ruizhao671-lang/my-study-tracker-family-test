@@ -47,6 +47,17 @@
 @media(max-width:1150px){.task-group-grid{grid-template-columns:repeat(auto-fit,minmax(220px,1fr))}}
 @media(max-width:600px){.plan-task-group>header{padding:10px;align-items:flex-start}.plan-task-group>header>.btn{font-size:.75rem;padding:6px}.plan-task-overview{gap:7px}.plan-path-actions .btn{min-width:190px}.task-group-grid{grid-template-columns:minmax(0,1fr)}}
 
+
+.plan-task-mode-line{display:flex;align-items:center;flex-wrap:wrap;gap:8px 14px;margin:8px 0}
+.plan-task-mode-line>span,.plan-fixed-note,.plan-week-context{font-size:.76rem;line-height:1.6;color:#5a7669}
+.plan-edit-row .plan-mode-choice,.plan-review-row .plan-mode-choice{display:flex;align-items:center;gap:10px;font-size:.8rem}
+.plan-mode-choice{white-space:nowrap;flex-shrink:0}.plan-task-mode-line>span{flex:1 1 140px}
+.plan-mode-choice .input{width:auto;min-width:135px;max-width:100%}
+.plan-fixed-fields{padding:10px;background:#f3f8f4;border-radius:8px;border:1px solid #d5e5d9}
+.plan-week-context:empty{display:none}
+.schedule-week-heading{display:grid;gap:5px}.schedule-week-heading small{font-size:.75rem;color:#5a7567;max-width:390px}
+.schedule-event[data-scheduling-mode=fixed]{cursor:pointer}
+@media(max-width:600px){.plan-task-mode-line{gap:3px}.schedule-week-heading{width:100%;order:-1}.schedule-week-heading small{line-height:1.5}}
 /* Study plans share tasks with progress and display virtual recurring events. */
 .plan-edit-row{border:1px solid var(--border,#d4e2df);border-radius:12px;padding:14px;margin:10px 0;background:var(--surface,#fff)}
 .plan-edit-row label,.plan-import label{display:block;margin:8px 0}.plan-edit-row .degree-row{gap:8px;flex-wrap:wrap}

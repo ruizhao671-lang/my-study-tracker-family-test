@@ -1,5 +1,5 @@
-export const TASK_FIELDS=["title","group","detail","hours","date","startTime","endTime","weekOf","deadline","windowStart","windowEnd","teachingWeek","blockId","seriesKey"];
-export const EVENT_FIELDS=["title","type","date","startTime","endTime","hours","weekOf","period","detail","taskId","taskSeriesKey","repeat"];
+export const TASK_FIELDS=["schedulingMode","title","group","detail","hours","date","startTime","endTime","weekOf","deadline","windowStart","windowEnd","teachingWeek","blockId","seriesKey"];
+export const EVENT_FIELDS=["schedulingMode","title","type","date","startTime","endTime","hours","weekOf","period","detail","taskId","taskSeriesKey","repeat"];
 export function sourceId(item,kind="task"){
   const key=item.importKey||"",prefix=kind==="task"?"task:":"event:";
   if(key.startsWith(prefix))return key.slice(prefix.length);

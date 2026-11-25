@@ -53,10 +53,11 @@ export function replaceTumMathChoice(plan, courseId, code) {
   module.courses = module.courses.map(course => course.id === courseId ? replacement : course);
 }
 
+// Source: https://www.tum.de/en/studies/application/application-info-portal/dates-periods-and-deadlines
 // Lecture dates published by TUM. Break blocks extend to the next lecture period.
-const TUM_TERMS = [
+export const TUM_TERMS = [
   { term: "SS 2026", starts: "2026-04-01", lectureStart: "2026-04-13", lectureEnd: "2026-07-17", breakEnd: "2026-10-11" },
-  { term: "WS 2026/27", starts: "2026-10-01", lectureStart: "2026-10-12", lectureEnd: "2027-02-05", breakEnd: "2027-04-11" },
+  { term: "WS 2026/27", starts: "2026-10-01", lectureStart: "2026-10-12", lectureEnd: "2027-02-05", breakEnd: "2027-04-11", lectureBreaks:[{start:"2026-12-24",end:"2027-01-06"}] },
   { term: "SS 2027", starts: "2027-04-01", lectureStart: "2027-04-12", lectureEnd: "2027-07-16", breakEnd: "2027-10-17" },
   { term: "WS 2027/28", starts: "2027-10-01", lectureStart: "2027-10-18", lectureEnd: "2028-02-11", breakEnd: "2028-03-31" }
 ];

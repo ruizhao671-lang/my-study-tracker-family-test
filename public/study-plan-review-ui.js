@@ -5,12 +5,14 @@ const w=(zh,english)=>en()?english:zh;
 const esc=v=>String(v??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"})[c]);
 export function changeTable(changes,taskNames={}){
   if(!changes.length)return `<p class="plan-diff-empty">${w("内容未变化","No content changes")}</p>`;
-  const label=key=>({title:w("名称","Title"),group:w("分类","Category"),detail:w("说明","Details"),hours:w("预计小时","Estimated hours"),
-    date:w("日期","Date"),weekOf:w("完成周","Completion week"),deadline:w("期限","Deadline"),windowStart:w("范围开始","Window starts"),windowEnd:w("范围结束","Window ends"),teachingWeek:w("教学周","Teaching week"),
+  const label=key=>({schedulingMode:w("安排方式","Scheduling"),title:w("名称","Title"),group:w("分类","Category"),detail:w("说明","Details"),hours:w("预计小时","Estimated hours"),
+    date:w("日期","Date"),weekOf:w("完成周","Completion week"),deadline:w("期限","Deadline"),windowStart:w("范围开始","Window starts"),windowEnd:w("范围结束","Window ends"),teachingWeek:w("课程周次","Course week"),
     startTime:w("开始","Starts"),endTime:w("结束","Ends"),type:w("安排类型","Event type"),period:w("时段备注","Period"),taskId:w("关联任务","Linked task"),taskSeriesKey:w("按周关联任务","Weekly task association"),range:w("计划日期范围","Plan date range"),repeat:w("重复规则","Recurrence"),done:w("完成状态","Completion"),executed:w("执行状态","Execution")})[key]||key;
 
   const value=(v,key)=>{
+    if(key==="schedulingMode"&&!v)return w("跟随日程类型","Follow session type");
     if(v===null||v===undefined||v==="")return w("空 / 未设置","Empty / unset");
+    if(key==="schedulingMode")return v==="fixed"?w("固定时间","Fixed time"):w("自由安排","Flexible");
     if(key==="taskId")return taskNames[v]||w("关联任务（见任务列表）","Linked task (see task list)");
     if(key==="taskSeriesKey")return String(v).replace(/^task:/,"");
     if(key==="repeat"&&typeof v==="object"){

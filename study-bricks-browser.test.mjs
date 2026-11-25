@@ -37,7 +37,7 @@ try{
  await page.locator(".study-schedule").waitFor();
  assert.equal(await brick("original").count(),1);
  assert.equal(await brick("backlog").count(),0);assert.equal(await brick("future").count(),0);assert.equal(await brick("done").count(),0);
- assert.ok((await brick("original").innerText()).includes("第 7 教学周"));
+ assert.ok((await brick("original").innerText()).includes("课程第 7 周"));
  assert.equal(await page.locator(".schedule-event.class").count(),1);
  assert.equal((await get()).degreePlan.modules[0].courses[0].planEvents.length,1);
  assert.equal(allTasks(await get()).find(t=>t.id==="original").plannedDate,"");
