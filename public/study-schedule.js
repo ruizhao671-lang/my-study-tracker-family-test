@@ -1,5 +1,5 @@
 import { studyEntryStatus, studyExamEntries, studyPlanFocusDate, studyScheduleEntries, courseStudyTasks, taskActualHours, addPlanDays, planWeek, studySessionHours,studyTaskItems,studyTaskWindow,studyCalendarEntries,monthTaskWeeks,studyWeekLabel,eventSchedulingMode,taskSchedulingMode } from "./study-plan-core.js";
-const SCHEDULE_VERSION="2026.11.25.2";
+const SCHEDULE_VERSION="2026.11.25.3";
 const en=()=>window.studyI18n?.getLanguage?.()==="en";
 const w=(zh,english)=>en()?english:zh;
 const esc=v=>String(v??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"})[c]);
@@ -69,7 +69,7 @@ function renderTaskShelf(items){
   const weeks=new Map();for(const e of items){const key=taskWeekKey(e);if(key&&!weeks.has(key))weeks.set(key,windowText(e));}
   return `<section class="schedule-flexible" data-unschedule="true"><div class="plan-section-title"><h3>${w("可拖动的学习任务","Draggable study tasks")}</h3>${btn(w("+ 添加时段","＋ Add session"),"new-session")}</div>
     <nav class="task-bucket-tabs" aria-label="${w("任务范围","Task scope")}">${buckets.map(([key,label])=>`<button type="button" data-task-bucket="${key}" aria-pressed="${taskBucket===key}">${label} <b>${counts[key]}</b></button>`).join("")}</nav>
-    <div class="task-brick-filters"><label>${w("周次 / 日期","Week / dates")}<select class="input" data-task-week><option value="">${w("全部周次","All weeks")}</option>${[...weeks].sort(([a],[b])=>a.localeCompare(b)).map(([key,label])=>`<option value="${esc(key)}" ${taskWeekFilter===key?"selected":""}>${esc(label)}</option>`).join("")}</select></label>
+    <div class="task-brick-filters"><label>${w("周次 / 日期","Week / dates")}<select class="input" data-task-week><option value="">${w("全部周次","All weeks")}</option>${[...weeks].sort(([a],[b])=>a.localeCompare(b,"en",{numeric:true})).map(([key,label])=>`<option value="${esc(key)}" ${taskWeekFilter===key?"selected":""}>${esc(label)}</option>`).join("")}</select></label>
     <label>${w("完成状态","Completion")}<select class="input" data-task-status>${[["all",w("全部","All")],["pending",w("未完成","Incomplete")],["done",w("已完成","Completed")]].map(([key,label])=>`<option value="${key}" ${taskStatusFilter===key?"selected":""}>${label}</option>`).join("")}</select></label></div>
     <label class="task-drop-duration">${w("每次拖入安排","Duration when dropping")}<input class="input" data-drop-hours type="number" min=".25" max="12" step=".25" value="${dropHours}">h</label>
     <p class="degree-help">${w("这里只显示自由任务，点击「自由安排 ▾」可修改方式。固定日程带 🔒，点击日历中的时间块修改；不参与拖动。","Only flexible tasks appear here. Click Flexible ▾ to change scheduling. Fixed sessions show 🔒; click their calendar block to edit. Fixed sessions cannot be dragged.")}</p>
