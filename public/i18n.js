@@ -1,6 +1,9 @@
 (() => {
   const LANGUAGE_KEY = "study-tracker-language-v1";
   const english = {
+    "内容任务已完成": "Content task completed",
+    "标记内容任务完成": "Mark content task complete",
+    "任务已完成 · 改为未完成": "Task complete · mark incomplete",
     "调整安排": "Adjust session",
     "添加安排": "Add session",
     "移除安排": "Remove session",

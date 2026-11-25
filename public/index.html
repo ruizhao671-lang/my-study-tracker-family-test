@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>My Study Tracker</title>
   <link rel="stylesheet" href="degree-plan.css">
-  <link rel="stylesheet" href="study-plan.css?v=20261125-4">
+  <link rel="stylesheet" href="study-plan.css?v=20261125-5">
   <link rel="stylesheet" href="exam-hourglass.css">
   <style>
     :root {
@@ -2154,6 +2154,7 @@
             <div class="field">
               <label for="timerTask">关联任务（可选）</label>
               <select class="input" id="timerTask" name="taskId"></select>
+              <button class="btn secondary" id="timerTaskDoneBtn" type="button" disabled>标记内容任务完成</button>
             </div>
             <label class="timer-complete-option">
               <input id="timerCompleteTask" type="checkbox">
@@ -2341,7 +2342,7 @@
 
   <script src="cloud-bootstrap.js"></script>
   <script type="module" src="api-sync.js"></script>
-  <script type="module" src="degree-plan.js?v=20261125-4"></script>
+  <script type="module" src="degree-plan.js?v=20261125-5"></script>
   <script src="i18n.js"></script>
   <script>
     const STORAGE_KEY = "study-tracker-online-state-v1";
@@ -2636,6 +2637,7 @@
           courseId: timer.active.courseId || "",
           categoryId: timer.active.categoryId || "",
           taskId: timer.active.taskId || "",
+          archivedTask:timer.active.archivedTask||null,
           markTaskDone: Boolean(timer.active.markTaskDone),
           note: typeof timer.active.note === "string" ? timer.active.note : ""
         };
@@ -3284,6 +3286,7 @@
     }
 
     function getTimerSelection() {
+      if(state.timer.active?.archivedTask)return {...state.timer.active.archivedTask,task:null,markTaskDone:false,note:els.timerNote.value.trim()};
       const semesterId = els.timerSemester.value || "";
       const semester = semesterId ? findSemester(semesterId) : null;
       const courseId = els.timerCourse.value || "";
@@ -3310,6 +3313,7 @@
     function syncTimerFormToActive() {
       if (!state.timer.active) return;
       const selection = getTimerSelection();
+      if(state.timer.active.archivedTask){state.timer.active.note=selection.note;saveState();return;}
       state.timer.active.semesterId = selection.semesterId;
       state.timer.active.courseId = selection.courseId;
       state.timer.active.categoryId = selection.categoryId;
@@ -3341,6 +3345,8 @@
       }).join("")}`;
       els.timerTask.disabled = !category;
       els.timerTask.value = category?.tasks?.some(task => task.id === selectedTaskId) ? selectedTaskId : "";
+      const selectedTask=category?.tasks.find(task=>task.id===els.timerTask.value),doneButton=document.getElementById("timerTaskDoneBtn");
+      doneButton.disabled=!selectedTask;doneButton.textContent=t(selectedTask?.done?"任务已完成 · 改为未完成":"标记内容任务完成");doneButton.setAttribute("aria-pressed",String(selectedTask?.done===true));
       els.timerCompleteTask.disabled = !els.timerTask.value;
       els.timerCompleteTask.checked = Boolean(els.timerTask.value && active?.markTaskDone);
       els.timerNote.value = active?.note || els.timerNote.value || "";
@@ -3473,7 +3479,7 @@
         { label: "关联课程（可选）", name: "manualCourseId", value: initial.courseId, required: false, options: [{ value: "", label: t("不关联课程") }] },
         { label: "关联分类（可选）", name: "manualCategoryId", value: initial.categoryId, required: false, options: [{ value: "", label: t("不关联分类") }] },
         { label: "关联任务（可选）", name: "manualTaskId", value: initial.taskId, required: false, options: [{ value: "", label: t("不关联任务") }] },
-        { label: "任务状态", name: "manualMarkTaskDone", value: session?.markTaskDone ? "yes" : "no", options: [
+        { label: "任务状态", name: "manualMarkTaskDone", value: "no", options: [
           { value: "no", label: t("不修改任务完成状态") },
           { value: "yes", label: t("保存后同时标记这个任务完成") }
         ] },
@@ -3507,7 +3513,7 @@
           state.timer.sessions = state.timer.sessions.filter(item => item.groupId !== session.groupId);
         }
         state.timer.sessions.push(...nextSessions);
-        if (selection.markTaskDone && selection.task) selection.task.done = true;
+        if (selection.markTaskDone && selection.task){if(window.studyDegree)window.studyDegree.setStudyTaskDone(state,selection.task.id,true);else selection.task.done=true;}
         state.timer.selectedDate = dateKeyFromTime(parsedStartAt);
         state.timer.calendarMonth = state.timer.selectedDate.slice(0, 7);
         state.timer.dayOpen = true;
@@ -3528,6 +3534,7 @@
 
     function handlePlanCalendarAction(action,item,target) {
       if(action==="execute-planned-session")window.studyTrackerBridge.patchStudyScheduleEntry(item.degreeCourseId,item.id,item.date,{executed:target.checked});
+      if(action==="complete-planned-task")window.studyTrackerBridge.setPlannedTaskDone(item.degreeCourseId,item.taskId,target.checked);
       if(action==="time-planned-task")window.studyTrackerBridge.startPlannedTaskTimer(item.degreeCourseId,item.taskId);
       if(action==="edit-plan-source")window.studyDegree.openCourseStudyPlan(item.degreeCourseId);
     }
@@ -3851,7 +3858,7 @@
     function calendarItemDetailsHtml(item, includeActions = true) {
       if(item.type==="study") return `<strong>${escapeHtml(item.title)}</strong>${window.studyDegree?.calendarStatusBadge?.(item)||""}<p>${escapeHtml(item.startTime?(item.startTime+" – "+(item.endTime||"")):t("全天事项"))}</p>
         ${item.executionAvailable?`<label><input type="checkbox" data-action="execute-planned-session" ${item.executed?"checked":""}> ${t("已按计划执行")}</label>`:""}
-        ${item.taskId?`<p>${t("内容任务")}：${t(item.done?"已完成":"未完成")}</p>`:""}
+        ${item.taskId?`<label><input type="checkbox" data-action="complete-planned-task" ${item.done?"checked":""}> ${t("内容任务已完成")}</label>`:""}
         <div class="actions">${item.canonical?`<button class="btn secondary" data-action="time-planned-task" type="button">${t("开始任务计时")}</button>`:""}
         <button class="btn secondary" data-action="edit-plan-source" type="button">${t("编辑课程计划")}</button></div>`;
       const path = [item.semesterName, item.courseName].filter(Boolean).join(" / ");
@@ -4756,6 +4763,7 @@
     }
 
     function commit(message, recordHistory = true,kind="edit") {
+      if(!READ_ONLY_LINK&&!window.studyCloud?.isReadOnly?.())window.studyDegree?.reconcileStudyWorkspace(state);
       if (recordHistory) {
         const snapshot = JSON.stringify(state);
         if (snapshot !== history[historyIndex]) {
@@ -4786,6 +4794,7 @@
       state = normalizeState(JSON.parse(history[historyIndex]));
       if(window.studyDegree?.preserveLiveHistory)state=window.studyDegree.preserveLiveHistory(state,live,{preserveProgress:protect});
       else state.timer=live.timer;
+      window.studyDegree?.reconcileStudyWorkspace(state);
       saveState();
       render();
       showToast(direction < 0 ? "已撤销上一步" : "已恢复下一步");
@@ -5039,6 +5048,7 @@
     }
 
     function commitTimer(message) {
+      if(!READ_ONLY_LINK&&!window.studyCloud?.isReadOnly?.())window.studyDegree?.reconcileStudyWorkspace(state);
       saveState();
       render();
       if (message) showToast(message);
@@ -5120,7 +5130,7 @@
       const sessions = buildTimerSessions(active, selection, endAt);
       if (!sessions.length) return;
       if (!autoEndedByPause && selection.markTaskDone && selection.task) {
-        selection.task.done = true;
+        if(window.studyDegree)window.studyDegree.setStudyTaskDone(state,selection.task.id,true);else selection.task.done=true;
       }
       state.timer.sessions.push(...sessions);
       state.timer.selectedDate = dateKeyFromTime(sessions[0].startAt);
@@ -6090,6 +6100,7 @@
       });
     });
     els.timerSemester.addEventListener("change", () => {
+      if(state.timer.active)delete state.timer.active.archivedTask;
       if (state.timer.active) {
         state.timer.active.semesterId = els.timerSemester.value || "";
         state.timer.active.courseId = "";
@@ -6101,6 +6112,7 @@
       syncTimerFormToActive();
     });
     els.timerCourse.addEventListener("change", () => {
+      if(state.timer.active)delete state.timer.active.archivedTask;
       if (state.timer.active) {
         state.timer.active.courseId = els.timerCourse.value || "";
         state.timer.active.categoryId = "";
@@ -6111,6 +6123,7 @@
       syncTimerFormToActive();
     });
     els.timerCategory.addEventListener("change", () => {
+      if(state.timer.active)delete state.timer.active.archivedTask;
       if (state.timer.active) {
         state.timer.active.categoryId = els.timerCategory.value || "";
         state.timer.active.taskId = "";
@@ -6120,12 +6133,18 @@
       syncTimerFormToActive();
     });
     els.timerTask.addEventListener("change", () => {
+      if(state.timer.active)delete state.timer.active.archivedTask;
       if (state.timer.active) {
         state.timer.active.taskId = els.timerTask.value || "";
         state.timer.active.markTaskDone = Boolean(els.timerTask.value && els.timerCompleteTask.checked);
       }
       renderTimerFormOptions();
       syncTimerFormToActive();
+    });
+    document.getElementById("timerTaskDoneBtn").addEventListener("click",()=>{
+      if(READ_ONLY_LINK||window.studyCloud?.isReadOnly?.())return;
+      const selected=getTimerSelection();if(!selected.task)return;
+      window.studyDegree.setStudyTaskDone(state,selected.taskId,!selected.task.done);commitTimer();
     });
     els.timerCompleteTask.addEventListener("change", syncTimerFormToActive);
     els.timerNote.addEventListener("input", syncTimerFormToActive);
@@ -6193,7 +6212,7 @@
       const { semester, course, category, task } = findFromEvent(event.target);
 
       if (action === "toggle-task" && task) {
-        task.done = event.target.checked;
+        if(window.studyDegree)window.studyDegree.setStudyTaskDone(state,task.id,event.target.checked);else task.done=event.target.checked;
         commit();
       }
 
@@ -6726,6 +6745,11 @@
         semesters: state.semesters,
         editable: !READ_ONLY_LINK && !window.studyCloud?.isReadOnly?.()
       }),
+      applyWeeklyRule(courseId,input,rows){
+        if(READ_ONLY_LINK||window.studyCloud?.isReadOnly?.())return;
+        const draft=structuredClone(state),result=window.studyDegree.applyWeeklyRule(draft,courseId,input,rows);
+        state=normalizeState(draft);commit(undefined,true,"plan");return result;
+      },
       saveCourseStudyPlan(courseId, input) {
         if (READ_ONLY_LINK || window.studyCloud?.isReadOnly?.()) return;
         const draft = JSON.parse(JSON.stringify(state));
@@ -6767,7 +6791,7 @@
         const degreeCourse=state.degreePlan?.modules.flatMap(m=>m.courses).find(c=>c.id===courseId);
         const learning=state.semesters.flatMap(s=>s.courses).find(c=>c.id===degreeCourse?.courseId);
         const task=learning?.categories.flatMap(c=>c.tasks).find(t=>t.id===taskId) || degreeCourse?.tasks.find(t=>t.id===taskId);
-        if(task){task.done=done;commit();}
+        if(task){window.studyDegree.setStudyTaskDone(state,taskId,done,courseId);commit();}
       },
       openCourseProgress(courseId) {
         const stage=state.semesters.find(s=>s.courses.some(c=>c.id===courseId));
@@ -6820,6 +6844,7 @@
       },
       replaceState(nextState, options = {}) {
         state = normalizeState(nextState);
+        window.studyDegree?.resetTaskSync(state);
         history = [JSON.stringify(state)];
         historyIndex = 0;historyKinds=["baseline"];
         if (options.persist !== false) saveState();

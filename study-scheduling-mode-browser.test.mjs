@@ -25,7 +25,7 @@ try{
  await page.locator("#degreePanelBtn").click();
  await page.locator('#degreePanel [data-degree="schedule"]').click();
  await page.locator("[data-schedule-filter]").selectOption("kc");
- assert.equal(await page.locator("[data-schedule-version]").innerText(),"v2026.11.25.4");
+ assert.equal(await page.locator("[data-schedule-version]").innerText(),"v2026.11.25.5");
  assert.ok((await page.locator("[data-calendar-week]").innerText()).includes("校历第 7 周"));
  assert.ok((await page.locator("[data-calendar-week]").innerText()).includes("KW 48"));
  await page.locator('[data-task-bucket="all"]').click();
@@ -96,7 +96,9 @@ try{
  await page.locator('[data-plan-action="pane-events"]').click();
  await page.locator('[data-review-event] [data-conflict-choice]').selectOption("apply");
  await page.locator('[data-plan-action="save-schedule"]').click();
- assert.equal(await brick("lecture8").count(),0,"Future-task scope remains separate from mode");
+ await page.locator('[data-task-bucket="future"]').click();
+ assert.equal(await brick("lecture8").count(),0,"Already scheduled tasks leave future pending");
+ await page.locator('[data-task-bucket="scheduled"]').click();assert.equal(await brick("lecture8").count(),1);
  await page.evaluate(()=>studyDegree.openSchedule("kc","2026-11-30"));
  assert.equal(await page.locator(".schedule-day-grid .schedule-event.class").getAttribute("draggable"),"true");
  await page.evaluate(()=>studyDegree.openCourseStudyPlan("kc"));

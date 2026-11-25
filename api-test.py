@@ -36,7 +36,10 @@ def auth(token: str) -> dict[str, str]:
 
 private_state = {
     "ownerName": "Demo User",
-    "degreePlan": {"name": "PRIVATE_DEGREE_PLAN", "modules": [], "blocks": []},
+    "degreePlan": {"name": "PRIVATE_DEGREE_PLAN", "modules": [{"id": "private-module", "courses": [
+        {"id": "private-course", "weeklyRules": [{"id": "private-rule", "categoryId": "private-category", "enabled": True}],
+         "planEvents": [{"id": "private-slot", "batchRuleId": "private-rule", "taskSnapshot": {"id": "private-task", "title": "PRIVATE_PLANNED_TASK"}}]}
+    ]}], "blocks": []},
     "courseTemplates": [{"id": "private-template"}],
     "timer": {"calendarItems": [
         {"id": "ordinary", "title": "Shareable exam", "date": "2027-01-14"},

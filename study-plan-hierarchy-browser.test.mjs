@@ -60,7 +60,7 @@ try{
  assert.equal(course(state).planEvents[0].hours,2);assert.equal(tasks(state).length,4,"Scheduling reuses the progress task, with no copy");
  assert.equal(state.timer.sessions.length,1);assert.equal(tasks(state).find(t=>t.id==="lecture7").note,"Retain notes");
  await page.screenshot({path:process.env.TEMP+"/studytracker-grouped-task-bricks.png"});
- await brick("homework7").locator("[data-task-done]").check();
+ await brick("homework7").locator("[data-task-done]").click();
  await page.evaluate(()=>studyTrackerBridge.openCourseProgress("learning"));
  assert.equal(await page.locator('.task[data-task-id="homework7"] [data-action="toggle-task"]').isChecked(),true,"Planner completion updates progress");
  await page.evaluate(()=>studyDegree.openCourseStudyPlan("other"));

@@ -237,4 +237,19 @@ body.study-schedule-mode .app{width:min(1480px,calc(100% - 36px))}
 .timer-task-weeks{border-top:1px solid #d6e3dd;margin-top:14px;padding-top:12px;color:#496e60;font-size:.8rem}.timer-task-weeks>div{display:flex;gap:6px;flex-wrap:wrap;margin-top:8px}.timer-task-weeks .btn{padding:6px 8px;min-height:34px;font-size:.76rem}
 .task-completion-window{font-size:.75rem;color:#557a68;margin:8px 0}
 @media(max-width:1150px){.schedule-workspace{grid-template-columns:minmax(0,1fr)}.schedule-plan-list{display:block}.schedule-plan-list .schedule-flexible-grid{grid-template-columns:repeat(auto-fit,minmax(230px,1fr))}.schedule-plan-list .plan-section-title{position:static}.task-brick-filters{grid-template-columns:minmax(0,1fr) 130px}}
+
+.weekly-category-button{font-size:.72rem!important;padding:5px 8px!important;min-height:30px;white-space:normal}
+.task-shelf-category>header{flex-wrap:wrap;cursor:grab}.task-shelf-category>header h5{flex:1;min-width:80px}
+.weekly-preview-heading{display:flex;flex-direction:column;gap:5px;padding:16px;background:#e9f5ef;border:1px solid #d1e4da;border-radius:12px;margin-bottom:12px}
+.weekly-preview-heading span{font-size:.85rem;color:#527361}
+.weekly-preview-rows{display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:12px}
+.weekly-preview-row{min-width:0;padding:16px;border:1px solid #ccdcd3;border-radius:12px;background:#fff;display:flex;flex-direction:column;gap:10px}
+.weekly-preview-row>small{color:#647a6e;line-height:1.5}.weekly-preview-row.is-blocked{background:#f4f6f4;opacity:.75}
+.weekly-row-times{display:grid;grid-template-columns:1.3fr 1fr 1fr;gap:8px}.weekly-row-times label{min-width:0;font-size:.78rem}
+.weekly-row-times .input{min-width:0;width:100%;padding:8px 5px}
+.weekly-preview-row.has-conflict{border-color:#c18851}.weekly-conflict{color:#a05b27!important}
+.weekly-conflict-confirm{padding:14px;background:#fff3e6;margin-top:12px;border-radius:10px}
+#timerTaskDoneBtn{margin-top:8px;font-size:.8rem;white-space:normal}
+@media(max-width:600px){.weekly-preview-rows{grid-template-columns:minmax(0,1fr)}.weekly-row-times{grid-template-columns:minmax(0,1.3fr) minmax(0,1fr) minmax(0,1fr)}}
+
 @media(max-width:600px){.schedule-plan-list .schedule-flexible-grid{grid-template-columns:minmax(0,1fr)}.schedule-plan-list{max-height:680px}.task-brick-filters{grid-template-columns:minmax(0,1fr) 95px}}

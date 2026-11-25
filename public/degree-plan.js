@@ -1,3 +1,5 @@
+import {studyTaskIndex,reconcileLinkedTasks,findStudyTask,setStudyTaskDone} from "./study-task-sync.js";
+import {applyWeeklyRule,refreshWeeklyRules} from "./study-batch-core.js";
 import {captureCoursePlan,recordCoursePlanChange,saveCoursePlanUpdate,coursePlanVersions,coursePlanRestorePreview,restoreCoursePlanVersion,preserveLiveHistory} from "./study-plan-history.js";
 import { openPlanEditor } from "./study-plan-editor.js";
 import { courseStudyTasks, applyCourseStudyPlan, studyPlanFocusDate, patchStudyScheduleEntry, createTaskStudySession, removeStudyScheduleEntry } from "./study-plan-core.js";
@@ -1063,7 +1065,16 @@ panel.addEventListener("dragend", () => {
   panel.querySelectorAll(".over").forEach(item => item.classList.remove("over"));
 });
 
+let sharedTaskSnapshot=studyTaskIndex(bridge.getState());
 window.studyDegree = {
+  findStudyTask,setStudyTaskDone,
+  resetTaskSync(state){sharedTaskSnapshot=studyTaskIndex(state);},
+  reconcileStudyWorkspace(state){
+    sharedTaskSnapshot=reconcileLinkedTasks(state,sharedTaskSnapshot);
+    const before=new Map((state.degreePlan?.modules.flatMap(m=>m.courses)||[]).filter(c=>c.weeklyRules?.some(r=>r.enabled)).map(c=>[c.id,captureCoursePlan(state,c.id)]));
+    if(refreshWeeklyRules(state))for(const [id,snapshot]of before)recordCoursePlanChange(state,id,snapshot,"按每周规则新增安排");
+  },
+  applyWeeklyRule,
   captureCoursePlan,recordCoursePlanChange,saveCoursePlanUpdate,coursePlanVersions,coursePlanRestorePreview,restoreCoursePlanVersion,preserveLiveHistory,
   render, attachCatalogue, openProgressLinks, applyCourseStudyPlan, planCalendarItems, patchStudyScheduleEntry, createTaskStudySession, removeStudyScheduleEntry, calendarStatusClass, calendarStatusBadge, renderCalendarLegend,calendarCourseStyle,calendarOverviewItems,renderMonthTaskWeeks,
   openSchedule(courseId="",date="",options={}) {

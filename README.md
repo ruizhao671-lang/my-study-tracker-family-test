@@ -128,6 +128,12 @@ The checks cover frontend structure, translation coverage, timer behavior, task 
 
 Browser checks (with `PLAYWRIGHT_MODULE`, `BROWSER_EXECUTABLE` and `STUDY_TRACKER_TEST_URL` configured) include `study-plan-browser.test.mjs`, `study-plan-review-browser.test.mjs`, `study-plan-update-browser.test.mjs`, `study-plan-hierarchy-browser.test.mjs`, `study-scheduling-mode-browser.test.mjs`, `calendar-status-browser.test.mjs`, `study-bricks-browser.test.mjs` and `study-calendar-overview-browser.test.mjs`. The task-brick check exercises imports, split sessions, dragging, resizing, unscheduling, timing, manual completion, reload persistence and mobile layout.
 
+Linked courses share the progress tree as their only task store. Scheduling a task creates slots referencing its stable ID, never a second task. Once any time is allocated, a flexible task moves to Scheduled (showing remaining estimated hours); removing its last slot returns it to pending. Task completion, session execution, and actual timer records remain separate.
+
+Category weekly scheduling supports an editable preview, date/week anchors, skip weeks, and explicit overlap confirmation. Rules can also schedule new matching tasks. Fixed or completed tasks and existing manual assignments are preserved. Moving a generated slot is a manual override; canceling it prevents automatic recreation. Deleting a linked task removes future slots and preserves actual records, including an active timer. Rules and generated slots are included in private plan version history. Existing v1/v2 imports remain supported.
+
+Run `node study-weekly-sync.test.mjs` and `node study-weekly-sync-browser.test.mjs` (with the same browser environment) for batch scheduling and cross-panel synchronization checks.
+
 ## Current Limitations
 
 - This is still a prototype / test version, not a finished commercial product.

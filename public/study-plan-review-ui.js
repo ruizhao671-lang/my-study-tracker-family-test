@@ -51,6 +51,7 @@ export function historyPanel(state,courseId,selected=""){
       }
       for(const id of restore.changes[key].remove){const item=old.get(id);groups.push(`<article class="plan-history-change"><strong>${esc(item.title)}</strong><p>${w("移除此版本中不存在且无新增学习记录的项目","Remove this item, absent from this version and without protected learning activity")}</p></article>`);}
     }
+    if(JSON.stringify(current.weeklyRules||[])!==JSON.stringify(restore.weeklyRules||[]))groups.push(`<article class="plan-history-change"><strong>${w("分类每周安排规则","Category weekly scheduling rules")}</strong><p>${w("当前 ","Current ")}${(current.weeklyRules||[]).length} → ${w("恢复后 ","After restore ")}${(restore.weeklyRules||[]).length}</p></article>`);
     if(JSON.stringify(current.range)!==JSON.stringify(restore.range))groups.push(changeTable([{field:"range",before:current.range,after:restore.range}]));
     preview=`<div class="plan-history-preview"><h4>${w("与当前计划比较","Compare with current plan")} · ${esc(new Date(version.createdAt).toLocaleString())}</h4>${groups.join("")||`<p>${w("计划内容相同","Plan content is identical")}</p>`}
       <p class="degree-help">${w("实际计时、完成状态、备注附件及当前学习进度关联保留。有学习记录的新增任务会保留：","Actual time, completion, notes, attachments and current progress association stay intact. Protected added tasks kept: ")}${restore.keptTasks}</p>

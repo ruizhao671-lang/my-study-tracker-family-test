@@ -1,5 +1,6 @@
+import {openWeeklyPlanner} from "./study-batch-editor.js";
 import { studyEntryStatus, studyExamEntries, studyPlanFocusDate, studyScheduleEntries, courseStudyTasks, taskActualHours, addPlanDays, planWeek, studySessionHours,studyTaskItems,studyTaskWindow,studyCalendarEntries,monthTaskWeeks,studyWeekLabel,eventSchedulingMode,taskSchedulingMode,studySchedulePeriod,shiftStudyScheduleDate,studyMonthEntries,studyCalendarWeek } from "./study-plan-core.js";
-const SCHEDULE_VERSION="2026.11.25.4";
+const SCHEDULE_VERSION="2026.11.25.5";
 const en=()=>window.studyI18n?.getLanguage?.()==="en";
 const w=(zh,english)=>en()?english:zh;
 const esc=v=>String(v??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"})[c]);
@@ -58,23 +59,24 @@ function windowText(e){
 
 function taskWeekKey(e){return e.weekOf||e.window.start?"date:"+planWeek(e.weekOf||e.window.start):e.window.teachingWeek?"week:"+e.window.teachingWeek:"";}
 
+const shelfBucket=e=>e.done?"complete":e.allocations.length?"scheduled":e.bucket;
 function renderTaskShelf(items){
   items=items.filter(task=>task.schedulingMode!=="fixed");
-  const counts={all:items.length,scheduled:items.filter(e=>e.allocations.length).length};
-  for(const key of ["current","overdue","future","unscoped","complete"])counts[key]=items.filter(e=>e.bucket===key).length;
-  const buckets=[["current",mode==="month"?w("本月","This month"):w("本周","This week")],["overdue",w("以前未完成","Backlog")],["future",w("未来","Future")],["scheduled",w("已安排","Scheduled")],["complete",w("已完成","Completed")],["unscoped",w("范围待定","No window")],["all",w("全部","All")]];
-  const tasks=items.filter(e=>(taskBucket==="all"||taskBucket==="scheduled"&&e.allocations.length||e.bucket===taskBucket)&&
+  const counts={all:items.length,scheduled:items.filter(e=>shelfBucket(e)==="scheduled").length};
+  for(const key of ["current","overdue","future","unscoped","complete"])counts[key]=items.filter(e=>shelfBucket(e)===key).length;
+  const buckets=[["current",mode==="month"?w("本月","This month"):w("本周待安排","This week · unscheduled")],["overdue",w("以前未完成","Backlog")],["future",w("未来","Future")],["scheduled",w("已安排","Scheduled")],["complete",w("已完成","Completed")],["unscoped",w("范围待定","No window")],["all",w("全部","All")]];
+  const tasks=items.filter(e=>(taskBucket==="all"||shelfBucket(e)===taskBucket)&&
     (!taskWeekFilter||taskWeekKey(e)===taskWeekFilter)&&(taskStatusFilter==="all"||(taskStatusFilter==="done"?e.done:!e.done)));
   const groups=new Map();for(const task of tasks){if(!groups.has(task.course.id))groups.set(task.course.id,{course:task.course,categories:new Map()});const categories=groups.get(task.course.id).categories,name=task.group||w("未分组","Uncategorized");if(!categories.has(name))categories.set(name,[]);categories.get(name).push(task);}
   const weeks=new Map();for(const e of items){const key=taskWeekKey(e);if(key&&!weeks.has(key))weeks.set(key,windowText(e));}
-  return `<section class="schedule-flexible" data-unschedule="true"><div class="plan-section-title"><h3>${w("可拖动的学习任务","Draggable study tasks")}</h3>${btn(w("+ 添加时段","＋ Add session"),"new-session")}</div>
+  return `<section class="schedule-flexible" data-unschedule="true"><div class="plan-section-title"><h3>${w("可拖动的学习任务","Draggable study tasks")}</h3><div class="degree-actions">${btn(w("分类每周安排","Schedule category weekly"),"weekly-category")}${btn(w("+ 添加时段","＋ Add session"),"new-session")}</div></div>
     <nav class="task-bucket-tabs" aria-label="${w("任务范围","Task scope")}">${buckets.map(([key,label])=>`<button type="button" data-task-bucket="${key}" aria-pressed="${taskBucket===key}">${label} <b>${counts[key]}</b></button>`).join("")}</nav>
     <div class="task-brick-filters"><label>${w("周次 / 日期","Week / dates")}<select class="input" data-task-week><option value="">${w("全部周次","All weeks")}</option>${[...weeks].sort(([a],[b])=>a.localeCompare(b,"en",{numeric:true})).map(([key,label])=>`<option value="${esc(key)}" ${taskWeekFilter===key?"selected":""}>${esc(label)}</option>`).join("")}</select></label>
     <label>${w("完成状态","Completion")}<select class="input" data-task-status>${[["all",w("全部","All")],["pending",w("未完成","Incomplete")],["done",w("已完成","Completed")]].map(([key,label])=>`<option value="${key}" ${taskStatusFilter===key?"selected":""}>${label}</option>`).join("")}</select></label></div>
     <label class="task-drop-duration">${w("每次拖入安排","Duration when dropping")}<input class="input" data-drop-hours type="number" min=".25" max="12" step=".25" value="${dropHours}">h</label>
     <p class="degree-help">${w("这里只显示自由任务，点击「自由安排 ▾」可修改方式。固定日程带 🔒，点击日历中的时间块修改；不参与拖动。","Only flexible tasks appear here. Click Flexible ▾ to change scheduling. Fixed sessions show 🔒; click their calendar block to edit. Fixed sessions cannot be dragged.")}</p>
     ${taskBucket==="current"&&counts.unscoped?`<button type="button" class="task-unscoped-note" data-task-bucket="unscoped">${w("另有 ","Also ")+counts.unscoped+w(" 项任务未指定完成范围，查看"," tasks without a completion window; view")}</button>`:""}
-    <div class="schedule-flexible-grid" data-unschedule="true">${[...groups.values()].map(group=>`<section class="task-shelf-course"><h4 style="${calendarCourseStyle(group.course)}">${esc(group.course.name)}</h4>${[...group.categories].map(([name,children])=>`<section class="task-shelf-category" data-task-category="${esc(name)}"><header><h5>${esc(name)}</h5><small>${children.length} ${w("项任务","tasks")}</small></header><div class="task-group-grid">${children.map(e=>`<article class="schedule-event plan-task task-brick ${e.done?"done":""} ${e.taskId===focusTaskId?"is-focused":""} ${calendarStatusClass(e)}" data-task-source="${esc(e.taskId)}" data-entry="${esc(e.id)}" data-study-status="${studyEntryStatus(e)}" draggable="true" style="${calendarCourseStyle(e.course)}">
+    <div class="schedule-flexible-grid" data-unschedule="true">${[...groups.values()].map(group=>`<section class="task-shelf-course"><h4 style="${calendarCourseStyle(group.course)}">${esc(group.course.name)}</h4>${[...group.categories].map(([name,children])=>`<section class="task-shelf-category" data-task-category="${esc(name)}"><header ${children[0].categoryId?`draggable="true" data-weekly-drag data-weekly-course="${esc(group.course.id)}" data-weekly-category="${esc(children[0].categoryId)}"`:""}><h5>${esc(name)}</h5><small>${children.length} ${w("项任务","tasks")}</small>${children[0].categoryId?`<button class="btn secondary weekly-category-button" type="button" data-weekly-open data-weekly-course="${esc(group.course.id)}" data-weekly-category="${esc(children[0].categoryId)}">${w("⠿ 每周安排","⠿ Schedule weekly")}</button>`:""}</header><div class="task-group-grid">${children.map(e=>`<article class="schedule-event plan-task task-brick ${e.done?"done":""} ${e.taskId===focusTaskId?"is-focused":""} ${calendarStatusClass(e)}" data-task-source="${esc(e.taskId)}" data-entry="${esc(e.id)}" data-study-status="${studyEntryStatus(e)}" draggable="true" style="${calendarCourseStyle(e.course)}">
       <div class="task-brick-head"><span class="schedule-course-chip">${e.canonical?w("↔ 学习进度共用","↔ Shared progress task"):w("独立任务","Independent task")}</span><button type="button" class="task-mode-button" data-task-mode title="${w("修改固定时间或自由安排","Change fixed or flexible scheduling")}">${w("自由安排","Flexible")} ▾</button><label class="task-brick-done"><input type="checkbox" data-task-done ${e.done?"checked":""}>${w("完成","Done")}</label></div>
       <strong>${esc(taskPath(e))}</strong><button class="task-window-label" type="button" data-task-window title="${w("修改完成范围，不会安排具体时段","Edit completion window without reserving time")}">${esc(windowText(e))} ✎</button>
       <div class="task-hour-stats"><span>${w("预计","Estimate")}<b>${e.hours==null?w("未估算","Unknown"):number(e.hours)+" h"}</b></span><span>${w("已安排","Scheduled")}<b>${number(e.plannedHours)} h</b></span><span>${w("实际","Actual")}<b>${number(e.actualHours)} h</b></span></div>
@@ -122,7 +124,7 @@ export function renderStudySchedule(state){
   if(filter&&!courses.some(c=>c.id===filter))filter="";
   const {first,last,dates}=studySchedulePeriod(selectedDate,mode);
   const entries=(mode==="month"?studyMonthEntries(state,first,last):studyCalendarEntries(state,first,last)).filter(e=>!filter||e.course.id===filter),allTasks=studyTaskItems(state,first,last).filter(e=>!filter||e.course.id===filter),plans=entries.filter(canExecute),weekPlans=plans.filter(e=>e.date||e.weekOf);
-  if(autoTaskScope){taskBucket=["current","unscoped","overdue","future","complete"].find(bucket=>allTasks.some(t=>t.schedulingMode!=="fixed"&&t.bucket===bucket))||"current";autoTaskScope=false;}
+  if(autoTaskScope){taskBucket=["current","unscoped","overdue","future","scheduled","complete"].find(bucket=>allTasks.some(t=>t.schedulingMode!=="fixed"&&shelfBucket(t)===bucket))||"current";autoTaskScope=false;}
   const localDate=time=>{const d=new Date(time);return [d.getFullYear(),String(d.getMonth()+1).padStart(2,"0"),String(d.getDate()).padStart(2,"0")].join("-");};
   const sessions=(state.timer?.sessions||[]).filter(s=>localDate(s.startAt)>=first&&localDate(s.startAt)<=last&&(!filter||courses.some(c=>c.courseId===s.courseId&&c.id===filter)));
   const timed=entries.filter(e=>e.date&&e.startTime);
@@ -208,6 +210,7 @@ function editWindow(task){
           if(typeof values.taskDone==="boolean" && linkedTask){const task=tasks.find(task=>task.id===linkedTask.id);if(task){task.done=values.taskDone;task.doneEdited=true;}}
           if(linkedTask&&values.schedulingMode)tasks.find(t=>t.id===linkedTask.id).schedulingMode=values.schedulingMode;
           const {taskDone,...session}=values;events.push({id:crypto.randomUUID(),type:"study",...session});
+          if(linkedTask&&!linkedTask.done&&values.schedulingMode!=="fixed"){taskBucket="scheduled";taskWeekFilter="";}
           bridge.saveCourseStudyPlan(target.id,{tasks,events,link:target.courseId||"",range:target.planRange});
         }
         if(timerAfterSave&&linkedTask){document.querySelector("#degreeDialog").close();bridge.startPlannedTaskTimer(course.id,linkedTask.id);}
@@ -243,7 +246,9 @@ function editWindow(task){
     form.querySelector('[type="submit"]').onclick=()=>{timerAfterSave=false;};
     const sourceButton=form.querySelector('[data-schedule="edit-source"]');if(sourceButton)sourceButton.onclick=()=>window.studyDegree.openCourseStudyPlan(entry.course.id);
   }
+  const weekly=(courseId=filter,categoryId="",date=selectedDate,preset={})=>openWeeklyPlanner({bridge,showDialog,courseId,categoryId,date,preset});
   root.addEventListener("click",e=>{
+    const weeklyButton=e.target.closest("[data-weekly-open]");if(weeklyButton){weekly(weeklyButton.dataset.weeklyCourse,weeklyButton.dataset.weeklyCategory);return;}
     if(e.target.closest(".schedule-execution,[data-resize-entry],[data-drag-entry],[data-task-done]"))return;
     const bucket=e.target.closest("[data-task-bucket]");if(bucket){taskBucket=bucket.dataset.taskBucket;taskWeekFilter="";taskStatusFilter="all";render();return;}
     const brick=e.target.closest("[data-task-source]");
@@ -265,6 +270,7 @@ function editWindow(task){
     const action=e.target.closest("[data-schedule]")?.dataset.schedule;if(!action)return;
     if(action==="timer-calendar"){bridge.openStudyCalendar(selectedDate);return;}
     if(action==="new-session"){openSession();return;}
+    if(action==="weekly-category"){weekly();return;}
     if(action==="edit-course"||action==="link-tasks"){window.studyDegree.openCourseStudyPlan(filter);return;}
     if(action==="prev"||action==="next")selectedDate=shiftStudyScheduleDate(selectedDate,mode,action==="next"?1:-1);
     if(action==="today")selectedDate=today();if(["month","week","day"].includes(action)){mode=action;autoTaskScope=true;}render();
@@ -280,6 +286,7 @@ function editWindow(task){
   });
   root.addEventListener("dragstart",e=>{
     if(e.target.closest("[data-resize-entry],input")){e.preventDefault();return;}
+    const category=e.target.closest("[data-weekly-drag]");if(category&&!e.target.closest("[data-task-source]")){dragging="category:"+JSON.stringify([category.dataset.weeklyCourse,category.dataset.weeklyCategory]);e.dataTransfer.setData("text/study-plan",dragging);e.stopPropagation();return;}
     const brick=e.target.closest("[data-task-source]"),card=e.target.closest("[data-entry]");
     if(!card)return;if(!movable(brick?items.find(t=>t.taskId===brick.dataset.taskSource):find(card.dataset.entry))){e.preventDefault();return;}
     dragging=brick?"task-brick:"+brick.dataset.taskSource:card.dataset.entry;
@@ -290,6 +297,12 @@ function editWindow(task){
   root.addEventListener("drop",e=>{
     if(!dragging)return;e.preventDefault();e.stopPropagation();
     const source=dragging;dragging="";root.querySelectorAll(".schedule-drop-over").forEach(el=>el.classList.remove("schedule-drop-over"));
+    if(source.startsWith("category:")){
+      const cell=e.target.closest("[data-drop-date]");if(!cell)return;
+      const ids=JSON.parse(source.slice(9)),preset={weekday:String(new Date(cell.dataset.dropDate+"T12:00:00Z").getUTCDay()||7)};
+      if(cell.matches(".schedule-day-grid")){const minute=Math.max(0,Math.min(23*60,Number(cell.dataset.startHour)*60+Math.round((e.clientY-cell.getBoundingClientRect().top)/56*4)*15));preset.startTime=clock(minute);preset.endTime=clock(Math.min(1439,Math.round(minute+dropHours*60)));}
+      weekly(ids[0],ids[1],cell.dataset.dropDate,preset);return;
+    }
     const brick=source.startsWith("task-brick:"),entry=brick?items.find(t=>t.taskId===source.slice(11)):find(source);
     const cell=e.target.closest("[data-drop-date],[data-unschedule]");if(!cell||!entry||!movable(entry))return;
     if(cell.dataset.unschedule){if(!brick&&canExecute(entry))bridge.removeStudyScheduleEntry(entry.course.id,entry.id,entry.date||"");return;}
@@ -299,7 +312,7 @@ function editWindow(task){
       startTime=clock(minute);if(minute+hours*60<1440)endTime=clock(Math.round(minute+hours*60));
       if(minute+hours*60>1440){openSession(brick?null:entry,brick?entry:null,{date:cell.dataset.dropDate,startTime,hours,endTime:""});bridge.showToast(w("请调整时长，或把跨午夜安排拆成两段。","Adjust the duration, or split a midnight-crossing session."));return;}
     }
-    try{if(brick)bridge.createTaskStudySession(entry.course.id,entry.taskId,{date:cell.dataset.dropDate,startTime,endTime,hours});
+    try{if(brick){taskBucket="scheduled";taskWeekFilter="";bridge.createTaskStudySession(entry.course.id,entry.taskId,{date:cell.dataset.dropDate,startTime,endTime,hours});}
     else patch(entry,{date:cell.dataset.dropDate,startTime,endTime,hours,viaDrag:true});}catch(error){bridge.showToast(error.message);}
   });
   root.addEventListener("pointerdown",e=>{

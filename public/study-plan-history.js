@@ -3,7 +3,7 @@ import {courseStudyTasks,applyCourseStudyPlan} from "./study-plan-core.js";
 const findCourse=(state,id)=>{const course=state.degreePlan?.modules.flatMap(m=>m.courses).find(c=>c.id===id);if(!course)throw new Error("Course missing");return course;};
 export function captureCoursePlan(state,courseId){
   const course=findCourse(state,courseId);
-  return {link:course.courseId||"",range:structuredClone(course.planRange||null),tasks:courseStudyTasks(course,state.semesters).map(t=>{const {canonical,...task}=t;return task;}),events:structuredClone(course.planEvents||[])};
+  return {link:course.courseId||"",range:structuredClone(course.planRange||null),tasks:courseStudyTasks(course,state.semesters).map(t=>{const {canonical,...task}=t;return task;}),events:structuredClone(course.planEvents||[]),weeklyRules:structuredClone(course.weeklyRules||[])};
 }
 
 export function planContent(value){
@@ -18,13 +18,14 @@ export function snapshotPatch(before,after){
   }
   if(planContent(before.range)!==planContent(after.range))result.range=after.range;
   if(before.link!==after.link)result.link=after.link;
+  if(planContent(before.weeklyRules||[])!==planContent(after.weeklyRules||[]))result.weeklyRules=after.weeklyRules||[];
   return result;
 }
 
 export function applySnapshotPatch(snapshot,patch){
   const next=structuredClone(snapshot);
   for(const key of ["tasks","events"]){const values=new Map(next[key].map(t=>[t.id,t]));for(const id of patch[key]?.remove||[])values.delete(id);for(const item of patch[key]?.upsert||[])values.set(item.id,structuredClone(item));next[key]=[...values.values()];}
-  for(const key of ["range","link"])if(Object.hasOwn(patch,key))next[key]=structuredClone(patch[key]);
+  for(const key of ["range","link","weeklyRules"])if(Object.hasOwn(patch,key))next[key]=structuredClone(patch[key]);
   return next;
 }
 
@@ -80,12 +81,17 @@ export function coursePlanRestorePreview(state,courseId,versionId){
   const targetEventIds=new Set(targetEvents.map(e=>e.id)),currentEvents=new Map(current.events.map(e=>[e.id,e]));
   const events=targetEvents.map(e=>({...e,executed:currentEvents.get(e.id)?.executed??e.executed,completedDates:[...new Set([...(e.completedDates||[]),...(currentEvents.get(e.id)?.completedDates||[])])]}));
   events.push(...current.events.filter(e=>!targetEventIds.has(e.id)&&(e.userScheduled||e.executed||e.completedDates?.length||kept.some(t=>t.id===e.taskId))));
-  return {tasks,events,range:target.range,link:current.link,keptLink:target.link!==current.link,keptTasks:kept.length,changes:snapshotPatch(current,{...target,tasks,events}),versionId};
+  return {tasks,events,weeklyRules:target.weeklyRules||[],range:target.range,link:current.link,keptLink:target.link!==current.link,keptTasks:kept.length,changes:snapshotPatch(current,{...target,tasks,events}),versionId};
 }
 
 export function restoreCoursePlanVersion(state,courseId,versionId){
   const before=captureCoursePlan(state,courseId),course=findCourse(state,courseId),restore=coursePlanRestorePreview(state,courseId,versionId);
   const learning=state.semesters.flatMap(s=>s.courses).find(c=>c.id===restore.link);
+  if(learning)for(const rule of restore.weeklyRules||[]){
+    let category=learning.categories.find(c=>c.id===rule.categoryId);
+    if(!category){category={id:rule.categoryId,name:rule.categoryName,tasks:[],degreePlanGenerated:true};learning.categories.push(category);}
+    else category.name=rule.categoryName;
+  }
   if(learning)for(const task of restore.tasks){
     if(learning.categories.some(c=>c.tasks.some(t=>t.id===task.id)))continue;
     const archived=course.planTaskArchive?.find(a=>a.task.id===task.id);if(!archived)continue;

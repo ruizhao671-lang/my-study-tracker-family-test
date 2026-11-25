@@ -58,7 +58,8 @@ try{
  await page.locator('#degreeDialog [name="startTime"]').fill("10:00");
  await page.locator('#degreeDialog [name="endTime"]').fill("12:00");await save();
  assert.equal(slots(await get()).length,1);
- assert.equal(await brick("original").count(),1,"Task remains available after a partial allocation");
+ assert.equal(await page.locator('[data-task-bucket="scheduled"]').getAttribute("aria-pressed"),"true","Partial allocation moves to Scheduled");
+ assert.equal(await brick("original").count(),1);
  assert.ok((await brick("original").innerText()).includes("尚未分配：2 h"));
  await brick("original").locator("[data-plan-task-time]").click();
  await page.locator('#degreeDialog [name="date"]').fill("2026-11-28");
@@ -77,7 +78,7 @@ try{
  assert.equal(slots(await get())[0].hours,2,"Resize handle changes planned duration");
  await card().locator("[data-drag-entry]").dragTo(page.locator('.schedule-all-day[data-drop-date="2026-11-24"]'));
  state=await get();assert.equal(slots(state)[0].date,"2026-11-24");assert.equal(allTasks(state).find(t=>t.id==="original").weekOf,"2026-11-23");
- await page.locator('[data-task-bucket="current"]').first().click();
+ await page.locator('[data-task-bucket="scheduled"]').first().click();
  await brick("original").locator("[data-plan-task-time]").click();
  await page.locator('#degreeDialog [name="hours"]').fill("1");await page.locator('#degreeDialog [name="date"]').fill("2026-11-26");
  await page.locator('#degreeDialog [name="startTime"]').fill("18:00");await page.locator('#degreeDialog [name="endTime"]').fill("19:00");await save();
@@ -99,7 +100,7 @@ try{
  assert.equal(await page.locator("#timerTask").inputValue(),"original");assert.equal(await page.locator("#timerCompleteTask").isChecked(),false);
  await page.waitForTimeout(1100);await page.locator("#timerFinishBtn").click();
  state=await get();assert.equal(state.timer.sessions.at(-1).taskId,"original");assert.equal(allTasks(state).find(t=>t.id==="original").done,false);
- await page.evaluate(()=>studyDegree.openSchedule("demo","2026-11-23"));assert.equal(await page.locator(".schedule-actual").count(),1);
+ await page.evaluate(()=>studyDegree.openSchedule("demo","2026-11-23"));await page.locator('[data-task-bucket="scheduled"]').click();assert.equal(await page.locator(".schedule-actual").count(),1);
  await brick("original").locator("[data-task-done]").click();
  state=await get();assert.equal(allTasks(state).find(t=>t.id==="original").done,true);
  assert.ok(slots(state).every(e=>!e.executed));

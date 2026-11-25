@@ -314,7 +314,7 @@ function drawHistory(selected=""){
       if(action.startsWith("pane-")){pane=action.slice(5);draw();const section=preview?form.querySelector(".plan-preview"):form.querySelector('.plan-draft-section[data-plan-pane="'+pane+'"]');section?.scrollIntoView({block:"start"});return;}
       if(action==="add-task"||action==="add-group-task"){tasks.push({id:crypto.randomUUID(),title:"",group:event.target.closest("[data-group]")?.dataset.group||"",hours:null,done:false});pane="tasks";form.querySelector(".plan-existing-tasks").open=true;}
       if(action==="add-event"){events.push({id:crypto.randomUUID(),title:"",type:"study",date:"",weekOf:"",hours:null,period:"",executed:false});pane="events";}
-      if(action==="delete-task"){const id=event.target.closest("[data-task-row]").dataset.taskRow;tasks=tasks.filter(t=>t.id!==id);for(const e of events)if(e.taskId===id)e.taskId="";}
+      if(action==="delete-task"){const id=event.target.closest("[data-task-row]").dataset.taskRow;tasks=tasks.filter(t=>t.id!==id);events=events.filter(e=>e.taskId!==id);}
       if(action==="delete-event")events=events.filter(e=>e.id!==event.target.closest("[data-event-row]").dataset.eventRow);
       draw();
     }catch(error){showError(error.message);}
