@@ -1,4 +1,4 @@
-import { studyEntryStatus, studyExamEntries, studyPlanFocusDate, studyScheduleEntries, courseStudyTasks, taskActualHours, addPlanDays, planWeek, studySessionHours,studyTaskItems,studyTaskWindow } from "./study-plan-core.js";
+import { studyEntryStatus, studyExamEntries, studyPlanFocusDate, studyScheduleEntries, courseStudyTasks, taskActualHours, addPlanDays, planWeek, studySessionHours,studyTaskItems,studyTaskWindow,studyCalendarEntries,monthTaskWeeks } from "./study-plan-core.js";
 const en=()=>window.studyI18n?.getLanguage?.()==="en";
 const w=(zh,english)=>en()?english:zh;
 const esc=v=>String(v??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"})[c]);
@@ -6,7 +6,7 @@ const today=()=>{const d=new Date();return [d.getFullYear(),String(d.getMonth()+
 const number=n=>new Intl.NumberFormat(en()?"en-GB":"zh-CN",{maximumFractionDigits:2}).format(n);
 const minutes=t=>Number(t.slice(0,2))*60+Number(t.slice(3));
 const clock=m=>String(Math.floor(m/60)).padStart(2,"0")+":"+String(m%60).padStart(2,"0");
-const typeLabel=e=>e.kind==="exam"?w("考试","Exam"):e.kind==="task"?w("学习任务","Study task"):({class:w("上课","Class"),workshop:"Workshop",deadline:w("截止","Deadline"),milestone:w("重要日期","Milestone"),study:w("学习时段","Study session")})[e.type];
+const typeLabel=e=>e.kind==="exam"?w("考试","Exam"):e.kind==="task"?w("学习任务","Study task"):({class:w("上课","Class"),workshop:"Workshop",reminder:w("事项","Calendar item"),deadline:w("截止","Deadline"),milestone:w("重要日期","Milestone"),study:w("学习时段","Study session")})[e.type];
 const btn=(label,action)=>`<button class="btn secondary" type="button" data-schedule="${action}">${esc(label)}</button>`;
 const canExecute=e=>e.kind==="task"?Boolean(e.date):["study","class","workshop"].includes(e.type);
 
@@ -23,6 +23,18 @@ export function calendarStatusBadge(e,compact=false){
 export function renderCalendarLegend(){
   const items=[["complete",w("已完成 / 已执行","Completed / executed")],["overdue",w("已过期未完成","Overdue / missed")],["pending",w("待完成 / 待执行","Pending / planned")],["exam",w("考试","Exam")],["record",w("实际计时（虚线）","Actual time (dashed)")],["date",w("重要日期","Key date")]];
   return `<div class="study-calendar-legend" aria-label="${w("日历颜色说明","Calendar color legend")}">${items.map(([status,label])=>`<span class="study-legend-item study-status-${status}"><i aria-hidden="true"></i>${esc(label)}</span>`).join("")}</div>`;
+}
+
+export function renderMonthTaskWeeks(state,month){
+  const weeks=monthTaskWeeks(state,month);
+  if(!weeks.length)return "";
+  return `<div class="timer-task-weeks"><strong>${w("按完成周看任务","Tasks by completion week")}</strong><div>${weeks.map(week=>`<button class="btn secondary" type="button" data-open-study-week="${week.date<month+"-01"?month+"-01":week.date}">${esc(week.date.slice(5).replace("-","/"))} ${w("周","week")} · ${week.count} ${w("项任务","tasks")}</button>`).join("")}</div></div>`;
+}
+
+export function calendarOverviewItems(state,date) {
+  const exams=studyExamEntries(state,date,date).filter(exam=>!exam.sourceCalendarId).map(exam=>({...exam,
+    virtualPlanExam:true,degreeCourseId:exam.course.id,degreeExamId:exam.examId,courseName:exam.course.name,requirements:exam.detail||""}));
+  return [...(state.timer?.calendarItems||[]).filter(item=>item.date===date),...planCalendarItems(state,date),...exams];
 }
 
 let courseColorIds=[];
@@ -67,7 +79,7 @@ function renderTaskShelf(items){
 }
 
 let selectedDate=today(),filter="",mode="week",dragging="",taskBucket="current",taskWeekFilter="",taskStatusFilter="all",dropHours=2;
-export function selectStudySchedule(courseId="",date=""){filter=courseId;selectedDate=date||today();taskBucket="current";taskWeekFilter="";taskStatusFilter="all";}
+export function selectStudySchedule(courseId="",date="",{view="week"}={}){filter=courseId;selectedDate=date||today();mode=view;taskBucket="current";taskWeekFilter="";taskStatusFilter="all";}
 export function planCalendarItems(state,date){
   courseColorIds=state.degreePlan?.modules.flatMap(m=>m.courses.map(c=>c.id))||[];
   return studyScheduleEntries(state,date,date).filter(e=>e.date===date).map(e=>{
@@ -80,21 +92,21 @@ export function renderStudySchedule(state){
   const courses=state.degreePlan.modules.flatMap(m=>m.courses);courseColorIds=courses.map(c=>c.id);
   if(filter&&!courses.some(c=>c.id===filter))filter="";
   const first=mode==="week"?planWeek(selectedDate):selectedDate,last=addPlanDays(first,mode==="week"?6:0),dates=Array.from({length:mode==="week"?7:1},(_,i)=>addPlanDays(first,i));
-  const entries=[...studyScheduleEntries(state,first,last),...studyExamEntries(state,first,last)].filter(e=>!filter||e.course.id===filter),allTasks=studyTaskItems(state,first,last).filter(e=>!filter||e.course.id===filter),plans=entries.filter(canExecute),weekPlans=plans.filter(e=>e.date||e.weekOf);
+  const entries=studyCalendarEntries(state,first,last).filter(e=>!filter||e.course.id===filter),allTasks=studyTaskItems(state,first,last).filter(e=>!filter||e.course.id===filter),plans=entries.filter(canExecute),weekPlans=plans.filter(e=>e.date||e.weekOf);
   const localDate=time=>{const d=new Date(time);return [d.getFullYear(),String(d.getMonth()+1).padStart(2,"0"),String(d.getDate()).padStart(2,"0")].join("-");};
-  const sessions=(state.timer?.sessions||[]).filter(s=>localDate(s.startAt)>=first&&localDate(s.startAt)<=last&&courses.some(c=>c.courseId===s.courseId&&(!filter||c.id===filter)));
+  const sessions=(state.timer?.sessions||[]).filter(s=>localDate(s.startAt)>=first&&localDate(s.startAt)<=last&&(!filter||courses.some(c=>c.courseId===s.courseId&&c.id===filter)));
   const timed=entries.filter(e=>e.date&&e.startTime);
   const begin=Math.min(8,...timed.map(e=>Math.floor(minutes(e.startTime)/60)),...sessions.map(s=>new Date(s.startAt).getHours()));
   const end=Math.min(24,Math.max(20,...timed.map(e=>Math.ceil((e.endTime?minutes(e.endTime):minutes(e.startTime)+Math.max(.5,studySessionHours(e)||.5)*60)/60)),...sessions.map(s=>new Date(s.endAt).getHours()+1))),height=(end-begin)*56;
   const execution=(e,compact=false)=>canExecute(e)?`<label class="schedule-execution"><input type="checkbox" data-schedule-execute ${e.executed?"checked":""}>${compact?w("已执行","Executed"):w("已按计划执行","Executed as planned")}</label>`:"";
   function card(e,style=""){
-    return `<article class="schedule-event ${esc(e.kind==="task"?"plan-task":e.type)} ${e.done?"done":""} ${e.executed?"executed":""} ${calendarStatusClass(e)}" draggable="${e.kind!=="exam"}" data-study-status="${studyEntryStatus(e)}" data-entry="${esc(e.id)}" style="${calendarCourseStyle(e.course)}${style}">
-      ${e.kind!=="exam"?`<button type="button" class="schedule-drag-grip" data-drag-entry draggable="true" aria-label="${w("拖动此时段","Drag this session")}">⠿</button>`:""}<button class="schedule-event-open" type="button" title="${esc([e.course.name,taskPath(e),e.kind==="task"||e.sourceTask?"":e.title].filter(Boolean).join(" · "))}"><span class="schedule-type">${esc(typeLabel(e))}</span><strong>${esc(e.kind==="task"||e.sourceTask?taskPath(e)||e.title:e.title)}</strong><span>${esc(e.course.name)}</span><b>${esc(e.startTime?e.startTime+(e.endTime?"–"+e.endTime:""):e.period||(e.date?w("全天","All day"):w("待安排","Unscheduled")))}${studySessionHours(e)>0?" · "+number(studySessionHours(e))+" h":""}</b></button>${calendarStatusBadge(e,true)}${execution(e,true)}${canExecute(e)&&e.date&&e.startTime?`<button type="button" draggable="false" class="schedule-resize" data-resize-entry aria-label="${w("拖动调整时长；也可点击时段编辑","Drag to resize, or click the session to edit")}"></button>`:""}
+    return `<article class="schedule-event ${esc(e.kind==="task"?"plan-task":e.type)} ${e.done?"done":""} ${e.executed?"executed":""} ${calendarStatusClass(e)}" draggable="${!["exam","calendar"].includes(e.kind)}" data-study-status="${studyEntryStatus(e)}" data-entry="${esc(e.id)}" style="${calendarCourseStyle(e.course)}${style}">
+      ${!["exam","calendar"].includes(e.kind)?`<button type="button" class="schedule-drag-grip" data-drag-entry draggable="true" aria-label="${w("拖动此时段","Drag this session")}">⠿</button>`:""}<button class="schedule-event-open" type="button" title="${esc([e.course.name,taskPath(e),e.kind==="task"||e.sourceTask?"":e.title].filter(Boolean).join(" · "))}"><span class="schedule-type">${esc(typeLabel(e))}</span><strong>${esc(e.kind==="task"||e.sourceTask?taskPath(e)||e.title:e.title)}</strong><span>${esc(e.course.name)}</span><b>${esc(e.startTime?e.startTime+(e.endTime?"–"+e.endTime:""):e.period||(e.date?w("全天","All day"):w("待安排","Unscheduled")))}${studySessionHours(e)>0?" · "+number(studySessionHours(e))+" h":""}</b></button>${calendarStatusBadge(e,true)}${execution(e,true)}${canExecute(e)&&e.date&&e.startTime?`<button type="button" draggable="false" class="schedule-resize" data-resize-entry aria-label="${w("拖动调整时长；也可点击时段编辑","Drag to resize, or click the session to edit")}"></button>`:""}
       ${e.kind==="task"&&!e.date?`<button class="btn secondary" type="button" data-plan-task-time>${w("安排学习时段","Plan a study session")}</button>`:""}</article>`;
   }
   return `<section class="study-schedule"><header class="schedule-controls"><div>${btn("‹","prev")}${btn(w("今天","Today"),"today")}${btn("›","next")}</div><strong>${first} — ${last}</strong><div>${btn(w("周视图","Week"),"week")}${btn(w("日视图","Day"),"day")}</div>
     <label>${w("课程","Course")}<select class="input" data-schedule-filter><option value="">${w("全部课程","All courses")}</option>${courses.map(c=>`<option value="${esc(c.id)}" ${filter===c.id?"selected":""}>${esc(c.name)}</option>`).join("")}</select></label>
-    <label>${w("跳到日期","Go to date")}<input class="input" type="date" data-schedule-date value="${selectedDate}"></label>${filter?btn(w("任务预览 / 导入","Review tasks / import"),"edit-course"):""}</header>
+    <label>${w("跳到日期","Go to date")}<input class="input" type="date" data-schedule-date value="${selectedDate}"></label>${filter?btn(w("任务预览 / 导入","Review tasks / import"),"edit-course"):""}${btn(w("返回学习计时","Back to study timer"),"timer-calendar")}</header>
     <div class="schedule-summary"><span>${w("本周 / 当日计划","Planned this period")}<b>${number(weekPlans.reduce((n,e)=>n+studySessionHours(e),0))} h</b></span><span>${w("按计划执行","Plan execution")}<b>${weekPlans.filter(e=>e.executed).length} / ${weekPlans.length}</b></span><span>${w("实际学习计时","Actual study time")}<b>${number(sessions.reduce((n,s)=>n+s.durationMs/3600000,0))} h</b></span><span>${w("本周未完成任务预计","This week’s incomplete task estimates")}<b>${number(allTasks.filter(e=>e.bucket==="current").reduce((n,e)=>n+(e.hours??0),0))} h</b></span></div>
     <p class="degree-help">${w("彩色块是计划，虚线块是实际计时。执行勾选、内容任务完成和实际计时分别保存。","Colored blocks are plans; dashed blocks are actual time. Execution, task completion and actual time are saved separately.")}</p>
     ${renderCalendarLegend()}<p class="course-color-note">${w("每门课用不同顶边颜色；侧边与状态文字表示是否完成。","Each course has a different top color; side colors and labels show status.")}</p>
@@ -118,7 +130,7 @@ export function bindStudySchedule(panel,{bridge,showDialog,render}){
   const state=bridge.getState(),courses=state.degreePlan.modules.flatMap(m=>m.courses);
   const first=mode==="week"?planWeek(selectedDate):selectedDate,last=addPlanDays(first,mode==="week"?6:0);
   const items=studyTaskItems(state,first,last);
-  const entries=[...studyScheduleEntries(state,first,last),...studyExamEntries(state,first,last)],find=id=>entries.find(e=>e.id===id)||items.find(e=>e.id===id)||studyScheduleEntries(state,"0001-01-01","9999-12-31").find(e=>e.id===id);
+  const entries=studyCalendarEntries(state,first,last),find=id=>entries.find(e=>e.id===id)||items.find(e=>e.id===id)||studyScheduleEntries(state,"0001-01-01","9999-12-31").find(e=>e.id===id);
   const patch=(entry,changes)=>bridge.patchStudyScheduleEntry(entry.course.id,entry.id,entry.date||"",changes);
 function editWindow(task){
   const field=(label,key,value="",type="date")=>`<label>${esc(label)}<input class="input" name="${key}" value="${esc(value)}" type="${type}"></label>`;
@@ -131,6 +143,7 @@ function editWindow(task){
     });
 }
   function openSession(entry=null,plannedTask=null,preset={}){
+    if(entry?.kind==="calendar"){showDialog(w("事项 · ","Calendar item · ")+entry.title,`<p>${esc(entry.date)} ${esc(entry.startTime||w("全天","All day"))}${entry.endTime?"–"+esc(entry.endTime):""}</p><p>${esc(entry.detail||"")}</p>`,()=>bridge.openStudyCalendar(entry.date),w("查看学习计时日历","Open timer calendar"));return;}
     if(entry?.kind==="exam"){showDialog(w("考试 · ","Exam · ")+entry.title,`<p>${esc(entry.date)} ${esc(entry.startTime||w("具体时间待公布","Time pending"))}${entry.endTime?"–"+esc(entry.endTime):""}</p>${entry.location?`<p>${esc(entry.location)}</p>`:""}<p>${esc(entry.detail||"")}</p><p class="degree-help">${w("考试来自毕业规划或学习计时日历，日历中会单独用紫色标识。","Exams come from the degree planner or timer calendar and are marked in purple.")}</p>`,()=>bridge.openStudyCalendar(entry.date),w("查看学习计时日历","Open timer calendar"));return;}
     let course=courses.find(c=>c.id===(entry?.course.id||plannedTask?.course.id||filter))||courses[0];
     if(!course)return;
@@ -212,6 +225,7 @@ function editWindow(task){
     const day=e.target.closest("[data-day]");if(day){selectedDate=day.dataset.day;mode="day";render();return;}
     const actual=e.target.closest("[data-actual-date]");if(actual){bridge.openStudyCalendar(actual.dataset.actualDate);return;}
     const action=e.target.closest("[data-schedule]")?.dataset.schedule;if(!action)return;
+    if(action==="timer-calendar"){bridge.openStudyCalendar(selectedDate);return;}
     if(action==="new-session"){openSession();return;}
     if(action==="edit-course"){window.studyDegree.openCourseStudyPlan(filter);return;}
     if(action==="prev"||action==="next")selectedDate=addPlanDays(selectedDate,(action==="next"?1:-1)*(mode==="week"?7:1));
@@ -229,7 +243,7 @@ function editWindow(task){
   root.addEventListener("dragstart",e=>{
     if(e.target.closest("[data-resize-entry],input")){e.preventDefault();return;}
     const brick=e.target.closest("[data-task-source]"),card=e.target.closest("[data-entry]");
-    if(!card)return;if(!brick&&find(card.dataset.entry)?.kind==="exam"){e.preventDefault();return;}
+    if(!card)return;if(!brick&&["exam","calendar"].includes(find(card.dataset.entry)?.kind)){e.preventDefault();return;}
     dragging=brick?"task-brick:"+brick.dataset.taskSource:card.dataset.entry;
     e.dataTransfer.setData("text/study-plan",dragging);e.stopPropagation();
   });

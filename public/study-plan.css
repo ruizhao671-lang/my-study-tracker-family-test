@@ -96,7 +96,7 @@ body.study-schedule-mode .app{width:min(1480px,calc(100% - 36px))}
 .study-status-exam{--study-status-bg:#f1eaff;--study-status-border:#9671c3;--study-status-ink:#63418a}
 .study-status-record{--study-status-bg:#f3f5f6;--study-status-border:#7f8a93;--study-status-ink:#495860}
 .study-status-date{--study-status-bg:#fff0f7;--study-status-border:#be7a9e;--study-status-ink:#895474}
-.schedule-event[class*="study-status-"],.schedule-agenda-item[class*="study-status-"],.day-item-card[class*="study-status-"],.time-block[class*="study-status-"],.schedule-actual.study-status-record{
+.schedule-event[class*="study-status-"],.schedule-agenda-item[class*="study-status-"],.day-item-card[class*="study-status-"],.timer-day .time-block[class*="study-status-"],.schedule-actual.study-status-record{
   background:var(--study-status-bg);border-color:var(--study-status-border);color:var(--study-status-ink);opacity:1;box-shadow:none
 }
 .schedule-event[class*="study-status-"]{border-left-width:4px}
@@ -152,6 +152,7 @@ body.study-schedule-mode .app{width:min(1480px,calc(100% - 36px))}
 .schedule-drop-over{outline:2px dashed #178876;outline-offset:-3px;background-color:#dcefe780}
 .course-color-note{font-size:.75rem;color:#62796d;margin:-7px 0 14px}
 .calendar-plan-name[style],.day-item-card.study[style],.time-block.study-block[style]{border-top:3px solid var(--study-course-color,#688f80)}
+.timer-task-weeks{border-top:1px solid #d6e3dd;margin-top:14px;padding-top:12px;color:#496e60;font-size:.8rem}.timer-task-weeks>div{display:flex;gap:6px;flex-wrap:wrap;margin-top:8px}.timer-task-weeks .btn{padding:6px 8px;min-height:34px;font-size:.76rem}
 .task-completion-window{font-size:.75rem;color:#557a68;margin:8px 0}
 @media(max-width:1150px){.schedule-workspace{grid-template-columns:minmax(0,1fr)}.schedule-plan-list{display:block}.schedule-plan-list .schedule-flexible-grid{grid-template-columns:repeat(auto-fit,minmax(230px,1fr))}.schedule-plan-list .plan-section-title{position:static}.task-brick-filters{grid-template-columns:minmax(0,1fr) 130px}}
 @media(max-width:600px){.schedule-plan-list .schedule-flexible-grid{grid-template-columns:minmax(0,1fr)}.schedule-plan-list{max-height:680px}.task-brick-filters{grid-template-columns:minmax(0,1fr) 95px}}

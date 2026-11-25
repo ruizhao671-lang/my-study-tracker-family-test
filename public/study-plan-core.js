@@ -438,8 +438,7 @@ export function studyEntryStatus(entry,now=new Date()) {
 }
 
 export function studyExamEntries(state,from,until) {
-  if(!state.degreePlan)return [];
-  const courses=state.degreePlan.modules.flatMap(module=>module.courses),result=new Map();
+  const courses=state.degreePlan?.modules.flatMap(module=>module.courses)||[],result=new Map();
   const key=entry=>JSON.stringify([entry.course.id,entry.date,entry.startTime||""]);
   for(const course of courses){
     if(isEarned(course,state.semesters))continue;
@@ -458,6 +457,29 @@ export function studyExamEntries(state,from,until) {
     result.set(course.id?key(entry):"manual:"+item.id,entry);
   }
   return [...result.values()];
+}
+
+export function studyCalendarEntries(state,from,until) {
+  const entries=[...studyScheduleEntries(state,from,until),...studyExamEntries(state,from,until)];
+  const courses=state.degreePlan?.modules.flatMap(m=>m.courses)||[];
+  for(const item of state.timer?.calendarItems||[]){
+    if(item.type!=="reminder"||item.date<from||item.date>until)continue;
+    const course=courses.find(c=>c.id===item.degreeCourseId||item.courseId&&c.courseId===item.courseId)||{id:"",name:item.courseName||""};
+    entries.push({...item,id:"calendar-item:"+item.id,sourceCalendarId:item.id,course,kind:"calendar",detail:item.details||""});
+  }
+  return entries;
+}
+
+export function monthTaskWeeks(state,month) {
+  if(!/^\d{4}-(0[1-9]|1[0-2])$/.test(month))return [];
+  const first=month+"-01",next=new Date(first+"T12:00:00Z");next.setUTCMonth(next.getUTCMonth()+1);
+  const last=addPlanDays(next.toISOString().slice(0,10),-1),tasks=studyTaskItems(state,first,last).filter(t=>!t.done),result=[];
+  for(let start=planWeek(first);start<=last;start=addPlanDays(start,7)){
+    const end=addPlanDays(start,6),matching=tasks.filter(t=>t.window.start?t.window.start<=end&&(!t.window.end||t.window.end>=start):
+      t.window.end&&t.window.end>=start&&t.window.end<=end);
+    if(matching.length)result.push({date:start,count:matching.length,taskIds:matching.map(t=>t.taskId)});
+  }
+  return result;
 }
 
 // Completion windows never reserve calendar hours. Legacy plannedDate remains a compatible time slot.

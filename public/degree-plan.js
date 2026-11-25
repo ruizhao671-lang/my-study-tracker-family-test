@@ -1,6 +1,6 @@
 import { openPlanEditor } from "./study-plan-editor.js";
 import { courseStudyTasks, applyCourseStudyPlan, studyPlanFocusDate, patchStudyScheduleEntry, createTaskStudySession, removeStudyScheduleEntry } from "./study-plan-core.js";
-import { renderStudySchedule, bindStudySchedule, selectStudySchedule, planCalendarItems, calendarStatusClass, calendarStatusBadge, renderCalendarLegend, calendarCourseStyle } from "./study-schedule.js";
+import { renderStudySchedule, bindStudySchedule, selectStudySchedule, planCalendarItems, calendarStatusClass, calendarStatusBadge, renderCalendarLegend, calendarCourseStyle,calendarOverviewItems,renderMonthTaskWeeks } from "./study-schedule.js";
 import { TUM_EI_BACHELOR } from "./degree-templates.js";
 import { renderExamHourglass, openExamHourglass } from "./exam-hourglass.js";
 import {
@@ -1063,7 +1063,7 @@ panel.addEventListener("dragend", () => {
 });
 
 window.studyDegree = {
-  render, attachCatalogue, openProgressLinks, applyCourseStudyPlan, planCalendarItems, patchStudyScheduleEntry, createTaskStudySession, removeStudyScheduleEntry, calendarStatusClass, calendarStatusBadge, renderCalendarLegend,calendarCourseStyle,
+  render, attachCatalogue, openProgressLinks, applyCourseStudyPlan, planCalendarItems, patchStudyScheduleEntry, createTaskStudySession, removeStudyScheduleEntry, calendarStatusClass, calendarStatusBadge, renderCalendarLegend,calendarCourseStyle,calendarOverviewItems,renderMonthTaskWeeks,
   openSchedule(courseId="",date="") {
     if(!get().editable)return;
     const current=get();

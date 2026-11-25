@@ -1,6 +1,9 @@
 (() => {
   const LANGUAGE_KEY = "study-tracker-language-v1";
   const english = {
+    "全部课程周计划": "Weekly plan · all courses",
+    "课程时间表": "Course timetable",
+    "查看／补充考试": "View / add exam details",
     "任务预览 / 导入": "Review tasks / import",
     "已按计划执行": "Executed as planned",
     "内容任务": "Content task",

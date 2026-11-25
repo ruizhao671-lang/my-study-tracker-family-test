@@ -2178,11 +2178,13 @@
               <button class="btn secondary" id="timerNextMonthBtn" type="button">下个月</button>
             </div>
             <div class="timer-calendar-actions">
+              <button class="btn secondary" id="timerWeekPlanBtn" type="button">全部课程周计划</button>
               <button class="btn secondary" id="addExamBtn" type="button">+ 添加考试</button>
               <button class="btn secondary" id="addReminderBtn" type="button">+ 添加事项</button>
             </div>
             <div id="timerCalendarLegend"></div>
             <div class="calendar-grid" id="timerCalendarGrid"></div>
+            <div id="timerTaskWeeks"></div>
           </div>
 
           <section class="timer-focus-plan" aria-label="专注学习计划">
@@ -3514,13 +3516,13 @@
     }
 
     function calendarItemsForDate(dateKey) {
-      return [...(state.timer.calendarItems || []), ...(!READ_ONLY_LINK ? window.studyDegree?.planCalendarItems(state,dateKey) || [] : [])]
+      return (READ_ONLY_LINK ? state.timer.calendarItems || [] : window.studyDegree?.calendarOverviewItems?.(state,dateKey) || state.timer.calendarItems || [])
         .filter(item => item.date === dateKey)
         .sort((left, right) => (left.startTime || "00:00").localeCompare(right.startTime || "00:00"));
     }
 
-    function findCalendarItem(itemId) {
-      return (state.timer.calendarItems || []).find(item => item.id === itemId) || calendarItemsForDate(state.timer.selectedDate).find(item => item.id === itemId);
+    function findCalendarItem(itemId,dateKey=state.timer.selectedDate) {
+      return (state.timer.calendarItems || []).find(item => item.id === itemId) || calendarItemsForDate(dateKey).find(item => item.id === itemId);
     }
 
     function handlePlanCalendarAction(action,item,target) {
@@ -3841,6 +3843,8 @@
       }
       els.timerCalendarGrid.innerHTML = cells.join("");
       document.getElementById("timerCalendarLegend").innerHTML = window.studyDegree?.renderCalendarLegend?.() || "";
+      document.getElementById("timerWeekPlanBtn").hidden = READ_ONLY_LINK || !state.degreePlan;
+      document.getElementById("timerTaskWeeks").innerHTML = !READ_ONLY_LINK ? window.studyDegree?.renderMonthTaskWeeks?.(state,state.timer.calendarMonth) || "" : "";
     }
 
     function calendarItemDetailsHtml(item, includeActions = true) {
@@ -3866,8 +3870,8 @@
         ${item.type === "reminder" && item.details ? `<p>${t("事项内容")}${separator}${escapeHtml(item.details)}</p>` : ""}
         ${includeActions ? `
           <div class="actions">
-            <button class="btn secondary" type="button" data-action="edit-calendar-item">${t("编辑")}</button>
-            <button class="btn icon" type="button" data-action="delete-calendar-item" title="${t("删除")}">×</button>
+            <button class="btn secondary" type="button" data-action="edit-calendar-item">${t(item.virtualPlanExam ? "查看／补充考试" : "编辑")}</button>
+            ${!item.virtualPlanExam?`<button class="btn icon" type="button" data-action="delete-calendar-item" title="${t("删除")}">×</button>`:""}
           </div>
         ` : ""}
       `;
@@ -4493,7 +4497,7 @@
               <span class="badge"></span>
               ${canLinkDegree ? `<button class="btn secondary progress-link" type="button" data-action="link-degree-progress">
                 ${t(degreeLabel ? "已关联毕业规划" : "关联毕业规划")}</button>
-                ${degreeLabel?'<button class="btn secondary" type="button" data-action="open-linked-study-plan">'+t("任务预览 / 导入")+'</button>':""}` : ""}
+                ${degreeLabel?'<button class="btn secondary" type="button" data-action="open-linked-study-plan">'+t("任务预览 / 导入")+'</button><button class="btn secondary" type="button" data-action="open-linked-study-schedule">'+t("课程时间表")+'</button>':""}` : ""}
             </div>
             <div class="progress-bar" aria-hidden="true">
               <div class="progress-fill"></div>
@@ -5150,8 +5154,8 @@
       renderTimer();
     }
 
-    function selectCalendarItem(itemId) {
-      const item = findCalendarItem(itemId);
+    function selectCalendarItem(itemId,dateKey=state.timer.selectedDate) {
+      const item = findCalendarItem(itemId,dateKey);
       if (!item) return;
       selectedCalendarItemId = item.id;
       selectTimerDate(item.date, { preserveCalendarItem: true });
@@ -6121,10 +6125,17 @@
     });
     els.timerCompleteTask.addEventListener("change", syncTimerFormToActive);
     els.timerNote.addEventListener("input", syncTimerFormToActive);
+    document.getElementById("timerWeekPlanBtn").addEventListener("click",()=>{
+      const date=state.timer.selectedDate?.startsWith(state.timer.calendarMonth)?state.timer.selectedDate:state.timer.calendarMonth+"-01";
+      window.studyDegree?.openSchedule("",date);
+    });
+    document.getElementById("timerTaskWeeks").addEventListener("click",event=>{
+      const button=event.target.closest("[data-open-study-week]");if(button)window.studyDegree?.openSchedule("",button.dataset.openStudyWeek);
+    });
     els.timerCalendarGrid.addEventListener("click", event => {
       const itemButton = event.target.closest("[data-action='select-calendar-item']");
       if (itemButton) {
-        selectCalendarItem(itemButton.dataset.itemId);
+        selectCalendarItem(itemButton.dataset.itemId,itemButton.dataset.date);
         return;
       }
       const button = event.target.closest("[data-action='select-timer-date']");
@@ -6139,6 +6150,7 @@
       const itemBlock = event.target.closest("[data-calendar-item-id]");
       const calendarItem = itemBlock ? findCalendarItem(itemBlock.dataset.calendarItemId) : null;
       if (calendarItem) {
+        if(calendarItem.virtualPlanExam){window.studyTrackerBridge.openDegreeCalendar(calendarItem.degreeCourseId,calendarItem.degreeExamId);return;}
         if(calendarItem.type === "study"){handlePlanCalendarAction(action,calendarItem,event.target);return;}
         if (action === "edit-calendar-item") openCalendarItemModal(calendarItem.type, calendarItem);
         if (action === "delete-calendar-item") deleteCalendarItem(calendarItem);
@@ -6155,6 +6167,7 @@
       const itemBlock = event.target.closest("[data-calendar-item-id]");
       const calendarItem = itemBlock ? findCalendarItem(itemBlock.dataset.calendarItemId) : null;
       if (!calendarItem) return;
+      if(calendarItem.virtualPlanExam){window.studyTrackerBridge.openDegreeCalendar(calendarItem.degreeCourseId,calendarItem.degreeExamId);return;}
       if(calendarItem.type === "study"){handlePlanCalendarAction(action,calendarItem,event.target);return;}
       if (action === "edit-calendar-item") openCalendarItemModal(calendarItem.type, calendarItem);
       if (action === "delete-calendar-item") deleteCalendarItem(calendarItem);
@@ -6317,9 +6330,9 @@
         }
       }
 
-      if(action==="open-linked-study-plan" && course){
+      if(["open-linked-study-plan","open-linked-study-schedule"].includes(action) && course){
         const linked=state.degreePlan?.modules.flatMap(m=>m.courses).find(c=>c.courseId===course.id);
-        if(linked)window.studyDegree.openCourseStudyPlan(linked.id);
+        if(linked){if(action==="open-linked-study-schedule")window.studyDegree.openSchedule(linked.id);else window.studyDegree.openCourseStudyPlan(linked.id);}
       }
       if (action === "link-degree-progress" && course) {
         window.studyDegree?.openProgressLinks(course.id);
