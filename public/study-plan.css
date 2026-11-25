@@ -1,4 +1,19 @@
 
+.plan-source-id{display:block;color:#6c8178;font-size:.72rem;overflow-wrap:anywhere;margin:.5rem 0}
+.plan-diff-scroll{overflow:auto;border:1px solid #d5e4dc;border-radius:8px;margin:.75rem 0}
+.plan-diff-table{width:100%;border-collapse:collapse;font-size:.78rem;table-layout:fixed}
+.plan-diff-table th,.plan-diff-table td{padding:9px;text-align:left;vertical-align:top;overflow-wrap:anywhere;border-bottom:1px solid #deebe3;white-space:pre-wrap}
+.plan-diff-table th:first-child{width:23%}.plan-diff-table thead{background:#f0f6f3;color:#4c6b5c}
+.plan-diff-table td:nth-child(2){background:#f6f7f6;color:#66776d}.plan-diff-table td:nth-child(3){background:#eaf6ed;color:#2c6241}
+.plan-diff-empty{font-size:.78rem;color:#5c786a;background:#f1f7f3;padding:.65rem;border-radius:8px}
+.plan-conflict-choice{padding:.75rem;border:1px solid #e1ca94;border-radius:9px;background:#fff8e9}
+#degreeDialog .plan-section-nav .btn[aria-pressed=true]{background:#157c70;border-color:#157c70;color:#fff}
+.plan-conflict-choice .input{background:#fff}.plan-history-list{display:grid;gap:7px;max-height:220px;overflow:auto}
+.plan-history-list .btn{text-align:left;white-space:normal;font-size:.8rem}
+.plan-history-preview{border:1px solid #c9ddd1;border-radius:12px;padding:1rem;margin-top:1rem;background:#f7fbf8}
+.plan-history-preview>.plan-check{display:flex!important;margin:1rem 0;line-height:1.6}.plan-history-change{padding:.6rem 0;border-bottom:1px solid #d6e7dc}
+@media(max-width:600px){.plan-diff-table{font-size:.72rem}.plan-diff-table th,.plan-diff-table td{padding:6px}.plan-history-preview{padding:.75rem}}
+
 /* Study plans share tasks with progress and display virtual recurring events. */
 .plan-edit-row{border:1px solid var(--border,#d4e2df);border-radius:12px;padding:14px;margin:10px 0;background:var(--surface,#fff)}
 .plan-edit-row label,.plan-import label{display:block;margin:8px 0}.plan-edit-row .degree-row{gap:8px;flex-wrap:wrap}

@@ -1,3 +1,4 @@
+import {captureCoursePlan,recordCoursePlanChange,saveCoursePlanUpdate,coursePlanVersions,coursePlanRestorePreview,restoreCoursePlanVersion,preserveLiveHistory} from "./study-plan-history.js";
 import { openPlanEditor } from "./study-plan-editor.js";
 import { courseStudyTasks, applyCourseStudyPlan, studyPlanFocusDate, patchStudyScheduleEntry, createTaskStudySession, removeStudyScheduleEntry } from "./study-plan-core.js";
 import { renderStudySchedule, bindStudySchedule, selectStudySchedule, planCalendarItems, calendarStatusClass, calendarStatusBadge, renderCalendarLegend, calendarCourseStyle,calendarOverviewItems,renderMonthTaskWeeks } from "./study-schedule.js";
@@ -1063,6 +1064,7 @@ panel.addEventListener("dragend", () => {
 });
 
 window.studyDegree = {
+  captureCoursePlan,recordCoursePlanChange,saveCoursePlanUpdate,coursePlanVersions,coursePlanRestorePreview,restoreCoursePlanVersion,preserveLiveHistory,
   render, attachCatalogue, openProgressLinks, applyCourseStudyPlan, planCalendarItems, patchStudyScheduleEntry, createTaskStudySession, removeStudyScheduleEntry, calendarStatusClass, calendarStatusBadge, renderCalendarLegend,calendarCourseStyle,calendarOverviewItems,renderMonthTaskWeeks,
   openSchedule(courseId="",date="") {
     if(!get().editable)return;

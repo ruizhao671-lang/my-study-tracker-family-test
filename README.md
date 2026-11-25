@@ -28,6 +28,9 @@ The project started as a personal tool for organizing university courses, exam p
 - Automatic cloud sync through a FastAPI backend.
 - Read-only family sharing with privacy filtering.
 - Backup export and import.
+- Editable study-plan imports with per-item before/after review and explicit apply/keep choices.
+- Incremental plan updates by stable source ID: append new IDs, retain omitted tasks and fields, and preserve actual study records.
+- Per-course plan history with comparison and protected restore (up to 20 recent versions, subject to storage limits).
 - Chinese-first interface with English language support.
 
 ## Tech Stack
@@ -109,6 +112,7 @@ node check.mjs
 node cloud-core.test.mjs
 node degree-plan.test.mjs
 node study-plan.test.mjs
+node study-plan-update.test.mjs
 node study-bricks.test.mjs
 node study-calendar-overview.test.mjs
 node open-source-check.mjs
@@ -117,7 +121,7 @@ node open-source-check.mjs
 
 The checks cover frontend structure, translation coverage, timer behavior, task windows and multiple planned sessions, account isolation, sharing privacy, backend API behavior, and public-release safety basics.
 
-Browser checks (with `PLAYWRIGHT_MODULE`, `BROWSER_EXECUTABLE` and `STUDY_TRACKER_TEST_URL` configured) include `study-plan-browser.test.mjs`, `study-plan-review-browser.test.mjs`, `calendar-status-browser.test.mjs`, `study-bricks-browser.test.mjs` and `study-calendar-overview-browser.test.mjs`. The task-brick check exercises imports, split sessions, dragging, resizing, unscheduling, timing, manual completion, reload persistence and mobile layout.
+Browser checks (with `PLAYWRIGHT_MODULE`, `BROWSER_EXECUTABLE` and `STUDY_TRACKER_TEST_URL` configured) include `study-plan-browser.test.mjs`, `study-plan-review-browser.test.mjs`, `study-plan-update-browser.test.mjs`, `calendar-status-browser.test.mjs`, `study-bricks-browser.test.mjs` and `study-calendar-overview-browser.test.mjs`. The task-brick check exercises imports, split sessions, dragging, resizing, unscheduling, timing, manual completion, reload persistence and mobile layout.
 
 ## Current Limitations
 

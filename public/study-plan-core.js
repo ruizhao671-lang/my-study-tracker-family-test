@@ -1,3 +1,4 @@
+import {TASK_FIELDS,EVENT_FIELDS,importFields,matchImportedItem,hydrateImportedItem,itemIdentity,validateImportIds} from "./study-plan-update-core.js";
 import { creditNumber, parseStudyTasks, setProgressLink, nextExam, isEarned } from "./degree-core.js";
 
 export function validPlanDate(value) {
@@ -32,7 +33,7 @@ export function courseStudyTasks(course, semesters) {
         date: task.plannedDate || "", startTime: task.plannedStart || "", endTime: task.plannedEnd || "",
         weekOf: task.weekOf || "", deadline: task.deadline || "", blockId: task.planBlockId || "",
         windowStart:task.windowStart||"",windowEnd:task.windowEnd||"",teachingWeek:task.teachingWeek||null,
-        importKey: task.planImportKey || "", userScheduled: task.userScheduled === true,
+        importKey: task.planImportKey || "",importAliases:task.planImportAliases||[], userScheduled: task.userScheduled === true,
         seriesKey: task.planSeriesKey || "", scheduleExecuted: task.scheduleExecuted === true,
         scheduleHours: task.scheduleHours ?? null, period: task.plannedPeriod || ""
       });
@@ -68,13 +69,13 @@ function normalizeTask(task) {
   const windowStart=text(task.windowStart,10),windowEnd=text(task.windowEnd,10),teachingWeek=task.teachingWeek==null||task.teachingWeek===""?null:Number(task.teachingWeek);
   if([windowStart,windowEnd].some(value=>value&&!validPlanDate(value)) || (windowStart&&windowEnd&&windowEnd<windowStart) ||
     (teachingWeek!==null&&(!Number.isInteger(teachingWeek)||teachingWeek<1||teachingWeek>100)))throw new Error("Invalid task completion window");
-  if (!title || [date, weekOf, deadline].some(value => value && !validPlanDate(value)) ||
-    !validTime(startTime) || !validTime(endTime) || (startTime && !date) ||
-    (endTime && (!startTime || endTime <= startTime))) throw new Error(title || "Invalid task");
+  if ((!title&&!task.partial) || [date, weekOf, deadline].some(value => value && !validPlanDate(value)) ||
+    !validTime(startTime) || !validTime(endTime) || (startTime && !date&&!task.partial) ||
+    (endTime && (!startTime || endTime <= startTime)&&!task.partial)) throw new Error(title || "Invalid task");
   if (hours === null && rawHours !== null && rawHours !== undefined && text(rawHours) &&
     !/^(?:待定|待估算|未知|未估算|tbd|unknown|\?)$/i.test(text(rawHours))) throw new Error(title);
   return {
-    id: task.id || crypto.randomUUID(), title, group: text(task.group, 100), detail: text(task.detail, 4000),
+    id: task.id || crypto.randomUUID(),partial:task.partial===true,providedFields:task.providedFields||importFields(task),doneEdited:task.doneEdited===true,importAliases:task.importAliases||[], title, group: text(task.group, 100), detail: text(task.detail, 4000),
     hours, date, startTime, endTime, windowStart,windowEnd,teachingWeek,weekOf:weekOf?planWeek(weekOf):"", deadline, blockId: task.blockId ?? "",
     canonical: task.canonical === true, done: task.done === true, importKey: text(task.importKey, 1000), userScheduled: task.userScheduled === true,
     seriesKey: text(task.seriesKey,1000), scheduleExecuted: task.scheduleExecuted === true,
@@ -94,21 +95,21 @@ function normalizeEvent(event) {
   if(hours===null && rawHours!==null && rawHours!==undefined && text(rawHours) &&
     !/^(?:待定|待估算|未知|未估算|tbd|unknown|\?)$/i.test(text(rawHours)))throw new Error("Invalid planned hours");
   if(startTime&&!endTime&&hours!=null&&Number(startTime.slice(0,2))*60+Number(startTime.slice(3))+hours*60>1440)throw new Error("Split a midnight-crossing session into two dates");
-  if (!title || (date ? !validPlanDate(date) : type!=="study") || (weekOf && !validPlanDate(weekOf)) || !validTime(startTime) || !validTime(endTime) ||
-    (startTime&&!date) || (endTime && (!startTime || endTime <= startTime))) throw new Error(title || "Invalid event");
+  if ((!title&&!event.partial) || (date ? !validPlanDate(date) : type!=="study"&&!event.partial) || (weekOf && !validPlanDate(weekOf)) || !validTime(startTime) || !validTime(endTime) ||
+    (startTime&&!date&&!event.partial) || (endTime && (!startTime || endTime <= startTime)&&!event.partial)) throw new Error(title || "Invalid event");
   let repeat;
   if (event.repeat) {
-    if(!date)throw new Error("Repeating events require a start date");
+    if(!date&&!event.partial)throw new Error("Repeating events require a start date");
     if(event.repeat.frequency && event.repeat.frequency!=="weekly")throw new Error("Only weekly recurrence is supported");
-    const until = event.repeat.until;
-    const weekdays = event.repeat.weekdays || [new Date(date + "T12:00:00Z").getUTCDay() || 7];
+    const until = event.repeat.until || "";
+    const weekdays = event.repeat.weekdays || (date||until ? [new Date((date||until) + "T12:00:00Z").getUTCDay() || 7] : []);
     const exceptDates = event.repeat.exceptDates || event.repeat.excludeDates || [];
-    if (!validPlanDate(until) || until < date || until > addPlanDays(date, 366) || !Array.isArray(weekdays) || !weekdays.length ||
+    if ((until ? !validPlanDate(until) : !event.partial) || (date&&until&&until < date) || (date&&until&&until > addPlanDays(date, 366)) || !Array.isArray(weekdays) || (!weekdays.length&&!event.partial) ||
       weekdays.some(day => !Number.isInteger(day) || day < 1 || day > 7) ||
       !Array.isArray(exceptDates) || exceptDates.some(day => !validPlanDate(day))) throw new Error(title);
     repeat = { frequency: "weekly", until, weekdays: [...new Set(weekdays)], exceptDates: [...new Set(exceptDates)] };
   }
-  return { id: event.id || crypto.randomUUID(), title, type, date, startTime, endTime,
+  return { id: event.id || crypto.randomUUID(),partial:event.partial===true,providedFields:event.providedFields||importFields(event,"event"),importAliases:event.importAliases||[],executionEdited:event.executionEdited===true,repeatProvidedFields:event.repeatProvidedFields, title, type, date, startTime, endTime,
     detail: text(event.detail, 4000), taskId: text(event.taskId, 100), taskSeriesKey:text(event.taskSeriesKey,1000), repeat,
     hours,userScheduled:event.userScheduled===true,weekOf:weekOf?planWeek(weekOf):"",period:text(event.period,80),executed:event.executed===true,
     completedDates: [...new Set((event.completedDates || []).filter(validPlanDate))].slice(0,500),
@@ -143,14 +144,15 @@ export function parseCoursePlan(input, course, plan, range) {
   if (!validPlanDate(start) || !validPlanDate(end) || end < start || end > addPlanDays(start, 366)) throw new Error("计划日期范围");
   const addEvent = event => events.push(normalizeEvent(event));
   if (Array.isArray(input.tasks)) {
+    validateImportIds(input.tasks,"task");validateImportIds(input.events||[],"event");
     for (const raw of input.tasks) {
       if(raw.repeat?.frequency && raw.repeat.frequency!=="weekly")throw new Error("Only weekly recurrence is supported");
-      const task = normalizeTask({ ...raw, id: crypto.randomUUID(), importKey: raw.id ? "task:" + raw.id : raw.importKey, seriesKey:raw.repeat ? "task:"+(raw.id || raw.title) : "" });
+      const task = normalizeTask({ ...raw,partial:Boolean(raw.id),providedFields:[...importFields(raw),...(raw.repeat?["weekOf","seriesKey"]:[])],doneEdited:false,importAliases:[], id: crypto.randomUUID(), importKey: raw.id ? "task:" + raw.id : raw.importKey, seriesKey:raw.repeat ? "task:"+(raw.id || raw.title) : raw.seriesKey||"" });
       if (raw.repeat) weeklyTasks.push({ task, from: raw.repeat.from || start, until: raw.repeat.until || end,
         exceptDates: raw.repeat.exceptDates || [] });
       else tasks.push(task);
     }
-    for (const raw of input.events || []) addEvent({ ...raw, id: crypto.randomUUID(), importKey: raw.id ? "event:" + raw.id : raw.importKey });
+    for (const raw of input.events || []) addEvent({ ...raw,partial:Boolean(raw.id),providedFields:importFields(raw,"event"),repeatProvidedFields:raw.repeat?Object.keys(raw.repeat).map(k=>k==="excludeDates"?"exceptDates":k):undefined,executionEdited:false,importAliases:[], id: crypto.randomUUID(), importKey: raw.id ? "event:" + raw.id : raw.importKey });
   } else {
     for (const raw of String(input.tasks || "").split(/\r?\n/)) {
       const line = raw.trim();
@@ -203,7 +205,7 @@ export function parseCoursePlan(input, course, plan, range) {
       if (weekly.exceptDates.includes(week)) continue;
       tasks.push({ ...weekly.task, id: crypto.randomUUID(), weekOf: week, date: "",windowStart:"",windowEnd:"",
         teachingWeek:weekly.task.teachingWeek==null?null:weekly.task.teachingWeek+Math.round((Date.parse(week)-Date.parse(planWeek(weekly.from)))/604800000),
-        importKey: sourceKey([weekly.task.importKey || weekly.task.title, weekly.task.group, week]) });
+        importKey: weekly.task.seriesKey?sourceKey([weekly.task.seriesKey,week]):sourceKey([weekly.task.importKey || weekly.task.title, weekly.task.group, week]) });
     }
   }
   for(const event of events){
@@ -226,35 +228,48 @@ export function parseCoursePlan(input, course, plan, range) {
   return { tasks, events };
 }
 
-export function mergeImportedPlan(existingTasks, existingEvents, imported) {
+export function mergeImportedPlan(existingTasks,existingEvents,imported){
   let convertedTasks=0;
-  const importedEvents=imported.events.map(event=>({...event}));
-  const tasks = existingTasks.filter(task=>{
+  const importedEvents=imported.events.map(e=>({...e}));
+  const tasks=existingTasks.filter(task=>{
     if(task.canonical!==false)return true;
     const type=/workshop/i.test(task.group||"")?"workshop":/^(课堂|上课|课程|class|lecture)$/i.test(task.group||"")?"class":"";
-    const event=type && importedEvents.find(event=>event.type===type && event.title===task.title);
+    const event=type&&importedEvents.find(e=>e.type===type&&e.title===task.title);
     if(!event)return true;
     event.migratedTaskId=task.id;event.legacyTaskDone=task.done===true;convertedTasks++;return false;
-  }).map(task => ({ ...task }));
-  const events = existingEvents.map(event => ({ ...event }));
-  const taskIds=new Map();
-  let addedTasks = 0;
-  let addedEvents = 0;
-  for (const task of imported.tasks) {
-    const candidates=tasks.filter(item=>!item.importKey && item.title===task.title && (item.group||"")===(task.group||"") &&
-      (!item.date || item.date===task.date) && (!item.weekOf || item.weekOf===task.weekOf));
-    const previous = task.forceNew ? undefined : tasks.find(item => item.id===(task.mergeIntoId || task.id) || taskKey(item) === taskKey(task)) || (candidates.length===1 ? candidates[0] : undefined);
-    taskIds.set(task.id,previous?.id || task.id);
-    if (previous) { const arranged = previous.userScheduled ? { date: previous.date, startTime: previous.startTime, endTime: previous.endTime, userScheduled: true } : {}; Object.assign(previous, task, { id: previous.id, done: task.doneEdited?task.done===true:previous.done, canonical: previous.canonical, scheduleExecuted:previous.scheduleExecuted===true, scheduleHours:previous.scheduleHours??task.scheduleHours }, arranged); }
-    else { tasks.push({...task, ...(task.forceNew ? {importKey:"copy:"+task.id} : {})}); addedTasks++; }
+  }).map(t=>({...t}));
+  const events=existingEvents.map(e=>({...e})),taskIds=new Map();
+  let addedTasks=0,addedEvents=0;
+  const aliases=(old,incoming,kind)=>[...new Set([...(old.importAliases||[]),...(incoming.importAliases||[]),itemIdentity(old,kind)])].filter(key=>key!==itemIdentity(incoming,kind)).slice(-40);
+  for(const task of imported.tasks){
+    const previous=matchImportedItem(task,tasks);
+    taskIds.set(task.id,previous?.id||task.id);
+    if(previous){
+      if(task.decision==="keep")continue;
+      const value=hydrateImportedItem(task,previous),fields=task.providedFields||importFields(task);
+      const patch=Object.fromEntries(fields.filter(key=>TASK_FIELDS.includes(key)).map(key=>[key,value[key]]));
+      const arranged=previous.userScheduled?Object.fromEntries(["date","startTime","endTime","userScheduled"].map(key=>[key,previous[key]])):{};
+      Object.assign(previous,patch,{importAliases:aliases(previous,task,"task"),importKey:task.importKey||previous.importKey,
+        done:task.doneEdited?task.done===true:previous.done,doneEdited:task.doneEdited||previous.doneEdited,
+        canonical:previous.canonical,scheduleExecuted:previous.scheduleExecuted===true,scheduleHours:previous.scheduleHours??task.scheduleHours},arranged);
+    }else{tasks.push({...task,...(task.forceNew?{importKey:"copy:"+task.id}:{})});addedTasks++;}
   }
-  for (const event of importedEvents) {
+  for(const event of importedEvents){
     if(taskIds.has(event.taskId))event.taskId=taskIds.get(event.taskId);
-    const previous = event.forceNew ? undefined : events.find(item => item.id===(event.mergeIntoId || event.id) || item.importKey === event.importKey);
-    if (previous) { const arranged=previous.userScheduled&&!event.arrangementEdited?Object.fromEntries(["date","startTime","endTime","hours","weekOf","period","userScheduled"].map(key=>[key,previous[key]])):{}; const repeat = event.repeat ? { ...event.repeat, exceptDates: [...new Set([...(previous.repeat?.exceptDates || []), ...event.repeat.exceptDates])] } : undefined; Object.assign(previous, event, { id: previous.id, repeat, executed:event.executionEdited?event.executed===true:previous.executed===true, completedDates:[...(previous.completedDates||[])] },arranged); }
-    else { events.push({...event,...(event.forceNew ? {importKey:"copy:"+event.id} : {})}); addedEvents++; }
+    const previous=matchImportedItem(event,events,"event");
+    if(previous){
+      if(event.decision==="keep")continue;
+      const value=hydrateImportedItem(event,previous,"event"),fields=event.providedFields||importFields(event,"event");
+      const patch=Object.fromEntries(fields.filter(key=>EVENT_FIELDS.includes(key)).map(key=>[key,value[key]]));
+      if(patch.repeat){if(event.repeatProvidedFields)patch.repeat={...(previous.repeat||{}),...Object.fromEntries(event.repeatProvidedFields.map(key=>[key,patch.repeat[key]]))};patch.repeat={...patch.repeat,exceptDates:[...new Set([...(previous.repeat?.exceptDates||[]),...(patch.repeat.exceptDates||[])])]};}
+      const arranged=previous.userScheduled&&!event.arrangementEdited&&event.decision!=="apply"?
+        Object.fromEntries(["date","startTime","endTime","hours","weekOf","period","userScheduled"].map(key=>[key,previous[key]])):{};
+      Object.assign(previous,patch,{importAliases:aliases(previous,event,"event"),importKey:event.importKey||previous.importKey,
+        executed:event.executionEdited?event.executed===true:previous.executed===true,executionEdited:event.executionEdited||previous.executionEdited,
+        completedDates:[...new Set([...(previous.completedDates||[]),...(event.completedDates||[])])]},arranged);
+    }else{events.push({...event,...(event.forceNew?{importKey:"copy:"+event.id}:{})});addedEvents++;}
   }
-  return { tasks, events, addedTasks, addedEvents, convertedTasks };
+  return {tasks,events,addedTasks,addedEvents,convertedTasks};
 }
 
 export function applyCourseStudyPlan(state, courseId, input) {
@@ -262,11 +277,13 @@ export function applyCourseStudyPlan(state, courseId, input) {
   if (!course) throw new Error("Course missing");
   if (input.range && (!validPlanDate(input.range.start) || !validPlanDate(input.range.end) || input.range.end < input.range.start ||
     input.range.end > addPlanDays(input.range.start,366) || (input.range.exceptDates || []).some(day=>!validPlanDate(day)))) throw new Error("Invalid plan range");
-  let tasks = input.tasks.map(normalizeTask);
-  const events = input.events.map(normalizeEvent);
+  let tasks = input.tasks.map(task=>normalizeTask({...task,partial:false}));
+  const events = input.events.map(event=>normalizeEvent({...event,partial:false}));
   if (!input.link) {
     setProgressLink(course, "", "", state.semesters);
-    course.tasks = tasks.map(({ canonical, ...task }) => task);
+    const retained=new Set(tasks.map(t=>t.id));course.planTaskArchive ||= [];
+    for(const task of course.tasks||[])if(!retained.has(task.id)){course.planTaskArchive=course.planTaskArchive.filter(a=>a.task.id!==task.id);course.planTaskArchive.push({group:task.group||"",task:structuredClone(task)});}
+    course.tasks = tasks.map(({canonical,partial,providedFields,doneEdited,...task})=>task);
   } else {
     let learning = state.semesters.flatMap(stage => stage.courses).find(item => item.id === input.link);
     if (!learning) {
@@ -293,6 +310,11 @@ export function applyCourseStudyPlan(state, courseId, input) {
     for(const event of events)if(remapped.has(event.taskId))event.taskId=remapped.get(event.taskId);
     const retained = new Set(tasks.map(task => task.id));
     const removed = new Set(before.filter(task => !retained.has(task.id)).map(task => task.id));
+    course.planTaskArchive ||= [];
+    for(const category of learning.categories)for(const task of category.tasks)if(removed.has(task.id)){
+      course.planTaskArchive=course.planTaskArchive.filter(a=>a.task.id!==task.id);
+      course.planTaskArchive.push({group:category.name,task:structuredClone(task)});
+    }
     for (const category of learning.categories) category.tasks = category.tasks.filter(task => !removed.has(task.id));
     for (const task of tasks) {
       const previousCategory = learning.categories.find(category => category.tasks.some(item => item.id === task.id));
@@ -305,12 +327,13 @@ export function applyCourseStudyPlan(state, courseId, input) {
       const saved = { ...previous, id: previous?.id || task.id, title: task.title, name: task.title,
         detail: task.detail, done: task.done, estimatedHours: task.hours, plannedDate: task.date,
         plannedStart: task.startTime, plannedEnd: task.endTime, weekOf: task.weekOf,
-        deadline: task.deadline,windowStart:task.windowStart,windowEnd:task.windowEnd,teachingWeek:task.teachingWeek, planBlockId: task.blockId, planImportKey: task.importKey, userScheduled: task.userScheduled,
+        deadline: task.deadline,windowStart:task.windowStart,windowEnd:task.windowEnd,teachingWeek:task.teachingWeek, planBlockId: task.blockId, planImportKey: task.importKey,planImportAliases:task.importAliases||[], userScheduled: task.userScheduled,
         planSeriesKey:task.seriesKey,scheduleExecuted:task.scheduleExecuted,scheduleHours:task.scheduleHours,plannedPeriod:task.period,
         privatePlanTask: previous ? previous.privatePlanTask === true : true,
         note: previous?.note || "", attachments: previous?.attachments || [], collapsed: previous?.collapsed ?? true };
       if (previousCategory) previousCategory.tasks = previousCategory.tasks.filter(item => item.id !== saved.id);
       category.tasks.push(saved);
+      if(course.planTaskArchive)course.planTaskArchive=course.planTaskArchive.filter(a=>a.task.id!==saved.id);
     }
     setProgressLink(course, learning.id, course.courseId === learning.id ? course.passTaskId : "", state.semesters);
     course.tasks = [];
@@ -320,7 +343,7 @@ export function applyCourseStudyPlan(state, courseId, input) {
     const bound = savedTasks.find(task => task.id === event.taskId || task.importKey === "task:" + event.taskId);
     event.taskId = bound?.id || "";
   }
-  course.planEvents = events;
+  course.planEvents = events.map(({partial,providedFields,executionEdited,repeatProvidedFields,...event})=>event);
   if (input.range) course.planRange = input.range;
 }
 
@@ -382,7 +405,7 @@ export function patchStudyScheduleEntry(state,courseId,entryId,date,changes) {
   if(typeof taskDone==="boolean"){
     const entry=studyScheduleEntries(state,date||"0001-01-01",date||"9999-12-31").find(entry=>entry.id===entryId);
     const target=tasks.find(task=>task.id===(kind==="plan-task"?id:entry?.taskId));
-    if(target)target.done=taskDone;
+    if(target){target.done=taskDone;target.doneEdited=true;}
   }
   if(kind==="plan-task" || kind==="plan-deadline"){
     const task=tasks.find(task=>task.id===id);

@@ -2375,6 +2375,7 @@
     let activePanel = localStorage.getItem("study-tracker-active-panel-v1") || "system";
     let history = [JSON.stringify(state)];
     let historyIndex = 0;
+    let historyKinds = ["baseline"];
     let timerTick = null;
     let timerAudio = null;
     let timerNoiseOn = false;
@@ -4754,13 +4755,13 @@
       return { semester, course, category, task };
     }
 
-    function commit(message, recordHistory = true) {
+    function commit(message, recordHistory = true,kind="edit") {
       if (recordHistory) {
         const snapshot = JSON.stringify(state);
         if (snapshot !== history[historyIndex]) {
-          history = history.slice(0, historyIndex + 1);
-          history.push(snapshot);
-          if (history.length > 50) history.shift();
+          history = history.slice(0, historyIndex + 1);historyKinds=historyKinds.slice(0,historyIndex+1);
+          history.push(snapshot);historyKinds.push(kind);
+          if (history.length > 50){history.shift();historyKinds.shift();}
           historyIndex = history.length - 1;
         }
       }
@@ -4780,8 +4781,11 @@
     function stepHistory(direction) {
       const nextIndex = historyIndex + direction;
       if (nextIndex < 0 || nextIndex >= history.length) return;
+      const live=state,protect=historyKinds[direction<0?historyIndex:nextIndex]==="plan";
       historyIndex = nextIndex;
       state = normalizeState(JSON.parse(history[historyIndex]));
+      if(window.studyDegree?.preserveLiveHistory)state=window.studyDegree.preserveLiveHistory(state,live,{preserveProgress:protect});
+      else state.timer=live.timer;
       saveState();
       render();
       showToast(direction < 0 ? "已撤销上一步" : "已恢复下一步");
@@ -5438,7 +5442,7 @@
 
     function resetHistory() {
       history = [JSON.stringify(state)];
-      historyIndex = 0;
+      historyIndex = 0;historyKinds=["baseline"];
     }
 
     function exportDataBackup() {
@@ -6704,6 +6708,7 @@
       if (event.key === "Escape" && els.pauseExpiredModal.classList.contains("open")) {
         closePauseExpiredModal();
       }
+      if(event.ctrlKey&&["z","y"].includes(event.key.toLowerCase())&&event.target.closest("input,textarea,[contenteditable=true]"))return;
       if (event.ctrlKey && event.key.toLowerCase() === "z") {
         event.preventDefault();
         stepHistory(event.shiftKey ? 1 : -1);
@@ -6724,27 +6729,38 @@
       saveCourseStudyPlan(courseId, input) {
         if (READ_ONLY_LINK || window.studyCloud?.isReadOnly?.()) return;
         const draft = JSON.parse(JSON.stringify(state));
-        window.studyDegree.applyCourseStudyPlan(draft,courseId,input);
+        window.studyDegree.saveCoursePlanUpdate(draft,courseId,input);
         state = normalizeState(draft);
-        commit();
+        commit(undefined,true,"plan");
+      },
+      restoreCoursePlanVersion(courseId,versionId) {
+        if (READ_ONLY_LINK || window.studyCloud?.isReadOnly?.()) return;
+        const draft=JSON.parse(JSON.stringify(state));window.studyDegree.restoreCoursePlanVersion(draft,courseId,versionId);
+        state=normalizeState(draft);commit(undefined,true,"plan");
       },
       patchStudyScheduleEntry(courseId,entryId,date,changes) {
         if (READ_ONLY_LINK || window.studyCloud?.isReadOnly?.()) return;
         const draft=JSON.parse(JSON.stringify(state));
+        const before=window.studyDegree.captureCoursePlan(draft,courseId);
         window.studyDegree.patchStudyScheduleEntry(draft,courseId,entryId,date,changes);
-        state=normalizeState(draft);commit();
+        window.studyDegree.recordCoursePlanChange(draft,courseId,before,"调整安排");
+        state=normalizeState(draft);commit(undefined,true,"plan");
       },
       createTaskStudySession(courseId,taskId,values) {
         if (READ_ONLY_LINK || window.studyCloud?.isReadOnly?.()) return;
         const draft=JSON.parse(JSON.stringify(state));
+        const before=window.studyDegree.captureCoursePlan(draft,courseId);
         const id=window.studyDegree.createTaskStudySession(draft,courseId,taskId,values);
-        state=normalizeState(draft);commit();return id;
+        window.studyDegree.recordCoursePlanChange(draft,courseId,before,"添加安排");
+        state=normalizeState(draft);commit(undefined,true,"plan");return id;
       },
       removeStudyScheduleEntry(courseId,entryId,date) {
         if (READ_ONLY_LINK || window.studyCloud?.isReadOnly?.()) return;
         const draft=JSON.parse(JSON.stringify(state));
+        const before=window.studyDegree.captureCoursePlan(draft,courseId);
         window.studyDegree.removeStudyScheduleEntry(draft,courseId,entryId,date);
-        state=normalizeState(draft);commit();
+        window.studyDegree.recordCoursePlanChange(draft,courseId,before,"移除安排");
+        state=normalizeState(draft);commit(undefined,true,"plan");
       },
       setPlannedTaskDone(courseId,taskId,done) {
         if (READ_ONLY_LINK || window.studyCloud?.isReadOnly?.()) return;
@@ -6805,7 +6821,7 @@
       replaceState(nextState, options = {}) {
         state = normalizeState(nextState);
         history = [JSON.stringify(state)];
-        historyIndex = 0;
+        historyIndex = 0;historyKinds=["baseline"];
         if (options.persist !== false) saveState();
         render();
         if (state.ownerName) {

@@ -31,6 +31,8 @@ try{
  await page.locator(".plan-preview").waitFor();
  assert.equal(await page.locator('[data-review-task] [data-field="weekOf"]').first().inputValue(),"2026-11-23");
  assert.equal(await page.locator('[data-review-task] [data-field="teachingWeek"]').first().inputValue(),"7");
+ await page.locator("[data-review-task]").first().locator("[data-merge]").selectOption("original");
+ const choices=page.locator('[data-plan-pane="tasks"] [data-conflict-choice]');for(let i=0;i<await choices.count();i++)if(await choices.nth(i).inputValue()==="")await choices.nth(i).selectOption("apply");
  await page.locator('[data-plan-action="save-schedule"]').click();
  await page.locator(".study-schedule").waitFor();
  assert.equal(await brick("original").count(),1);

@@ -19,7 +19,17 @@ const learningTasks=state=>state.semesters.flatMap(s=>s.courses).find(c=>c.id===
 const planEvents=state=>state.degreePlan.modules[0].courses[0].planEvents;
 async function preview(){await page.locator(".plan-preview").waitFor();}
 async function pane(name){await page.locator('[data-plan-action="pane-'+name+'"]').click();}
-async function save(){await page.locator('#degreeDialog button[type="submit"]').click();}
+async function approveChanges(){
+  if(!await page.locator(".plan-preview [data-review-task],.plan-preview [data-review-event]").count())return;
+  const current=await page.locator('.plan-section-nav [aria-pressed="true"]').getAttribute("data-plan-action");
+  for(const key of ["tasks","events"]){
+    await page.locator('[data-plan-action="pane-'+key+'"]').click();
+    const selectors=page.locator('.plan-preview [data-plan-pane="'+key+'"] [data-conflict-choice]');
+    for(let i=0;i<await selectors.count();i++)if(await selectors.nth(i).inputValue()==="")await selectors.nth(i).selectOption("apply");
+  }
+  if(current)await page.locator('[data-plan-action="'+current+'"]').click();
+}
+async function save(){await approveChanges();await page.locator('#degreeDialog button[type="submit"]').click();}
 async function details(){const d=page.locator('#degreeDialog details').filter({has:page.locator('[name="done"]')});if(await d.count()&&!await d.evaluate(el=>el.open))await d.locator("summary").click();}
 try{
   await page.addInitScript(state=>{if(!localStorage.getItem("study-tracker-online-guest-v1"))localStorage.setItem("study-tracker-online-guest-v1",JSON.stringify(state));localStorage.setItem("study-tracker-language-v1","zh-CN");},fixture);
@@ -27,7 +37,8 @@ try{
   assert.equal(await page.locator('[name="progressLink"]').inputValue(),"learning");
   const reviewTasks=page.locator("[data-review-task]");
   assert.equal(await reviewTasks.count(),3);
-  assert.equal(await reviewTasks.nth(0).locator("[data-merge]").inputValue(),"existing");
+  assert.equal(await reviewTasks.nth(0).locator("[data-merge]").inputValue(),"auto");
+  await reviewTasks.nth(0).locator("[data-merge]").selectOption("existing");
   await reviewTasks.nth(0).locator('[data-field="title"]').fill("Chapter 3 revised");
   await reviewTasks.nth(0).locator('[data-field="group"]').fill("Theory");
   await reviewTasks.nth(0).locator('[data-field="hours"]').fill("5");

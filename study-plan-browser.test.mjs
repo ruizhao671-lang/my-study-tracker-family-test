@@ -13,6 +13,16 @@ course.tasks=[
   {id:"legacy-homework",title:"完成当周作业",group:"作业",hours:2,done:false,blockId:"winter"}
 ];
 const hash="#study-plan-v1="+Buffer.from(JSON.stringify(input)).toString("base64url");
+async function confirmSave(){
+  for(const key of ["tasks","events"]){
+    if(await page.locator(".plan-preview [data-review-task],.plan-preview [data-review-event]").count()){
+      await page.locator('[data-plan-action="pane-'+key+'"]').click();
+      const choices=page.locator('.plan-preview [data-plan-pane="'+key+'"] [data-conflict-choice]');
+      for(let i=0;i<await choices.count();i++)if(await choices.nth(i).inputValue()==="")await choices.nth(i).selectOption("apply");
+    }
+  }
+  await page.locator('#degreeDialog button[type="submit"]').click();
+}
 async function openTaskDetails(){
   const details=page.locator('#degreeDialog details').filter({has:page.locator('[name="done"]')});
   if(await details.count() && !await details.evaluate(el=>el.open))await details.locator("summary").click();
@@ -21,7 +31,7 @@ try{
   await page.addInitScript(f=>{if(!localStorage.getItem("study-tracker-online-guest-v1"))localStorage.setItem("study-tracker-online-guest-v1",JSON.stringify(f));localStorage.setItem("study-tracker-language-v1","zh-CN");},fixture);
   await page.goto(url+"/"+hash,{waitUntil:"networkidle"});
   await page.locator('#degreeDialog[open] select[name="course"]').selectOption("kc");
-  await page.locator('#degreeDialog button[type="submit"]').click();
+  await confirmSave();
   await page.locator('.plan-preview').waitFor();
   await page.locator('.plan-import > summary').click();
   assert.equal(await page.locator('[data-field="rangeEnd"]').inputValue(),"2027-01-27");
@@ -29,10 +39,10 @@ try{
   await page.locator('[data-plan-action="preview"]').click();
   assert.ok((await page.locator(".plan-preview").innerText()).includes("待安排"));
   assert.equal(await page.locator('[name="progressLink"]').inputValue(),"__new");
-  await page.locator('#degreeDialog button[type="submit"]').click();
+  await confirmSave();
   await page.locator('[data-plan-action="schedule"]').waitFor();
   assert.equal(await page.evaluate(()=>studyTrackerBridge.getState().degreePlan.modules[0].courses[0].planEvents.find(e=>e.type==="class").legacyTaskDone),true);
-  assert.equal(await page.evaluate(()=>{const s=studyTrackerBridge.getState(),id=s.degreePlan.modules[0].courses[0].courseId;return s.semesters.flatMap(s=>s.courses).find(c=>c.id===id).categories.flatMap(c=>c.tasks).length;}),10);
+  assert.equal(await page.evaluate(()=>{const s=studyTrackerBridge.getState(),id=s.degreePlan.modules[0].courses[0].courseId;return s.semesters.flatMap(s=>s.courses).find(c=>c.id===id).categories.flatMap(c=>c.tasks).length;}),11);
   console.log("PASS browser: legacy saved rows migrate to events without duplicate tasks; original status preserved");
   await page.locator('[data-plan-action="schedule"]').click();
   await page.locator(".study-schedule").waitFor();
@@ -49,7 +59,7 @@ try{
   await page.locator('#degreeDialog [name="endTime"]').fill("12:00");
   await openTaskDetails();
   await page.locator('#degreeDialog [name="done"]').check();
-  await page.locator('#degreeDialog button[type="submit"]').click();
+  await confirmSave();
   assert.equal(await page.locator('.schedule-day-grid .schedule-event.study').count(),1);
   const canonical=await page.evaluate(id=>{const s=studyTrackerBridge.getState(),c=s.degreePlan.modules[0].courses[0];return s.semesters.flatMap(s=>s.courses).find(l=>l.id===c.courseId).categories.flatMap(k=>k.tasks).find(t=>t.id===id);},flexibleId);
   assert.equal(canonical.plannedDate,"");
@@ -58,7 +68,7 @@ try{
   await page.locator('.schedule-day-grid .schedule-event.study .schedule-event-open').click();
   await openTaskDetails();
   await page.locator('#degreeDialog [name="done"]').uncheck();
-  await page.locator('#degreeDialog button[type="submit"]').click();
+  await confirmSave();
   await page.locator('.schedule-day-grid .schedule-event.study .schedule-event-open').click();
   await openTaskDetails();
   await page.locator('[data-schedule="task-timer"]').click();
@@ -79,11 +89,11 @@ try{
   await page.locator("#degreeDialog [data-close]").click();
   await page.evaluate(hash=>{location.hash=hash;},hash);
   await page.locator('#degreeDialog[open] select[name="course"]').selectOption("kc");
-  await page.locator('#degreeDialog button[type="submit"]').click();
+  await confirmSave();
   await page.locator(".plan-import > summary").click();
   await page.locator('[data-plan-action="preview"]').click();
   assert.ok((await page.locator(".plan-preview").innerText()).includes("新增 0"));
-  await page.locator('#degreeDialog button[type="submit"]').click();
+  await confirmSave();
   await page.locator('[data-plan-action="schedule"]').waitFor();
   const tasksAfter=await page.evaluate(()=>studyTrackerBridge.getState().semesters.flatMap(s=>s.courses).flatMap(c=>c.categories).flatMap(c=>c.tasks).filter(t=>t.planImportKey).map(t=>t.id));
   assert.deepEqual(tasksAfter,tasksBefore);
@@ -110,7 +120,7 @@ try{
   await page.evaluate(hash=>{location.hash=hash;},"#study-plan-v2="+Buffer.from(JSON.stringify(v2)).toString("base64url"));
   await page.locator(".plan-preview").waitFor();
   assert.equal(await page.locator('[data-review-task] [data-field="hours"]').first().inputValue(),"");
-  await page.locator('#degreeDialog button[type="submit"]').click();
+  await confirmSave();
   await page.locator('[data-plan-action="schedule"]').click();
   await page.locator('.schedule-event.study .schedule-event-open').click();
   assert.ok((await page.locator('#degreeDialog').innerText()).includes("Chapter 3"));

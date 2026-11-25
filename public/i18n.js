@@ -1,6 +1,9 @@
 (() => {
   const LANGUAGE_KEY = "study-tracker-language-v1";
   const english = {
+    "调整安排": "Adjust session",
+    "添加安排": "Add session",
+    "移除安排": "Remove session",
     "全部课程周计划": "Weekly plan · all courses",
     "课程时间表": "Course timetable",
     "查看／补充考试": "View / add exam details",

@@ -172,7 +172,7 @@ function editWindow(task){
         else{
           const current=bridge.getDegreeWorkspace(),target=current.plan.modules.flatMap(m=>m.courses).find(c=>c.id===form.elements.courseId.value),events=structuredClone(target.planEvents||[]);
           const tasks=courseStudyTasks(target,current.semesters);
-          if(typeof values.taskDone==="boolean" && linkedTask){const task=tasks.find(task=>task.id===linkedTask.id);if(task)task.done=values.taskDone;}
+          if(typeof values.taskDone==="boolean" && linkedTask){const task=tasks.find(task=>task.id===linkedTask.id);if(task){task.done=values.taskDone;task.doneEdited=true;}}
           const {taskDone,...session}=values;events.push({id:crypto.randomUUID(),type:"study",...session});
           bridge.saveCourseStudyPlan(target.id,{tasks,events,link:target.courseId||"",range:target.planRange});
         }
