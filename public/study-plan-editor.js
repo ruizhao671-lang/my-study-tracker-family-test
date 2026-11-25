@@ -23,14 +23,14 @@ function rangeFor(course,plan,received){
 }
 export function openPlanEditor({course,plan,semesters,received,showDialog,bridge,onSaved}){
   let tasks=courseStudyTasks(course,semesters).map(t=>({...t})),events=structuredClone(course.planEvents||[]);
-  let preview=null,previewText="",pane="tasks",destination="",additions=null;
+  let preview=null,previewText="",pane="tasks",destination="",additions=null,destinationDate="",destinationTask="";
   const range=rangeFor(course,plan,received);
   const links=[["",w("独立任务，不写入学习进度","Independent tasks")],["__new",w("为这门课新建学习进度","Create course progress")],
     ...semesters.flatMap(s=>s.courses.map(c=>[c.id,s.name+" / "+c.name]))];
   const body=`<div class="plan-editor-intro"><span class="plan-eyebrow">${w("任务与时间，分开管理","Tasks and time, connected")}</span>
     <p>${w("先核对要学什么，再安排什么时候学。预览中的内容可以直接修改；按下保存后才会写入。","Review what to study, then plan when. Edit the preview directly; nothing is written until you save.")}</p>
-    <label>${w("学习任务保存到","Save study tasks to")}<select class="input" name="progressLink">${opts(links,course.courseId||suggestProgressCourse(course.name,semesters)?.id||"__new")}</select></label>
-    <p class="plan-target-note"></p></div>
+    <label>${w("复用学习进度里的课程（可选）","Reuse a course from learning progress (optional)")}<select class="input" name="progressLink">${opts(links,course.courseId||suggestProgressCourse(course.name,semesters)?.id||"__new")}</select></label>
+    <p class="plan-target-note" aria-live="polite"></p><div class="plan-path-actions">${btn(w("保存并打开学习进度","Save & open learning progress"),"save-progress")}${btn(w("保存并打开拖动日历","Save & open drag calendar"),"calendar-workspace")}</div></div>
     <details class="plan-import" ${received?"open":""}><summary>${w("导入 ChatGPT 计划","Import a ChatGPT plan")}</summary>
       <p class="degree-help">${w("粘贴导入链接、JSON 或旧版四列清单。预览后可以修改、忽略或合并重复项。","Paste a link, JSON or legacy four-column list. Then edit, exclude or merge items in the preview.")}</p>
       <div class="degree-fields">${field(w("重复开始日期","Recurrence starts"),"rangeStart",range.start,"date")}${field(w("重复结束日期","Recurrence ends"),"rangeEnd",range.end,"date")}</div>
@@ -100,7 +100,7 @@ export function openPlanEditor({course,plan,semesters,received,showDialog,bridge
     }
   }
   function taskFields(t){
-    return `<div class="plan-task-main">${field(w("任务名称","Task"),"title",t.title)}${field(w("章节 / 类型","Chapter / type"),"group",t.group)}${field(w("预计小时","Estimated hours"),"hours",t.hours??"","number",'min="0" step="any" placeholder="'+w("未估算","Unknown")+'"')}</div>
+    return `<div class="plan-task-main">${field(w("任务名称","Task"),"title",t.title)}${field(w("上级分类（与学习进度一致）","Parent category (shared with progress)"),"group",t.group,"text",'list="planTaskCategories"')}${field(w("预计小时","Estimated hours"),"hours",t.hours??"","number",'min="0" step="any" placeholder="'+w("未估算","Unknown")+'"')}</div>
       <div class="degree-fields task-completion-window">${field(w("教学周编号（可选）","Teaching week (optional)"),"teachingWeek",t.teachingWeek??"","number",'min="1" max="100" step="1"')}${field(w("任务完成周（周一）","Completion week (Monday)"),"weekOf",t.weekOf,"date")}</div><details class="plan-row-details"><summary>${w("完成范围、期限与完成状态","Completion window, deadline and completion")}</summary>
       <div class="degree-fields">${field(w("完成范围开始（可选）","Completion window starts"),"windowStart",t.windowStart,"date")}${field(w("完成范围结束（可选）","Completion window ends"),"windowEnd",t.windowEnd,"date")}${field(w("截止日期","Deadline"),"deadline",t.deadline,"date")}
         ${field(w("计划日期（兼容已有安排）","Planned date"),"date",t.date,"date")}${field(w("开始","Start"),"startTime",t.startTime,"time")}${field(w("结束","End"),"endTime",t.endTime,"time")}</div>
@@ -131,14 +131,32 @@ export function openPlanEditor({course,plan,semesters,received,showDialog,bridge
         ${field(w("跳过日期，逗号分隔","Skip dates, comma separated"),"exceptDates",(e.repeat?.exceptDates||[]).join(", "))}
         <label>${w("说明","Details")}<textarea class="input" data-field="detail" rows="2">${esc(e.detail)}</textarea></label></details>`;
   }
+  function groupedTasks(list,renderRow,review=false){
+    const groups=new Map();
+    for(const task of list){const name=task.group||w("未分组","Uncategorized");if(!groups.has(name))groups.set(name,[]);groups.get(name).push(task);}
+    return [...groups].map(([name,children])=>`<section class="plan-task-group" data-plan-task-group="${esc(name)}"><header><div><span class="plan-eyebrow">${w("上级分类","Category")}</span><h4>${esc(name)}</h4><small>${children.length} ${w("项任务","tasks")} · ${children.filter(t=>t.done).length} ${w("已完成","completed")}</small></div>${review?"":btn(w("+ 分类内添加","+ Add task"),"add-group-task",'data-group="'+esc(name)+'"')}</header><div class="plan-task-group-rows">${children.map(renderRow).join("")}</div></section>`).join("");
+  }
+  function existingTaskRow(t,expanded,state){
+    return `<article class="plan-edit-row plan-task-editor" data-task-row="${esc(t.id)}">
+      <div class="plan-task-overview"><label class="plan-task-completion"><input type="checkbox" data-task-quick-done ${t.done?"checked":""}><span>${esc(t.title||w("新任务","New task"))}</span></label>
+        <span class="plan-task-estimate">${t.hours==null?w("未估算","Unestimated"):esc(t.hours)+" h"}</span>${btn(w("移除","Remove"),"delete-task")}</div>
+      <p class="plan-task-context">${esc(t.teachingWeek?w("第 "+t.teachingWeek+" 教学周","Teaching week "+t.teachingWeek):t.weekOf||t.deadline||w("完成范围待定","Completion window TBD"))} · ${t.canonical?w("与学习进度共用","Shared with learning progress"):form.elements.progressLink.value?w("保存后同步学习进度","Will sync to progress on save"):w("独立任务","Independent task")} · ${w("实际","Actual")} ${taskActualHours(state,t.id).toFixed(1)} h</p>
+      <details data-task-editor-fields ${expanded.has(t.id)||!t.title?"open":""}><summary>${w("编辑任务、分类与工时","Edit task, category and hours")}</summary>${taskFields(t)}</details>
+      <div class="plan-task-shortcuts">${btn(w("保存并去日历安排","Save & schedule on calendar"),"schedule-task")}${t.canonical?btn(w("保存后计时","Save & start timer"),"timer"):""}</div>
+    </article>`;
+  }
+
   function draw(){
-    const state=bridge.getState();
-    form.querySelector(".plan-tasks").innerHTML=tasks.map(t=>`<article class="plan-edit-row plan-task-editor" data-task-row="${esc(t.id)}"><div class="plan-row-top"><span class="plan-row-badge">${t.canonical?w("学习进度任务","Progress task"):w("计划任务","Plan task")}</span><span>${esc(t.weekOf||t.date||w("待安排","Unscheduled"))} · ${w("实际","Actual")} ${taskActualHours(state,t.id).toFixed(1)} h</span>${btn(w("移除","Remove"),"delete-task")}</div>
-      ${taskFields(t)}${t.canonical?btn(w("保存后计时","Save & start timer"),"timer"):""}</article>`).join("")||`<div class="plan-empty">${w("还没有内容任务。可以手动添加，或从 ChatGPT 导入后在这里预览。","No content tasks yet. Add one or import a ChatGPT plan.")}</div>`;
+    const state=bridge.getState(),expanded=new Set([...form.querySelectorAll("[data-task-editor-fields][open]")].map(el=>el.closest("[data-task-row]").dataset.taskRow));
+
+    const categoryNames=[...new Set([...tasks.map(t=>t.group),...(semesters.flatMap(s=>s.courses).find(c=>c.id===form.elements.progressLink.value)?.categories||[]).map(c=>c.name)].filter(Boolean))];
+    form.querySelector(".plan-tasks").innerHTML=`<datalist id="planTaskCategories">${categoryNames.map(name=>`<option value="${esc(name)}"></option>`).join("")}</datalist>`+(groupedTasks(tasks,t=>existingTaskRow(t,expanded,state))||`<div class="plan-empty">${w("可在上方选择已有学习进度课程，直接使用其中的分类和任务；也可以添加新任务。","Choose a progress course above to reuse its categories and tasks, or add a new task.")}</div>`);
     form.querySelector(".plan-events").innerHTML=events.map(e=>`<article class="plan-edit-row" data-event-row="${esc(e.id)}"><div class="plan-row-top"><span class="plan-row-badge">${w("时间计划","Time plan")}</span>${btn(w("移除","Remove"),"delete-event")}</div>${eventFields(e)}</article>`).join("")||`<div class="plan-empty">${w("还没有安排学习时间。可以先写「周一晚上，预计 2 小时」，任务关联可留空。","No time plans yet. Reserve an evening and optional task association.")}</div>`;
     drawPreview();drawHistory();showPane();
     form.querySelector("[data-task-search]").dispatchEvent(new Event("input"));
-    form.querySelector(".plan-target-note").textContent=form.elements.progressLink.value?w("确认后，学习任务会写入所选课程的学习进度；已有完成状态和计时会保留。","On save, tasks go to the selected course progress; existing completion and time are retained."):w("当前为独立任务。要同步到学习进度，请在上方选择课程。","Independent tasks. Select a course above to sync learning progress.");
+
+    const target=semesters.flatMap(s=>s.courses).find(c=>c.id===form.elements.progressLink.value),linked=tasks.filter(t=>t.canonical),groups=new Set(linked.map(t=>t.group));
+    form.querySelector(".plan-target-note").textContent=target?w("已载入「"+target.name+"」的 "+groups.size+" 个分类、"+linked.length+" 个任务。它们与学习进度是同一份，直接编辑或安排即可，不必再次导入。","Loaded "+groups.size+" categories and "+linked.length+" shared tasks from "+target.name+". Edit or schedule them without importing again."):form.elements.progressLink.value?w("保存后会为此课程建立学习进度，按上级分类保存这些任务。","Saving creates course progress with these tasks under their categories."):w("当前是独立任务。选择已有学习进度课程即可复用其任务；也可以保持不关联。","These tasks are independent. Choose a progress course to reuse its tasks, or stay unlinked.");
   }
   function reviewValue(item,kind){
   if(kind!=="event")return item;
@@ -174,13 +192,13 @@ function drawHistory(selected=""){
     root.innerHTML=`<div class="plan-preview-header"><span class="plan-eyebrow">${w("待确认导入 · 可直接编辑","Editable import preview")}</span>
       <strong>${w("新增 "+estimate.addedTasks+" 个任务，"+estimate.addedEvents+" 项时间安排；匹配的项目会合并。","Add "+estimate.addedTasks+" tasks and "+estimate.addedEvents+" time plans; matching items will merge.")}</strong>
       <span>${w("取消勾选即可忽略；重复项可以选择合并到已有任务。修改完点底部保存。","Uncheck to exclude; merge duplicates into existing tasks. Save when ready.")}</span></div>
-      <div data-plan-pane="tasks" class="plan-review-tasks">${preview.tasks.map(t=>{
+      <div data-plan-pane="tasks" class="plan-review-tasks">${groupedTasks(preview.tasks,t=>{
         const match=tasks.find(old=>old.id===t.mergeIntoId)||taskMatch(t,tasks),operation=t.mergeIntoId||(t.forceNew?"copy":match?.id||"auto");
         const similar=tasks.some(old=>old.title===t.title);
         return `<article class="plan-review-row ${t.include===false?"is-excluded":""}" data-review-task="${esc(t.id)}">
           <div class="plan-row-top"><label class="plan-check"><input type="checkbox" data-include ${t.include===false?"":"checked"}> ${w("导入这项任务","Import this task")}</label><span class="plan-row-badge ${match||similar?"possible-duplicate":""}">${match?w("匹配已有任务","Matches existing task"):similar?w("发现同名任务，请核对","Similar title; review"):w("新增任务","New task")}</span><span>${esc(t.weekOf?t.weekOf+" "+w("所在周 · 待安排","week · flexible"):t.date||w("日期待安排","Unscheduled"))}</span></div>
           ${taskFields(t)}<small class="plan-source-id">ID: ${esc(sourceId(t))}</small><div data-change-review></div><label>${w("重复项处理","Duplicate handling")}<select class="input" data-merge>${opts([["auto",w("自动合并 / 新增","Auto merge / add")],["copy",w("明确新增为另一项任务","Add as a separate task")],...tasks.map(old=>[old.id,w("合并到：","Merge into: ")+describe(old)])],operation)}</select></label></article>`;
-      }).join("")||`<p class="degree-help">${w("本次没有内容任务。","No content tasks in this import.")}</p>`}</div>
+      },true)||`<p class="degree-help">${w("本次没有内容任务。","No content tasks in this import.")}</p>`}</div>
       <div data-plan-pane="events" class="plan-review-events">${preview.events.map(e=>{
         const match=matchImportedItem(e,events,"event"),operation=e.mergeIntoId||(e.forceNew?"copy":match?.id||"auto");
         return `<article class="plan-review-row ${e.include===false?"is-excluded":""}" data-review-event="${esc(e.id)}">
@@ -201,7 +219,7 @@ function drawHistory(selected=""){
   function disableReview(row,disabled){for(const el of row.querySelectorAll("input,select,textarea"))if(!el.hasAttribute("data-include"))el.disabled=disabled;row.classList.toggle("is-excluded",disabled);}
   function showPane(){
     form.querySelector('[type="submit"]').disabled=pane==="history";
-    form.querySelector('[data-plan-action="save-schedule"]').disabled=pane==="history";
+    for(const button of form.querySelectorAll('[data-plan-action="save-schedule"],[data-plan-action="calendar-workspace"],[data-plan-action="save-progress"]'))button.disabled=pane==="history";
     for(const section of form.querySelectorAll("[data-plan-pane]"))section.hidden=section.dataset.planPane!==pane;
     for(const button of form.querySelectorAll(".plan-section-nav button"))button.setAttribute("aria-pressed",String(button.dataset.planAction==="pane-"+pane));
   }
@@ -237,7 +255,8 @@ function drawHistory(selected=""){
   }
   function save(){
     const merged=persist();
-    if(destination==="schedule"){window.studyDegree.openSchedule(course.id,readRange().start);return;}
+    if(destination==="schedule"){window.studyDegree.openSchedule(course.id,destinationDate||readRange().start,{taskId:destinationTask});return;}
+    if(destination==="progress"){const saved=bridge.getDegreeWorkspace().plan.modules.flatMap(m=>m.courses).find(c=>c.id===course.id);bridge.openCourseProgress(saved.courseId);return;}
     setTimeout(()=>{
       const current=bridge.getDegreeWorkspace();const saved=current.plan?.modules.flatMap(m=>m.courses).find(c=>c.id===course.id);if(!saved)return;
       const count=courseStudyTasks(saved,current.semesters).length;
@@ -262,19 +281,21 @@ function drawHistory(selected=""){
         const example={course:course.code||"",period:readRange(),tasks:[{id:"chapter-3",title:"学习第三章",group:"章节",hours:null,weekOf:planWeek(readRange().start),teachingWeek:null}],
           events:[{id:"evening-session",type:"study",title:"晚间学习",date:readRange().start,period:"晚上",hours:2,taskId:"chapter-3"}]};
         const prompt="请按我们已确认的内容生成 StudyTracker v2 导入链接和原始 JSON。结构示例（替换为实际内容）："+JSON.stringify(example)+
-          "\\n tasks 是学习进度里的内容任务；events 是时间安排。时段 type:study，可填 date、period（如晚上）、hours、可选 startTime/endTime；taskId 可关联 tasks 的稳定 id，不关联则留空。"+
+          "\\n tasks 是学习进度里的内容任务；group 是上级分类（例如 Vorlesung、Hausaufgabe、Altklausur），title 是分类下的具体任务（例如 Week 7、第 3 章），请复用已有分类名称，不把每一周另建为一个分类；events 是时间安排。时段 type:study，可填 date、period（如晚上）、hours、可选 startTime/endTime；taskId 可关联 tasks 的稳定 id，不关联则留空。"+
           "任务完成范围用 weekOf（该周周一）或 windowStart/windowEnd；teachingWeek 可记录教学周编号，deadline 只表示期限。这些字段不会占据具体日历小时，不要把完成周写入 date。一个任务可由多个 events 的 taskId 指向，分次安排而不复制任务。固定上课生成 class 事件，关联每周课堂任务；没定时刻的作业只生成 tasks。预计工时未知用 null，不编造日期或工时。每周任务可用 repeat:{from,until,exceptDates:[]}，只保留每周工作量；重复日程用 repeat:{frequency:'weekly',weekdays:[1],until,exceptDates:[]}。"+
           "上课用 class，Workshop 用 workshop，重要日期用 milestone，截止日期用 deadline。替代课在原重复安排的 exceptDates 中排除。任务 id、事件 id 在更新时保持不变。新 ID 只会追加；遗漏字段会保留旧值，明确清空才用空字符串或 null。不要给计划勾完成或生成实际计时。当前任务 ID 参考："+JSON.stringify(tasks.map(t=>({id:sourceId(t),title:t.title,group:t.group,weekOf:t.weekOf,seriesId:t.seriesKey?.replace(/^task:/,"")})))+"。"+
           "请实际计算 JSON 的 UTF-8 Base64URL（去掉 =），反向解码校验，链接为 "+location.origin+"/#study-plan-v2=<encoded>。";
         navigator.clipboard.writeText(prompt).then(()=>{form.querySelector(".plan-error").textContent=w("已复制，可发给制定计划的 ChatGPT。","Copied for your planning chat.");}).catch(()=>showError(w("复制失败，请检查剪贴板权限。","Clipboard permission unavailable.")));return;
       }
-      if(action==="save-schedule"){destination="schedule";form.requestSubmit();return;}
+      if(action==="save-progress"){if(!form.elements.progressLink.value)throw new Error(w("请先在上方选择要关联的学习进度课程。","Select a progress course above first."));destination="progress";form.requestSubmit();return;}
+      if(action==="save-schedule"||action==="calendar-workspace"){destination="schedule";destinationDate="";destinationTask="";form.requestSubmit();return;}
+      if(action==="schedule-task"){const id=event.target.closest("[data-task-row]").dataset.taskRow;readRows();const task=tasks.find(t=>t.id===id);destination="schedule";destinationTask=task.id;destinationDate=task.weekOf||task.windowStart||task.date||today();form.requestSubmit();return;}
       if(action==="timer"){
         const id=event.target.closest("[data-task-row]").dataset.taskRow;persist();document.querySelector("#degreeDialog").close();bridge.startPlannedTaskTimer(course.id,id);return;
       }
       readRows();
       if(action.startsWith("pane-")){pane=action.slice(5);draw();const section=preview?form.querySelector(".plan-preview"):form.querySelector('.plan-draft-section[data-plan-pane="'+pane+'"]');section?.scrollIntoView({block:"start"});return;}
-      if(action==="add-task"){tasks.push({id:crypto.randomUUID(),title:"",group:"",hours:null,done:false});pane="tasks";form.querySelector(".plan-existing-tasks").open=true;}
+      if(action==="add-task"||action==="add-group-task"){tasks.push({id:crypto.randomUUID(),title:"",group:event.target.closest("[data-group]")?.dataset.group||"",hours:null,done:false});pane="tasks";form.querySelector(".plan-existing-tasks").open=true;}
       if(action==="add-event"){events.push({id:crypto.randomUUID(),title:"",type:"study",date:"",weekOf:"",hours:null,period:"",executed:false});pane="events";}
       if(action==="delete-task"){const id=event.target.closest("[data-task-row]").dataset.taskRow;tasks=tasks.filter(t=>t.id!==id);for(const e of events)if(e.taskId===id)e.taskId="";}
       if(action==="delete-event")events=events.filter(e=>e.id!==event.target.closest("[data-event-row]").dataset.eventRow);
@@ -282,6 +303,9 @@ function drawHistory(selected=""){
     }catch(error){showError(error.message);}
   });
   form.addEventListener("change",event=>{
+    if(event.target.matches("[data-task-quick-done]")||event.target.closest("[data-task-row]")&&event.target.dataset.field==="group"){
+      try{if(event.target.matches("[data-task-quick-done]")){const row=event.target.closest("[data-task-row]");row.querySelector('[data-field="done"]').checked=event.target.checked;}readRows();draw();}catch(error){showError(error.message);}return;
+    }
     const reviewTask=event.target.closest("[data-review-task]"),reviewEvent=event.target.closest("[data-review-event]");
     if(reviewTask && event.target.dataset.field==="done")preview.tasks.find(t=>t.id===reviewTask.dataset.reviewTask).doneEdited=true;
     if(reviewEvent && ["date","startTime","endTime","hours","period","weekOf"].includes(event.target.dataset.field))preview.events.find(e=>e.id===reviewEvent.dataset.reviewEvent).arrangementEdited=true;
@@ -315,10 +339,10 @@ function drawHistory(selected=""){
           if(match&&!task.doneEdited)task.done=match.done===true;
         }
         draw();
-      }catch(error){showError(error.message);}
+      }catch(error){form.elements.progressLink.value=activeLink;showError(error.message);}
     }
   });
-  form.querySelector("[data-task-search]").addEventListener("input",event=>{const query=event.target.value.trim().toLowerCase();for(const row of form.querySelectorAll("[data-task-row]")){const t=tasks.find(t=>t.id===row.dataset.taskRow);const title=row.querySelector('[data-field="title"]').value,group=row.querySelector('[data-field="group"]').value;row.hidden=!(title+" "+group+" "+(t.weekOf||"")).toLowerCase().includes(query);}});
+  form.querySelector("[data-task-search]").addEventListener("input",event=>{const query=event.target.value.trim().toLowerCase();for(const row of form.querySelectorAll("[data-task-row]")){const t=tasks.find(t=>t.id===row.dataset.taskRow);const title=row.querySelector('[data-field="title"]').value,group=row.querySelector('[data-field="group"]').value;row.hidden=!(title+" "+group+" "+(t.weekOf||"")).toLowerCase().includes(query);}for(const group of form.querySelectorAll(".plan-tasks [data-plan-task-group]"))group.hidden=![...group.querySelectorAll("[data-task-row]")].some(row=>!row.hidden);});
   draw();
   if(received){form.elements.paste.value=typeof received.tasks==="string"?received.tasks:JSON.stringify(received,null,2);showPreview();form.querySelector(".plan-import").open=false;}
 }

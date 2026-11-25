@@ -148,7 +148,8 @@ try{
     await page.setViewportSize(viewport);
     await page.evaluate(()=>studyDegree.openCourseStudyPlan("kc"));
     await assertDialogControls();
-    await page.locator('.plan-tasks [data-field="title"]').first().fill("Unsaved draft only");
+    await page.locator(".plan-tasks [data-task-editor-fields]>summary").first().click();
+  await page.locator('.plan-tasks [data-field="title"]').first().fill("Unsaved draft only");
     await page.locator('.degree-dialog-body').evaluate(body=>{body.scrollTop=body.scrollHeight;});
     await assertDialogControls();
     if(viewport.width===390)await page.screenshot({path:process.env.TEMP+"/studytracker-dialog-controls.png"});

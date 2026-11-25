@@ -1066,12 +1066,12 @@ panel.addEventListener("dragend", () => {
 window.studyDegree = {
   captureCoursePlan,recordCoursePlanChange,saveCoursePlanUpdate,coursePlanVersions,coursePlanRestorePreview,restoreCoursePlanVersion,preserveLiveHistory,
   render, attachCatalogue, openProgressLinks, applyCourseStudyPlan, planCalendarItems, patchStudyScheduleEntry, createTaskStudySession, removeStudyScheduleEntry, calendarStatusClass, calendarStatusBadge, renderCalendarLegend,calendarCourseStyle,calendarOverviewItems,renderMonthTaskWeeks,
-  openSchedule(courseId="",date="") {
+  openSchedule(courseId="",date="",options={}) {
     if(!get().editable)return;
     const current=get();
     const course=current.plan?.modules.flatMap(module=>module.courses).find(course=>course.id===courseId);
     const targetDate=date || (course ? studyPlanFocusDate(course,current.semesters,today()) : "");
-    selectStudySchedule(courseId,targetDate); view="schedule"; bridge.openDegreePlanner(); render();
+    selectStudySchedule(courseId,targetDate,options); view="schedule"; bridge.openDegreePlanner(); render();
     requestAnimationFrame(()=>panel.scrollIntoView({block:"start"}));
   },
   openCourseStudyPlan(courseId) {

@@ -14,6 +14,39 @@
 .plan-history-preview>.plan-check{display:flex!important;margin:1rem 0;line-height:1.6}.plan-history-change{padding:.6rem 0;border-bottom:1px solid #d6e7dc}
 @media(max-width:600px){.plan-diff-table{font-size:.72rem}.plan-diff-table th,.plan-diff-table td{padding:6px}.plan-history-preview{padding:.75rem}}
 
+
+/* Reuse the progress hierarchy and make the task-to-calendar path visible. */
+.plan-path-actions,.plan-task-shortcuts{display:flex;flex-wrap:wrap;gap:8px;margin-top:12px}
+.plan-path-actions .btn{flex:1;white-space:normal}
+.plan-task-group{border:1px solid #cfdfd7;border-radius:12px;margin:14px 0;overflow:hidden;background:#fff}
+.plan-task-group>header{display:flex;justify-content:space-between;align-items:center;gap:10px;background:#edf5f0;padding:12px 14px}
+.plan-task-group h4{font-size:1.05rem;margin:3px 0;color:#275b4b}
+.plan-task-group small{font-size:.76rem;color:#62786d}
+.plan-task-group-rows{padding:0 10px}.plan-task-group .plan-edit-row{border:0;border-bottom:1px solid #dce8e1;border-radius:0;margin:0;padding:12px 4px}
+.plan-task-group .plan-edit-row:last-child{border-bottom:0}
+.plan-task-overview{display:grid;grid-template-columns:minmax(0,1fr) auto auto;align-items:center;gap:10px}
+.plan-edit-row .plan-task-completion{display:flex;align-items:center;gap:9px;margin:0;font-size:.95rem;font-weight:650;min-width:0}
+.plan-task-completion span{overflow-wrap:anywhere}.plan-task-completion input{width:17px;height:17px;flex:0 0 auto;accent-color:#157c70}
+.plan-task-overview .btn{padding:5px 9px;min-height:30px;font-size:.76rem}
+.plan-task-estimate{font-size:.8rem;color:#3d6e5b;font-weight:650;white-space:nowrap}
+.plan-task-context{font-size:.76rem;color:#687d71;margin:6px 0 10px;line-height:1.5}
+[data-task-editor-fields]>summary{cursor:pointer;color:#286e5e;font-size:.8rem;padding:4px 0}
+.plan-task-shortcuts .btn{font-size:.76rem;padding:6px 10px;min-height:32px}
+.schedule-workflow{display:flex;align-items:center;gap:10px 16px;flex-wrap:wrap;margin:14px 0;padding:12px 15px;border:1px solid #c9dfd1;border-radius:12px;background:#f0f7f2;color:#315d4d}
+.schedule-workflow strong{font-size:.9rem}.schedule-workflow>span{flex:1 1 400px;line-height:1.6;font-size:.8rem}
+.schedule-workflow .btn{font-size:.8rem}
+.schedule-plan-list .schedule-flexible-grid{display:block}
+.task-shelf-course+.task-shelf-course{margin-top:18px}
+.task-shelf-course>h4{margin:2px 0 10px;padding-left:9px;border-left:4px solid var(--study-course-color,#36785f);font-size:.9rem;color:#315e4d;overflow-wrap:anywhere}
+.task-shelf-category>header{display:flex;align-items:center;justify-content:space-between;gap:8px;padding:8px 2px}
+.task-shelf-category h5{font-size:.85rem;color:#3f6454;margin:0}
+.task-shelf-category small{color:#728478;font-size:.72rem;white-space:nowrap}
+.task-group-grid{display:grid;grid-template-columns:minmax(0,1fr);gap:8px}
+.task-drag-hint{display:block;border-top:1px dashed #b6cec1;padding-top:7px;margin-top:5px;font-size:.72rem;color:#4e7460;cursor:grab}
+.task-brick.is-focused{outline:2px solid #2c9276;outline-offset:2px}
+@media(max-width:1150px){.task-group-grid{grid-template-columns:repeat(auto-fit,minmax(220px,1fr))}}
+@media(max-width:600px){.plan-task-group>header{padding:10px;align-items:flex-start}.plan-task-group>header>.btn{font-size:.75rem;padding:6px}.plan-task-overview{gap:7px}.plan-path-actions .btn{min-width:190px}.task-group-grid{grid-template-columns:minmax(0,1fr)}}
+
 /* Study plans share tasks with progress and display virtual recurring events. */
 .plan-edit-row{border:1px solid var(--border,#d4e2df);border-radius:12px;padding:14px;margin:10px 0;background:var(--surface,#fff)}
 .plan-edit-row label,.plan-import label{display:block;margin:8px 0}.plan-edit-row .degree-row{gap:8px;flex-wrap:wrap}

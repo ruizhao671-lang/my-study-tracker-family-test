@@ -121,7 +121,7 @@ node open-source-check.mjs
 
 The checks cover frontend structure, translation coverage, timer behavior, task windows and multiple planned sessions, account isolation, sharing privacy, backend API behavior, and public-release safety basics.
 
-Browser checks (with `PLAYWRIGHT_MODULE`, `BROWSER_EXECUTABLE` and `STUDY_TRACKER_TEST_URL` configured) include `study-plan-browser.test.mjs`, `study-plan-review-browser.test.mjs`, `study-plan-update-browser.test.mjs`, `calendar-status-browser.test.mjs`, `study-bricks-browser.test.mjs` and `study-calendar-overview-browser.test.mjs`. The task-brick check exercises imports, split sessions, dragging, resizing, unscheduling, timing, manual completion, reload persistence and mobile layout.
+Browser checks (with `PLAYWRIGHT_MODULE`, `BROWSER_EXECUTABLE` and `STUDY_TRACKER_TEST_URL` configured) include `study-plan-browser.test.mjs`, `study-plan-review-browser.test.mjs`, `study-plan-update-browser.test.mjs`, `study-plan-hierarchy-browser.test.mjs`, `calendar-status-browser.test.mjs`, `study-bricks-browser.test.mjs` and `study-calendar-overview-browser.test.mjs`. The task-brick check exercises imports, split sessions, dragging, resizing, unscheduling, timing, manual completion, reload persistence and mobile layout.
 
 ## Current Limitations
 

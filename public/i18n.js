@@ -8,6 +8,7 @@
     "课程时间表": "Course timetable",
     "查看／补充考试": "View / add exam details",
     "任务预览 / 导入": "Review tasks / import",
+    "任务与学习计划": "Tasks & study plan",
     "已按计划执行": "Executed as planned",
     "内容任务": "Content task",
     "任务已完成": "Task completed",

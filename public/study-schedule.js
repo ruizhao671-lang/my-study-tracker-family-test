@@ -60,26 +60,27 @@ function renderTaskShelf(items){
   const buckets=[["current",w("本周","This week")],["overdue",w("以前未完成","Backlog")],["future",w("未来","Future")],["scheduled",w("已安排","Scheduled")],["complete",w("已完成","Completed")],["unscoped",w("范围待定","No window")],["all",w("全部","All")]];
   const tasks=items.filter(e=>(taskBucket==="all"||taskBucket==="scheduled"&&e.allocations.length||e.bucket===taskBucket)&&
     (!taskWeekFilter||taskWeekKey(e)===taskWeekFilter)&&(taskStatusFilter==="all"||(taskStatusFilter==="done"?e.done:!e.done)));
+  const groups=new Map();for(const task of tasks){if(!groups.has(task.course.id))groups.set(task.course.id,{course:task.course,categories:new Map()});const categories=groups.get(task.course.id).categories,name=task.group||w("未分组","Uncategorized");if(!categories.has(name))categories.set(name,[]);categories.get(name).push(task);}
   const weeks=new Map();for(const e of items){const key=taskWeekKey(e);if(key&&!weeks.has(key))weeks.set(key,windowText(e));}
-  return `<section class="schedule-flexible" data-unschedule="true"><div class="plan-section-title"><h3>${w("任务积木","Task bricks")}</h3>${btn(w("+ 添加时段","＋ Add session"),"new-session")}</div>
+  return `<section class="schedule-flexible" data-unschedule="true"><div class="plan-section-title"><h3>${w("可拖动的学习任务","Draggable study tasks")}</h3>${btn(w("+ 添加时段","＋ Add session"),"new-session")}</div>
     <nav class="task-bucket-tabs" aria-label="${w("任务范围","Task scope")}">${buckets.map(([key,label])=>`<button type="button" data-task-bucket="${key}" aria-pressed="${taskBucket===key}">${label} <b>${counts[key]}</b></button>`).join("")}</nav>
     <div class="task-brick-filters"><label>${w("教学周 / 完成周","Teaching / completion week")}<select class="input" data-task-week><option value="">${w("全部周次","All weeks")}</option>${[...weeks].sort(([a],[b])=>a.localeCompare(b)).map(([key,label])=>`<option value="${esc(key)}" ${taskWeekFilter===key?"selected":""}>${esc(label)}</option>`).join("")}</select></label>
     <label>${w("完成状态","Completion")}<select class="input" data-task-status>${[["all",w("全部","All")],["pending",w("未完成","Incomplete")],["done",w("已完成","Completed")]].map(([key,label])=>`<option value="${key}" ${taskStatusFilter===key?"selected":""}>${label}</option>`).join("")}</select></label></div>
     <label class="task-drop-duration">${w("每次拖入安排","Duration when dropping")}<input class="input" data-drop-hours type="number" min=".25" max="12" step=".25" value="${dropHours}">h</label>
     <p class="degree-help">${w("拖入日历创建关联时段，可分次安排；拖回这里移除此时段，保留任务。","Drop a task on the calendar to create a session; drag a session back here to unschedule it and keep the task.")}</p>
     ${taskBucket==="current"&&counts.unscoped?`<button type="button" class="task-unscoped-note" data-task-bucket="unscoped">${w("另有 ","Also ")+counts.unscoped+w(" 项任务未指定完成范围，查看"," tasks without a completion window; view")}</button>`:""}
-    <div class="schedule-flexible-grid" data-unschedule="true">${tasks.map(e=>`<article class="schedule-event plan-task task-brick ${e.done?"done":""} ${calendarStatusClass(e)}" data-task-source="${esc(e.taskId)}" data-entry="${esc(e.id)}" data-study-status="${studyEntryStatus(e)}" draggable="true" style="${calendarCourseStyle(e.course)}">
-      <div class="task-brick-head"><span class="schedule-course-chip">${esc(e.course.name)}</span><label class="task-brick-done"><input type="checkbox" data-task-done ${e.done?"checked":""}>${w("完成","Done")}</label></div>
+    <div class="schedule-flexible-grid" data-unschedule="true">${[...groups.values()].map(group=>`<section class="task-shelf-course"><h4 style="${calendarCourseStyle(group.course)}">${esc(group.course.name)}</h4>${[...group.categories].map(([name,children])=>`<section class="task-shelf-category" data-task-category="${esc(name)}"><header><h5>${esc(name)}</h5><small>${children.length} ${w("项任务","tasks")}</small></header><div class="task-group-grid">${children.map(e=>`<article class="schedule-event plan-task task-brick ${e.done?"done":""} ${e.taskId===focusTaskId?"is-focused":""} ${calendarStatusClass(e)}" data-task-source="${esc(e.taskId)}" data-entry="${esc(e.id)}" data-study-status="${studyEntryStatus(e)}" draggable="true" style="${calendarCourseStyle(e.course)}">
+      <div class="task-brick-head"><span class="schedule-course-chip">${e.canonical?w("↔ 学习进度共用","↔ Shared progress task"):w("独立任务","Independent task")}</span><label class="task-brick-done"><input type="checkbox" data-task-done ${e.done?"checked":""}>${w("完成","Done")}</label></div>
       <strong>${esc(taskPath(e))}</strong><button class="task-window-label" type="button" data-task-window title="${w("修改完成范围，不会安排具体时段","Edit completion window without reserving time")}">${esc(windowText(e))} ✎</button>
       <div class="task-hour-stats"><span>${w("预计","Estimate")}<b>${e.hours==null?w("未估算","Unknown"):number(e.hours)+" h"}</b></span><span>${w("已安排","Scheduled")}<b>${number(e.plannedHours)} h</b></span><span>${w("实际","Actual")}<b>${number(e.actualHours)} h</b></span></div>
       ${calendarStatusBadge(e)}<small>${e.remainingHours==null?w("可分次安排，预计工时仍未估算","Multiple sessions allowed; estimate remains unknown"):e.plannedHours>e.hours?w("安排时长超过预计，可按需要调整","Scheduled time exceeds estimate; adjust as needed"):w("尚未分配：","Unallocated: ")+number(e.remainingHours)+" h"}</small>
       ${e.allocations.length?`<details class="task-allocation-list"><summary>${w("已安排时段","Scheduled sessions")} · ${e.allocations.length}</summary>${e.allocations.map(slot=>`<button type="button" data-open-allocation="${esc(slot.id)}" data-allocation-date="${slot.date}">${esc(slot.date)} ${esc(slot.startTime||slot.period||w("时刻待定","Time TBD"))} · ${number(studySessionHours(slot))} h</button>`).join("")}</details>`:""}
-      <div class="task-brick-actions"><button class="btn secondary" type="button" data-plan-task-time>${w("+ 安排学习时段","＋ Schedule session")}</button><button class="btn secondary" type="button" data-brick-timer>${e.canonical?w("开始计时","Start timer"):w("关联进度后计时","Link progress to time")}</button></div>
-    </article>`).join("")||`<div class="plan-empty">${w("这个筛选下没有任务。可切换范围，或清除周次、状态筛选。","No matching tasks. Change scope or clear week/completion filters.")}</div>`}</div></section>`;
+      <div class="task-brick-actions"><button class="btn secondary" type="button" data-plan-task-time>${w("+ 安排学习时段","＋ Schedule session")}</button><button class="btn secondary" type="button" data-brick-timer>${e.canonical?w("开始计时","Start timer"):w("关联进度后计时","Link progress to time")}</button></div><span class="task-drag-hint" aria-hidden="true">⠿ ${w("拖动这块到日历","Drag this block onto the calendar")}</span>
+    </article>`).join("")}</div></section>`).join("")}</section>`).join("")||`<div class="plan-empty">${w("这个筛选下没有任务。可切换范围，或清除周次、状态筛选。","No matching tasks. Change scope or clear week/completion filters.")}</div>`}</div></section>`;
 }
 
-let selectedDate=today(),filter="",mode="week",dragging="",taskBucket="current",taskWeekFilter="",taskStatusFilter="all",dropHours=2;
-export function selectStudySchedule(courseId="",date="",{view="week"}={}){filter=courseId;selectedDate=date||today();mode=view;taskBucket="current";taskWeekFilter="";taskStatusFilter="all";}
+let selectedDate=today(),filter="",mode="week",dragging="",taskBucket="current",taskWeekFilter="",taskStatusFilter="all",dropHours=2,autoTaskScope=true,focusTaskId="";
+export function selectStudySchedule(courseId="",date="",{view="week",taskId=""}={}){filter=courseId;selectedDate=date||today();mode=view;focusTaskId=taskId;taskBucket=taskId?"all":"current";autoTaskScope=!taskId;taskWeekFilter="";taskStatusFilter="all";}
 export function planCalendarItems(state,date){
   courseColorIds=state.degreePlan?.modules.flatMap(m=>m.courses.map(c=>c.id))||[];
   return studyScheduleEntries(state,date,date).filter(e=>e.date===date).map(e=>{
@@ -93,6 +94,7 @@ export function renderStudySchedule(state){
   if(filter&&!courses.some(c=>c.id===filter))filter="";
   const first=mode==="week"?planWeek(selectedDate):selectedDate,last=addPlanDays(first,mode==="week"?6:0),dates=Array.from({length:mode==="week"?7:1},(_,i)=>addPlanDays(first,i));
   const entries=studyCalendarEntries(state,first,last).filter(e=>!filter||e.course.id===filter),allTasks=studyTaskItems(state,first,last).filter(e=>!filter||e.course.id===filter),plans=entries.filter(canExecute),weekPlans=plans.filter(e=>e.date||e.weekOf);
+  if(autoTaskScope){taskBucket=["current","unscoped","overdue","future","complete"].find(bucket=>allTasks.some(t=>t.bucket===bucket))||"current";autoTaskScope=false;}
   const localDate=time=>{const d=new Date(time);return [d.getFullYear(),String(d.getMonth()+1).padStart(2,"0"),String(d.getDate()).padStart(2,"0")].join("-");};
   const sessions=(state.timer?.sessions||[]).filter(s=>localDate(s.startAt)>=first&&localDate(s.startAt)<=last&&(!filter||courses.some(c=>c.courseId===s.courseId&&c.id===filter)));
   const timed=entries.filter(e=>e.date&&e.startTime);
@@ -106,8 +108,9 @@ export function renderStudySchedule(state){
   }
   return `<section class="study-schedule"><header class="schedule-controls"><div>${btn("‹","prev")}${btn(w("今天","Today"),"today")}${btn("›","next")}</div><strong>${first} — ${last}</strong><div>${btn(w("周视图","Week"),"week")}${btn(w("日视图","Day"),"day")}</div>
     <label>${w("课程","Course")}<select class="input" data-schedule-filter><option value="">${w("全部课程","All courses")}</option>${courses.map(c=>`<option value="${esc(c.id)}" ${filter===c.id?"selected":""}>${esc(c.name)}</option>`).join("")}</select></label>
-    <label>${w("跳到日期","Go to date")}<input class="input" type="date" data-schedule-date value="${selectedDate}"></label>${filter?btn(w("任务预览 / 导入","Review tasks / import"),"edit-course"):""}${btn(w("返回学习计时","Back to study timer"),"timer-calendar")}</header>
+    <label>${w("跳到日期","Go to date")}<input class="input" type="date" data-schedule-date value="${selectedDate}"></label>${filter?btn(w("按分类查看任务","Tasks by category"),"edit-course"):""}${btn(w("返回学习计时","Back to study timer"),"timer-calendar")}</header>
     <div class="schedule-summary"><span>${w("本周 / 当日计划","Planned this period")}<b>${number(weekPlans.reduce((n,e)=>n+studySessionHours(e),0))} h</b></span><span>${w("按计划执行","Plan execution")}<b>${weekPlans.filter(e=>e.executed).length} / ${weekPlans.length}</b></span><span>${w("实际学习计时","Actual study time")}<b>${number(sessions.reduce((n,s)=>n+s.durationMs/3600000,0))} h</b></span><span>${w("本周未完成任务预计","This week’s incomplete task estimates")}<b>${number(allTasks.filter(e=>e.bucket==="current").reduce((n,e)=>n+(e.hours??0),0))} h</b></span></div>
+    <div class="schedule-workflow"><strong>${w("从现有任务开始安排","Plan from your existing tasks")}</strong><span>${w("任务按课程和分类展示，已关联的任务与学习进度共用。拖一块到日历，或点「安排学习时段」；任务可分次安排。","Tasks are grouped by course and category; linked tasks are shared with progress. Drag one onto the calendar or choose Schedule session; a task can span several sessions.")}</span>${filter?btn(w("查看 / 关联学习进度任务","View / link progress tasks"),"link-tasks"):""}</div>
     <p class="degree-help">${w("彩色块是计划，虚线块是实际计时。执行勾选、内容任务完成和实际计时分别保存。","Colored blocks are plans; dashed blocks are actual time. Execution, task completion and actual time are saved separately.")}</p>
     ${renderCalendarLegend()}<p class="course-color-note">${w("每门课用不同顶边颜色；侧边与状态文字表示是否完成。","Each course has a different top color; side colors and labels show status.")}</p>
     <div class="schedule-workspace"><aside class="schedule-plan-list">${renderTaskShelf(allTasks)}<details class="schedule-session-list" open><summary>${w("已排时段清单","Scheduled sessions")}</summary><div class="plan-section-title"><h3>${w("学习时间安排","Time plans")}</h3></div><p class="degree-help">${w("例如周一晚上预计 2 小时。点安排可修改，按计划做到了就勾选；任务关联可留空。","Reserve an evening, click to edit, and check when executed. Task linking is optional.")}</p>
@@ -227,7 +230,7 @@ function editWindow(task){
     const action=e.target.closest("[data-schedule]")?.dataset.schedule;if(!action)return;
     if(action==="timer-calendar"){bridge.openStudyCalendar(selectedDate);return;}
     if(action==="new-session"){openSession();return;}
-    if(action==="edit-course"){window.studyDegree.openCourseStudyPlan(filter);return;}
+    if(action==="edit-course"||action==="link-tasks"){window.studyDegree.openCourseStudyPlan(filter);return;}
     if(action==="prev"||action==="next")selectedDate=addPlanDays(selectedDate,(action==="next"?1:-1)*(mode==="week"?7:1));
     if(action==="today")selectedDate=today();if(action==="week"||action==="day")mode=action;render();
   });
@@ -237,7 +240,7 @@ function editWindow(task){
     if(e.target.matches("[data-task-status]")){taskStatusFilter=e.target.value;render();return;}
     if(e.target.matches("[data-drop-hours]")){const value=Number(e.target.value);if(value>=.25&&value<=12)dropHours=value;else e.target.value=dropHours;return;}
     if(e.target.matches("[data-schedule-execute]")){const entry=find(e.target.closest("[data-entry]").dataset.entry);patch(entry,{executed:e.target.checked});return;}
-    if(e.target.matches("[data-schedule-filter]")){filter=e.target.value;taskWeekFilter="";render();}
+    if(e.target.matches("[data-schedule-filter]")){filter=e.target.value;taskWeekFilter="";autoTaskScope=true;focusTaskId="";render();}
     if(e.target.matches("[data-schedule-date]")&&e.target.value){selectedDate=e.target.value;render();}
   });
   root.addEventListener("dragstart",e=>{
