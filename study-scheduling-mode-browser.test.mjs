@@ -22,7 +22,10 @@ try{
  await page.addInitScript(s=>{if(!localStorage.getItem("study-tracker-online-guest-v1"))localStorage.setItem("study-tracker-online-guest-v1",JSON.stringify(s));localStorage.setItem("study-tracker-language-v1","zh-CN");},fixture);
  await page.goto(process.env.STUDY_TRACKER_TEST_URL||"http://127.0.0.1:8096",{waitUntil:"networkidle"});
  await page.waitForFunction(()=>window.studyDegree?.openSchedule);
- await page.evaluate(()=>studyDegree.openSchedule("kc","2026-11-23"));
+ await page.locator("#degreePanelBtn").click();
+ await page.locator('#degreePanel [data-degree="schedule"]').click();
+ await page.locator("[data-schedule-filter]").selectOption("kc");
+ assert.equal(await page.locator("[data-schedule-version]").innerText(),"v2026.11.25.2");
  assert.ok((await page.locator("[data-calendar-week]").innerText()).includes("校历第 7 周"));
  assert.ok((await page.locator("[data-calendar-week]").innerText()).includes("KW 48"));
  await page.locator('[data-task-bucket="all"]').click();
@@ -50,9 +53,8 @@ try{
  await page.locator('[data-plan-action="save-schedule"]').click();
  assert.equal(await brick("lecture7").count(),0);
  assert.equal(await page.locator(".schedule-day-grid .schedule-event.class").getAttribute("draggable"),"false");
- await page.evaluate(()=>studyDegree.openCourseStudyPlan("kc"));
- await row("homework7").locator('[data-field="schedulingMode"]').selectOption("fixed");
- await page.locator('[data-plan-action="save-schedule"]').click();
+ await brick("homework7").locator("[data-task-mode]").click();
+ await page.locator('#degreeDialog [name="schedulingMode"]').selectOption("fixed");await save();
  assert.equal(await brick("homework7").count(),0);
  const homework=page.locator('.schedule-day-grid [data-entry="plan-event:homework-session:2026-11-26"]');
  assert.equal(await homework.getAttribute("draggable"),"false");

@@ -58,6 +58,8 @@
 .schedule-week-heading{display:grid;gap:5px}.schedule-week-heading small{font-size:.75rem;color:#5a7567;max-width:390px}
 .schedule-event[data-scheduling-mode=fixed]{cursor:pointer}
 @media(max-width:600px){.plan-task-mode-line{gap:3px}.schedule-week-heading{width:100%;order:-1}.schedule-week-heading small{line-height:1.5}}
+.task-brick-head{flex-wrap:wrap}.task-mode-button{font:inherit;font-size:.72rem;white-space:nowrap;color:#286b58;background:#fff;border:1px solid #bdd8ca;border-radius:6px;padding:4px 7px;cursor:pointer}.task-mode-button:hover{background:#e4f3eb}
+.schedule-version{align-self:center;margin-left:auto;color:#6b8175;font-size:.72rem;white-space:nowrap}
 /* Study plans share tasks with progress and display virtual recurring events. */
 .plan-edit-row{border:1px solid var(--border,#d4e2df);border-radius:12px;padding:14px;margin:10px 0;background:var(--surface,#fff)}
 .plan-edit-row label,.plan-import label{display:block;margin:8px 0}.plan-edit-row .degree-row{gap:8px;flex-wrap:wrap}
