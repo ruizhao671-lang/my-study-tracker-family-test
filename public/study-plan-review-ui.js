@@ -28,9 +28,8 @@ export function changeTable(changes,taskNames={}){
 export function decisionReview(item,previous,kind="task",taskNames={}){
   const changes=previous?itemChanges(previous,item,kind):[];
   return `${previous?changeTable(changes,taskNames):`<p class="plan-diff-empty">${w("新 ID：追加此项，已有内容保留。","New ID: append this item and keep existing data.")}</p>`}
-    ${changes.length?`<label class="plan-conflict-choice">${w("请确认这一项的变更","Confirm this item's changes")}<select class="input" data-conflict-choice>
-      <option value="" ${!item.decision?"selected":""}>${w("请选择：采用修改或保留原内容","Choose: apply changes or keep previous")}</option>
-      <option value="apply" ${item.decision==="apply"?"selected":""}>${w("采用上方修改","Apply the proposed changes")}</option>
+    ${changes.length?`<label class="plan-import-choice">${w("此项处理","For this item")}<select class="input" data-conflict-choice>
+      <option value="apply" ${item.decision!=="keep"?"selected":""}>${w("采用新计划（含上方编辑）","Use new plan, including edits above")}</option>
       <option value="keep" ${item.decision==="keep"?"selected":""}>${w("保留原内容","Keep previous content")}</option></select></label>`:""}`;
 }
 

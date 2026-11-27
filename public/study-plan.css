@@ -111,6 +111,7 @@ body.study-schedule-mode #examHourglass{display:none}
 .degree-saved-study{margin:.75rem 0 .4rem;padding:.65rem .75rem;border-radius:9px;background:#edf5f1;color:#315e53;font-size:.82rem;line-height:1.5}
 
 /* Editable task review and independent plan execution. */
+.plan-import-policy{display:grid;gap:.55rem;padding-top:.8rem;margin-top:.3rem;border-top:1px solid #c8dfd4}.plan-import-policy>strong{font-size:.86rem}.plan-import-policy small{color:#567361;line-height:1.5}.plan-import-policy .btn{white-space:normal;min-height:42px}.plan-import-choice{padding:.65rem .8rem;background:#f2f7f4;border:1px solid #d3e3da;border-radius:9px;font-size:.85rem}.plan-import-policy [data-plan-action="import-apply-all"]{background:#157c70;color:#fff;border-color:#157c70}
 #degreeDialog.degree-study-plan-dialog{width:min(1080px,96vw)}
 .plan-editor-intro{padding:1rem;border-radius:14px;background:#f1f7f5;margin-bottom:1rem}
 .plan-editor-intro p{margin:.45rem 0 .8rem;line-height:1.6}.plan-editor-intro label{display:grid;gap:.35rem}
@@ -240,6 +241,7 @@ body.study-schedule-mode .app{width:min(1480px,calc(100% - 36px))}
 
 .weekly-category-button{font-size:.72rem!important;padding:5px 8px!important;min-height:30px;white-space:normal}
 .task-shelf-category>header{flex-wrap:wrap;cursor:grab}.task-shelf-category>header h5{flex:1;min-width:80px}
+.weekly-anchor-help{padding:16px;border:1px solid #d8be80;border-radius:12px;background:#fff8e8;margin-bottom:14px}.weekly-anchor-help p{font-size:.85rem;line-height:1.6;color:#766237}.weekly-anchor-help .btn{margin-top:10px;white-space:normal}
 .weekly-preview-heading{display:flex;flex-direction:column;gap:5px;padding:16px;background:#e9f5ef;border:1px solid #d1e4da;border-radius:12px;margin-bottom:12px}
 .weekly-preview-heading span{font-size:.85rem;color:#527361}
 .weekly-preview-rows{display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:12px}
@@ -248,6 +250,7 @@ body.study-schedule-mode .app{width:min(1480px,calc(100% - 36px))}
 .weekly-row-times{display:grid;grid-template-columns:1.3fr 1fr 1fr;gap:8px}.weekly-row-times label{min-width:0;font-size:.78rem}
 .weekly-row-times .input{min-width:0;width:100%;padding:8px 5px}
 .weekly-preview-row.has-conflict{border-color:#c18851}.weekly-conflict{color:#a05b27!important}
+.weekly-conflict-confirm[hidden]{display:none!important}
 .weekly-conflict-confirm{padding:14px;background:#fff3e6;margin-top:12px;border-radius:10px}
 #timerTaskDoneBtn{margin-top:8px;font-size:.8rem;white-space:normal}
 @media(max-width:600px){.weekly-preview-rows{grid-template-columns:minmax(0,1fr)}.weekly-row-times{grid-template-columns:minmax(0,1.3fr) minmax(0,1fr) minmax(0,1fr)}}

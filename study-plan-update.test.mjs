@@ -81,4 +81,19 @@ assert.equal(protectedState.semesters.flatMap(s=>s.courses).flatMap(c=>c.categor
 for(let i=0;i<24;i++)save({tasks:[{id:"a",hours:i}],events:[]});
 assert.ok(course.planHistory.length<=20);assert.ok(coursePlanVersions(course).length>=2);
 assert.equal(courseStudyTasks(course,state.semesters).find(t=>t.id===a.id).hours,23);
+{
+ const oldTask={id:"manual-task",title:"Old title",group:"Practice",done:true,userScheduled:true,date:"2026-11-26",startTime:"18:00",endTime:"20:00",hours:4};
+ const newTask={...oldTask,title:"Updated",date:"2026-11-27",startTime:"19:00",endTime:"21:00",hours:6,providedFields:["title","date","startTime","endTime","hours"]};
+ const oldEvent={id:"manual-event",type:"study",title:"Old slot",date:"2026-11-26",startTime:"18:00",endTime:"20:00",executed:true,userScheduled:true};
+ const newEvent={...oldEvent,date:"2026-11-27",startTime:"19:00",endTime:"21:00",providedFields:["date","startTime","endTime"]};
+ const applied=mergeImportedPlan([oldTask],[oldEvent],{tasks:[{...newTask,decision:"apply"}],events:[{...newEvent,decision:"apply"}]});
+ assert.equal(applied.tasks[0].date,newTask.date);assert.equal(applied.tasks[0].hours,6);assert.equal(applied.tasks[0].done,true);
+ assert.equal(applied.events[0].date,newEvent.date);assert.equal(applied.events[0].executed,true);
+ const kept=mergeImportedPlan([oldTask],[oldEvent],{tasks:[{...newTask,decision:"keep"}],events:[{...newEvent,decision:"keep"}]});
+ assert.equal(kept.tasks[0].hours,4);assert.equal(kept.tasks[0].date,oldTask.date);assert.equal(kept.events[0].date,oldEvent.date);
+ const implicit=mergeImportedPlan([oldTask],[oldEvent],{tasks:[newTask],events:[newEvent]});
+ assert.equal(implicit.tasks[0].date,oldTask.date,"Non-UI clients retain the existing manual-placement default");
+ assert.equal(implicit.events[0].date,oldEvent.date);
+}
+
 console.log("PASS safe incremental plans: strict IDs, sparse patches, explicit clears, duplicate ID rejection, weekly ID compatibility, retained progress/records/notes/slots, no-op imports, delta history, guarded restore, archived notes, persistence and bounded history");

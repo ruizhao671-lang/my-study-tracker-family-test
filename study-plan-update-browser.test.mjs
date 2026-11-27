@@ -5,7 +5,9 @@ const page=await browser.newPage({viewport:{width:1440,height:1050},timezoneId:"
 const url=process.env.STUDY_TRACKER_TEST_URL||"http://127.0.0.1:8096";
 const errors=[];page.on("pageerror",e=>errors.push(e.message));
 const course={id:"degree",name:"Safe course",code:"SAFE",credits:5,passed:false,courseId:"learning",passTaskId:"",tasks:[],exams:[],blockId:"",
-planRange:{start:"2026-11-23",end:"2026-12-13"},planEvents:[{id:"evening",importKey:"event:evening",title:"Evening",type:"study",date:"2026-11-26",startTime:"18:00",endTime:"20:00",hours:2,taskId:"existing",userScheduled:true}]};
+planRange:{start:"2026-11-23",end:"2026-12-13"},planEvents:[{id:"evening",importKey:"event:evening",title:"Evening",type:"study",date:"2026-11-26",startTime:"18:00",endTime:"20:00",hours:2,taskId:"existing",userScheduled:true},
+ {id:"unmentioned-slot",title:"Keep independent session",type:"study",date:"2026-11-28",hours:1,userScheduled:true},
+ {id:"workshop",importKey:"event:workshop",title:"Improtheater-Workshop II",type:"workshop",date:"2026-11-18",startTime:"13:15",endTime:"16:30",executed:true}]};
 const fixture={ownerName:"Safe import test",semesters:[{id:"stage",name:"Winter",courses:[{id:"learning",name:course.name,categories:[{id:"cat",name:"Vorlesung",tasks:[
 {id:"existing",title:"Chapter 3",estimatedHours:4,weekOf:"2026-11-23",deadline:"2026-11-29",planImportKey:"task:chapter",done:false,note:"Keep notes",attachments:[{name:"keep.pdf",data:"test"}]},
 {id:"old",title:"Unmentioned task",estimatedHours:1,planImportKey:"task:old",done:false}]}]}]}],degreePlan:{name:"Test",requiredCredits:180,modules:[{id:"m",name:"Required",kind:"required",requiredCredits:120,courses:[course]}],blocks:[]},timer:{sessions:[],calendarItems:[],scheduleStartMinute:0,scheduleEndMinute:0}};
@@ -34,12 +36,17 @@ try{
  assert.ok((await row.locator(".plan-diff-table").innerText()).includes("4"));
  assert.ok((await row.locator(".plan-diff-table").innerText()).includes("6"));
  assert.equal(await page.locator("[data-review-task]").nth(1).locator("[data-merge]").inputValue(),"auto","Different ID is not silently merged by name");
- await page.locator('#degreeDialog button[type="submit"]').click();
- assert.equal(current(await get()).estimatedHours,4);
- assert.ok((await page.locator('#degreeDialog [role="status"]').innerText()).includes("确认"));
- await row.locator("[data-conflict-choice]").selectOption("apply");
+ assert.equal(await row.locator("[data-conflict-choice]").inputValue(),"apply","New imports use the new plan by default");
+ assert.equal(current(await get()).estimatedHours,4,"Preview does not save until requested");
+ await page.locator('[data-plan-action="import-keep-all"]').click();
+ assert.equal(await row.locator("[data-conflict-choice]").inputValue(),"keep");
+ assert.equal(await page.locator("[data-review-event] [data-conflict-choice]").inputValue(),"keep","Bulk action includes hidden time-plan pane");
+ await row.locator('[data-field="hours"]').fill("6.5");await row.locator('[data-field="hours"]').blur();
+ assert.equal(await row.locator("[data-conflict-choice]").inputValue(),"keep","Individual policy stays selected while editing");
+ await page.locator('[data-plan-action="import-apply-all"]').click();
+ assert.equal(await row.locator("[data-conflict-choice]").inputValue(),"apply");
  await row.locator('[data-field="hours"]').fill("7");await row.locator('[data-field="hours"]').blur();
- assert.equal(await row.locator("[data-conflict-choice]").inputValue(),"","Editing invalidates prior confirmation");
+ assert.equal(await row.locator("[data-conflict-choice]").inputValue(),"apply","Edits keep the selected import policy");
  await row.locator("[data-conflict-choice]").selectOption("apply");
  await pane("events");
  const eventRow=page.locator("[data-review-event]").first();
@@ -85,6 +92,25 @@ try{
  await page.locator(".plan-error").waitFor();assert.ok((await page.locator(".plan-error").innerText()).includes("Duplicate"));
  assert.equal(allTasks(await get()).length,3);
  await page.locator("#degreeDialog [data-dialog-close]").click();
+ const untouched=structuredClone(await get());
+ const replacement={...payload,tasks:[{id:"chapter",hours:9},payload.tasks[1]],events:[...payload.events,{id:"workshop",schedulingMode:"fixed"}]};
+ await page.evaluate(hash=>{location.hash=hash;},link(replacement));await page.locator(".plan-preview").waitFor();
+ assert.equal(await page.locator('[data-review-task] [data-conflict-choice]').first().inputValue(),"apply");
+ assert.equal(await page.locator('[data-review-event] [data-conflict-choice]').last().inputValue(),"apply");
+ assert.equal(current(await get()).estimatedHours,4,"Opening the new import keeps stored data intact");
+ assert.ok(await page.locator("#degreeDialog").evaluate(el=>el.scrollWidth<=el.clientWidth+2));
+ await page.screenshot({path:process.env.TEMP+"/studytracker-default-import-mobile.png",fullPage:false});
+ await page.locator('[data-plan-action="save-schedule"]').click();
+ state=await get();assert.equal(current(state).estimatedHours,9);assert.equal(current(state).done,true);
+ assert.equal(current(state).note,"Keep notes");assert.equal(current(state).attachments[0].name,"keep.pdf");
+ assert.equal(state.timer.sessions.length,1);assert.equal(allTasks(state).length,3);
+ assert.equal(plan(state).planEvents.find(e=>e.id==="evening").date,"2026-11-27","Explicitly supplied new schedule replaces the same matched manual slot");
+ assert.deepEqual(plan(state).planEvents.find(e=>e.id==="unmentioned-slot"),plan(untouched).planEvents.find(e=>e.id==="unmentioned-slot"),"Unmentioned independent sessions stay intact");
+ const workshop=plan(state).planEvents.find(e=>e.id==="workshop");
+ assert.equal(workshop.schedulingMode,"fixed");assert.equal(workshop.executed,true);
+ assert.ok(allTasks(state).some(t=>t.id==="old"),"Unmentioned tasks stay intact");
+ await page.reload({waitUntil:"networkidle"});await page.waitForFunction(()=>window.studyDegree);
+ assert.equal(current(await get()).estimatedHours,9);assert.equal((await get()).timer.sessions.length,1);
  assert.deepEqual(errors,[]);
- console.log("PASS safe editable preview: sparse fields hydrate, strict new IDs, live differences, required/revoked conflict decisions, keep/apply choices, protected real timer/complete undo, persisted version diff/restore, protected added tasks, duplicate rejection and mobile");
+ console.log("PASS safe editable preview: sparse fields hydrate, strict new IDs, live differences, default new-plan updates with persistent per-item choices, keep/apply choices, protected real timer/complete undo, persisted version diff/restore, protected added tasks, duplicate rejection and mobile");
 }finally{await browser.close();}

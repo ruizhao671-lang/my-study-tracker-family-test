@@ -91,6 +91,26 @@ try{
  await page.locator('[data-schedule="weekly-category"]').click();await page.locator('[data-weekly-preview]').click();
  assert.ok(await page.evaluate(()=>document.querySelector("#degreeDialog").scrollWidth<=document.querySelector("#degreeDialog").clientWidth+1));
  await page.screenshot({path:process.env.TEMP+"/studytracker-weekly-mobile.png",fullPage:true});await page.keyboard.press("Escape");
+ const undated=structuredClone(fixture);
+ undated.semesters[0].courses[0].categories[0].tasks=[6,7,8,9].map(n=>({id:"w"+n,title:"Week "+n,estimatedHours:2,done:n===6}));
+ await page.evaluate(s=>studyTrackerBridge.replaceState(s),undated);await schedule();
+ await page.locator('[data-schedule="weekly-category"]').click();await page.locator("[data-weekly-preview]").click();
+ await page.locator("[data-anchor-help]").waitFor({state:"visible"});
+ assert.equal(await row(0).locator("[data-slot]").count(),0,"Completed undated tasks do not show meaningless empty date inputs");
+ await row(1).locator("[data-include]").check();await row(2).locator("[data-include]").check();
+ assert.equal(await page.locator("[data-weekly-confirm-wrap]").isVisible(),false,"Two empty dates must not trigger an overlap warning");
+ assert.equal(await page.locator(".weekly-conflict").filter({hasText:"重叠"}).count(),0);
+ assert.equal(await page.locator('#degreeDialog [type="submit"]').isDisabled(),true);
+ await page.locator("[data-anchor-number]").fill("7");await page.locator("[data-anchor-date]").fill("2026-12-09");
+ await page.screenshot({path:process.env.TEMP+"/studytracker-week-anchor-mobile.png",fullPage:false});
+ await page.locator("[data-anchor-apply]").click();
+ assert.equal(await page.locator("[data-anchor-help]").count(),0);
+ assert.equal(await row(1).locator('[data-slot="date"]').inputValue(),"2026-12-07");
+ assert.equal(await row(2).locator('[data-slot="date"]').inputValue(),"2026-12-14");
+ assert.equal(await row(3).locator('[data-slot="date"]').inputValue(),"2026-12-21");
+ assert.equal(await page.locator("[data-weekly-confirm-wrap]").isVisible(),false);
+ await save();s=await get();assert.equal(slots(s).length,3);assert.equal(raw(s).length,4);
+ assert.equal(s.degreePlan.modules[0].courses[0].weeklyRules[0].anchorWeekDate,"2026-12-07");
  assert.deepEqual(errors,[]);
  console.log("PASS browser weekly batches: editable weekly preview, skips, category drag, individual splitting, pending/scheduled transitions, cancellations, three-panel completion, timer records, strict rename/deletion, reload and mobile");
 }finally{await browser.close();}

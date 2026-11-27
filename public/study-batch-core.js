@@ -18,18 +18,25 @@ export function normalizeWeeklyRule(state,courseId,input){
   if(!category)throw new Error("请先关联学习进度，并选择课程中的分类。");
   const weekday=Number(input.weekday),anchor= input.anchorWeekNumber===""||input.anchorWeekNumber==null?null:Number(input.anchorWeekNumber);
   if(!Number.isInteger(weekday)||weekday<1||weekday>7||!validTime(input.startTime)||!validTime(input.endTime)||input.endTime<=input.startTime)throw new Error("请填写同一天内有效的每周时间。");
-  if(!validPlanDate(input.fromWeek)||!validPlanDate(input.untilWeek)||input.untilWeek<input.fromWeek||input.untilWeek>addPlanDays(input.fromWeek,366))throw new Error("请填写一年以内的开始与结束日期。");
+  if(!validPlanDate(input.fromWeek)||!validPlanDate(input.untilWeek))throw new Error("请填写一年以内的开始与结束日期。");
+  const fromWeek=planWeek(input.fromWeek),untilWeek=planWeek(input.untilWeek),anchorWeekDate=input.anchorWeekDate||fromWeek;
+  if(untilWeek<fromWeek||untilWeek>addPlanDays(fromWeek,366))throw new Error("请填写一年以内的开始与结束日期。");
+  if(!validPlanDate(anchorWeekDate))throw new Error("请填写课程周次对应的日期。");
   if(anchor!==null&&(!Number.isInteger(anchor)||anchor<1||anchor>100))throw new Error("课程起始周次需为 1 到 100，未知可留空。");
   const skipWeeks=[...new Set((input.skipWeeks||[]).map(value=>{if(!validPlanDate(value))throw new Error("跳过周的日期无效。");return planWeek(value);} ))];
-  return {id:input.id||crypto.randomUUID(),categoryId:category.categoryId,categoryName:category.name,weekday,startTime:input.startTime,endTime:input.endTime,fromWeek:planWeek(input.fromWeek),untilWeek:planWeek(input.untilWeek),anchorWeekNumber:anchor,skipWeeks,enabled:input.enabled!==false,excludedTaskIds:[...new Set(Array.isArray(input.excludedTaskIds)?input.excludedTaskIds:[])].slice(-1000)};
+  return {id:input.id||crypto.randomUUID(),categoryId:category.categoryId,categoryName:category.name,weekday,startTime:input.startTime,endTime:input.endTime,fromWeek,untilWeek,anchorWeekNumber:anchor,anchorWeekDate:planWeek(anchorWeekDate),skipWeeks,enabled:input.enabled!==false,excludedTaskIds:[...new Set(Array.isArray(input.excludedTaskIds)?input.excludedTaskIds:[])].slice(-1000)};
 }
 function taskWeek(rule,task){
   if(task.weekOf)return planWeek(task.weekOf);
   if(task.windowStart&&(!task.windowEnd||planWeek(task.windowStart)===planWeek(task.windowEnd)))return planWeek(task.windowStart);
   const ordinal=studyTaskWindow(task).teachingWeek;
-  if(ordinal&&rule.anchorWeekNumber!==null)return addPlanDays(rule.fromWeek,(ordinal-rule.anchorWeekNumber)*7);
+  if(ordinal&&rule.anchorWeekNumber!==null)return addPlanDays(rule.anchorWeekDate||rule.fromWeek,(ordinal-rule.anchorWeekNumber)*7);
   if(task.deadline&&!task.windowStart)return planWeek(task.deadline);
   return "";
+}
+export function weeklyRowsOverlap(a,b){
+  return validPlanDate(a.date)&&a.date===b.date&&validTime(a.startTime)&&validTime(a.endTime)&&a.startTime<a.endTime&&
+    validTime(b.startTime)&&validTime(b.endTime)&&b.startTime<b.endTime&&a.startTime<b.endTime&&a.endTime>b.startTime;
 }
 export function weeklyConflicts(state,row,ignoreId=""){
   if(!validPlanDate(row.date)||!validTime(row.startTime)||!validTime(row.endTime)||row.endTime<=row.startTime)return [];
@@ -84,7 +91,7 @@ export function applyWeeklyRule(state,courseId,input,selectedRows,today=todayKey
     return {...original,date:row.date,startTime:row.startTime,endTime:row.endTime};
   });
   for(const row of chosen){
-    const overlap=chosen.some(other=>other!==row&&other.date===row.date&&row.startTime<other.endTime&&row.endTime>other.startTime);
+    const overlap=chosen.some(other=>other!==row&&weeklyRowsOverlap(row,other));
     if((weeklyConflicts(state,row,row.existingId).length||overlap)&&!selectedRows.find(r=>r.taskId===row.taskId)?.confirmConflicts)throw new Error("所选时间存在重叠，请在预览中确认后保存。");
   }
   course.weeklyRules ||= [];

@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import {studyTaskIndex,reconcileLinkedTasks,setStudyTaskDone} from "./public/study-task-sync.js";
-import {normalizeWeeklyRule,previewWeeklyRule,applyWeeklyRule,refreshWeeklyRules} from "./public/study-batch-core.js";
+import {normalizeWeeklyRule,previewWeeklyRule,applyWeeklyRule,refreshWeeklyRules,weeklyRowsOverlap} from "./public/study-batch-core.js";
 import {courseStudyTasks,studyTaskItems,patchStudyScheduleEntry,removeStudyScheduleEntry,createTaskStudySession,studyScheduleEntries,applyCourseStudyPlan} from "./public/study-plan-core.js";
 import {coursePlanVersions,restoreCoursePlanVersion} from "./public/study-plan-history.js";
 function fixture(){
@@ -102,5 +102,14 @@ const config={categoryId:"ha",weekday:2,startTime:"19:00",endTime:"21:00",fromWe
  const {state,course,category}=fixture();course.courseId="";course.tasks=[{id:"t1",title:"Independent",done:false}];
  setStudyTaskDone(state,"t1",true,course.id);
  assert.equal(course.tasks[0].done,true);assert.equal(category.tasks[0].done,false,"Unlinking must preserve independent completion even if an old source ID remains");
+}
+{
+ const {state,course,tasks}=fixture();for(const task of tasks)delete task.weekOf;
+ const preview=previewWeeklyRule(state,course.id,{...config,anchorWeekNumber:1,anchorWeekDate:"2026-12-07"},"2026-11-25");
+ assert.equal(preview.rows[0].date,"2026-12-08");assert.equal(preview.rows[1].date,"2026-12-15","One week anchor fills all subsequent task weeks independently of the planning range");
+ const empty={date:"",startTime:"19:00",endTime:"21:00"};assert.equal(weeklyRowsOverlap(empty,empty),false);
+ assert.equal(weeklyRowsOverlap({...empty,date:"2026-12-08"},{...empty,date:"2026-12-15"}),false);
+ assert.equal(weeklyRowsOverlap({...empty,date:"2026-12-08"},{...empty,date:"2026-12-08"}),true);
+ assert.equal(weeklyRowsOverlap({...empty,date:"2026-12-08"},{date:"2026-12-08",startTime:"21:00",endTime:"22:00"}),false);
 }
 console.log("PASS weekly scheduling + strict shared tasks: editable/conflict-safe batches, date anchors, stable IDs, new tasks, manual overrides, canceled slots, rule history, fixed/completed skips, renames/moves/deletes, active timer archive and retained actual records");

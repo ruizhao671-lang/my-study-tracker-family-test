@@ -1,4 +1,4 @@
-import {matchImportedItem,hydrateImportedItem,itemChanges,sourceId} from "./study-plan-update-core.js";
+import {matchImportedItem,hydrateImportedItem,sourceId} from "./study-plan-update-core.js";
 import {decisionReview,historyPanel} from "./study-plan-review-ui.js";
 import { suggestProgressCourse, studyPlanFromLink } from "./degree-core.js";
 import { courseStudyTasks, parseCoursePlan, mergeImportedPlan, scheduleOccurrences, taskActualHours, addPlanDays, studySessionHours,planWeek,taskSchedulingMode,taskScheduleEvents,eventSchedulingMode,studyWeekLabel } from "./study-plan-core.js";
@@ -182,19 +182,21 @@ export function openPlanEditor({course,plan,semesters,received,showDialog,bridge
   return {...value,taskId:task?.mergeIntoId||known?.id||value.taskId};
 }
 
-function updateReviewDiffs(reset=false){
+function updateReviewDiffs(){
   if(!preview)return;
   const names=Object.fromEntries([...tasks,...preview.tasks].map(t=>[t.id,t.title]));
   for(const [kind,list,old,attr]of [["task",preview.tasks,tasks,"data-review-task"],["event",preview.events,events,"data-review-event"]]){
     for(const item of list){
       const row=form.querySelector("["+attr+'="'+CSS.escape(item.id)+'"]');if(!row)continue;
-      const previous=matchImportedItem(item,old,kind),value=reviewValue(item,kind),changes=previous?itemChanges(previous,value,kind):[];
-      const fingerprint=JSON.stringify([previous?.id,changes]);
-      if(item.reviewFingerprint&&item.reviewFingerprint!==fingerprint)item.decision="";
-      item.reviewFingerprint=fingerprint;
+      const previous=matchImportedItem(item,old,kind),value=reviewValue(item,kind);
+      if(!["apply","keep"].includes(item.decision))item.decision="apply";
       row.querySelector("[data-change-review]").innerHTML=decisionReview({...value,decision:item.decision},previous,kind,names);
+      if(item.include===false)disableReview(row,true);
     }
   }
+  const matched=[...preview.tasks.filter(t=>t.include!==false&&matchImportedItem(t,tasks)),...preview.events.filter(e=>e.include!==false&&matchImportedItem(e,events,"event"))];
+  const kept=matched.filter(item=>item.decision==="keep").length,status=form.querySelector("[data-import-policy-status]");
+  if(status)status.textContent=w("匹配项："+(matched.length-kept)+" 项采用新计划，"+kept+" 项保留原内容。","Matched items: "+(matched.length-kept)+" use the new plan; "+kept+" keep previous content.");
 }
 
 function drawHistory(selected=""){
@@ -208,7 +210,8 @@ function drawHistory(selected=""){
     const estimate=mergeImportedPlan(tasks,events,{tasks:selectedTasks,events:selectedEvents});
     root.innerHTML=`<div class="plan-preview-header"><span class="plan-eyebrow">${w("待确认导入 · 可直接编辑","Editable import preview")}</span>
       <strong>${w("新增 "+estimate.addedTasks+" 个任务，"+estimate.addedEvents+" 项时间安排；匹配的项目会合并。","Add "+estimate.addedTasks+" tasks and "+estimate.addedEvents+" time plans; matching items will merge.")}</strong>
-      <span>${w("取消勾选即可忽略；重复项可以选择合并到已有任务。修改完点底部保存。","Uncheck to exclude; merge duplicates into existing tasks. Save when ready.")}</span></div>
+      <span>${w("默认采用新计划，完成状态与实际计时保留。未提到的旧任务和安排保留；不需要导入的项目可取消勾选。","Use the new plan by default; keep completion and actual time. Unmentioned tasks and sessions stay. Uncheck any item to exclude it.")}</span>
+      <div class="plan-import-policy"><strong>${w("匹配项目统一处理","Matched items")}</strong><div class="degree-actions">${btn(w("全部采用新计划","Use new plan for all matches"),"import-apply-all")}${btn(w("全部保留原内容","Keep previous content for all matches"),"import-keep-all")}</div><small>${w("同时处理学习任务和时间安排；新增项仍会导入，单项可在下方调整。","Applies to tasks and time plans. New items still import; individual choices remain available below.")}</small><small data-import-policy-status aria-live="polite"></small></div></div>
       <div data-plan-pane="tasks" class="plan-review-tasks">${groupedTasks(preview.tasks,t=>{
         const match=tasks.find(old=>old.id===t.mergeIntoId)||taskMatch(t,tasks),operation=t.mergeIntoId||(t.forceNew?"copy":match?.id||"auto");
         const similar=tasks.some(old=>old.title===t.title);
@@ -246,8 +249,8 @@ function drawHistory(selected=""){
       const input=hash?studyPlanFromLink(hash):raw.replace(/^```(?:json)?\s*|\s*```$/g,"").startsWith("{")?JSON.parse(raw.replace(/^```(?:json)?\s*|\s*```$/g,"")):{tasks:raw};
       if(raw!==previewText.trim()&&input.period){if(input.period.start)form.querySelector('[data-field="rangeStart"]').value=input.period.start;if(input.period.end)form.querySelector('[data-field="rangeEnd"]').value=input.period.end;if(Array.isArray(input.period.exceptDates))form.querySelector('[data-field="excludeDates"]').value=input.period.exceptDates.join(", ");}
       preview=parseCoursePlan(input,course,plan,readRange());previewText=form.elements.paste.value;
-      for(let i=0;i<preview.tasks.length;i++){const t=preview.tasks[i],match=taskMatch(t,tasks);preview.tasks[i]={...hydrateImportedItem(t,match),include:true,mergeIntoId:match?.id||"",decision:""};}
-      for(let i=0;i<preview.events.length;i++){const e=preview.events[i],match=matchImportedItem(e,events,"event");preview.events[i]={...hydrateImportedItem(e,match,"event"),include:true,mergeIntoId:match?.id||"",decision:""};}
+      for(let i=0;i<preview.tasks.length;i++){const t=preview.tasks[i],match=taskMatch(t,tasks);preview.tasks[i]={...hydrateImportedItem(t,match),include:true,mergeIntoId:match?.id||"",decision:"apply"};}
+      for(let i=0;i<preview.events.length;i++){const e=preview.events[i],match=matchImportedItem(e,events,"event");preview.events[i]={...hydrateImportedItem(e,match,"event"),include:true,mergeIntoId:match?.id||"",decision:"apply"};}
       form.querySelector(".plan-error").textContent="";draw();form.querySelector(".plan-existing-tasks").open=false;
       form.querySelector(".plan-preview").scrollIntoView({block:"nearest"});
     }catch(error){preview=null;form.querySelector(".plan-preview").replaceChildren();showError(w("无法预览，请检查格式和日期：","Check format and dates: ")+error.message);}
@@ -256,10 +259,6 @@ function drawHistory(selected=""){
     readRows();
     if(form.elements.paste.value.trim()&&(!preview||form.elements.paste.value!==previewText))throw new Error(w("导入内容已变化，请先重新生成预览。","Import changed. Generate the preview again."));
     updateReviewDiffs();
-    if(preview)for(const [kind,list,existing]of [["task",preview.tasks,tasks],["event",preview.events,events]])for(const item of list){
-      if(item.include===false)continue;const previous=matchImportedItem(item,existing,kind);
-      if(previous&&itemChanges(previous,reviewValue(item,kind),kind).length&&!["apply","keep"].includes(item.decision))throw new Error(w("请先确认每项差异：采用修改，或保留原内容。","Confirm each changed item: apply changes or keep previous content."));
-    }
     const imported=preview?{tasks:preview.tasks.filter(t=>t.include!==false),events:preview.events.filter(e=>e.include!==false)}:{tasks:[],events:[]};
     const merged=mergeImportedPlan(tasks,events,imported);
     for(const event of merged.events)if(event.taskId&&!merged.tasks.some(t=>t.id===event.taskId||t.importKey==="task:"+event.taskId))throw new Error(w("「"+event.title+"」关联的任务未选入。请勾选该任务，或将安排设为不关联。","The linked task for "+event.title+" is excluded. Include it or unlink the time plan."));
@@ -294,6 +293,12 @@ function drawHistory(selected=""){
         document.querySelector("#degreeDialog").close();window.studyDegree.openCourseStudyPlan(course.id);return;
       }
       if(action==="preview"){showPreview();return;}
+      if(action==="import-apply-all"||action==="import-keep-all"){
+        readRows();if(!preview)return;
+        for(const [kind,list,existing]of [["task",preview.tasks,tasks],["event",preview.events,events]])for(const item of list)
+          if(item.include!==false&&matchImportedItem(item,existing,kind))item.decision=action==="import-keep-all"?"keep":"apply";
+        drawPreview();showPane();return;
+      }
       if(action==="copy-format"){
         const example={course:course.code||"",period:readRange(),tasks:[{id:"chapter-3",title:"学习第三章",group:"章节",hours:null,weekOf:planWeek(readRange().start),teachingWeek:null}],
           events:[{id:"evening-session",type:"study",title:"晚间学习",date:readRange().start,period:"晚上",hours:2,taskId:"chapter-3"}]};
@@ -334,11 +339,11 @@ function drawHistory(selected=""){
         refreshPreviewSummary();
         if(reviewTask && event.target.matches("[data-merge]")){
           const task=preview.tasks.find(t=>t.id===reviewTask.dataset.reviewTask),target=tasks.find(t=>t.id===task.mergeIntoId);
-          if(target){Object.assign(task,hydrateImportedItem(task,target));task.decision="";task.reviewFingerprint="";drawPreview();showPane();}
+          if(target){Object.assign(task,hydrateImportedItem(task,target));task.decision="apply";drawPreview();showPane();}
         }
         if(reviewEvent && event.target.matches("[data-merge]")){
           const plan=preview.events.find(e=>e.id===reviewEvent.dataset.reviewEvent),target=events.find(e=>e.id===plan.mergeIntoId);
-          if(target){Object.assign(plan,hydrateImportedItem(plan,target,"event"));plan.decision="";plan.reviewFingerprint="";drawPreview();showPane();}
+          if(target){Object.assign(plan,hydrateImportedItem(plan,target,"event"));plan.decision="apply";drawPreview();showPane();}
         }
       }catch(error){showError(error.message);}return;
     }

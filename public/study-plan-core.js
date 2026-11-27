@@ -286,7 +286,7 @@ export function mergeImportedPlan(existingTasks,existingEvents,imported){
       if(task.decision==="keep")continue;
       const value=hydrateImportedItem(task,previous),fields=task.providedFields||importFields(task);
       const patch=Object.fromEntries(fields.filter(key=>TASK_FIELDS.includes(key)).map(key=>[key,value[key]]));
-      const arranged=previous.userScheduled?Object.fromEntries(["date","startTime","endTime","userScheduled"].map(key=>[key,previous[key]])):{};
+      const arranged=previous.userScheduled&&task.decision!=="apply"?Object.fromEntries(["date","startTime","endTime","userScheduled"].map(key=>[key,previous[key]])):{};
       Object.assign(previous,patch,{importAliases:aliases(previous,task,"task"),importKey:task.importKey||previous.importKey,
         done:task.doneEdited?task.done===true:previous.done,doneEdited:task.doneEdited||previous.doneEdited,
         canonical:previous.canonical,scheduleExecuted:previous.scheduleExecuted===true,scheduleHours:previous.scheduleHours??task.scheduleHours},arranged);
