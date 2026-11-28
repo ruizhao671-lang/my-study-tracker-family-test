@@ -1,4 +1,4 @@
-import {progressTaskScheduleIndex,taskSchedulePresentation,isLegacyDateDetail,progressTaskName} from "./study-progress-view.js";
+import {progressTaskScheduleIndex,taskSchedulePresentation,progressTaskName} from "./study-progress-view.js";
 import {scheduleCourses,findScheduleCourse} from "./study-workspace.js";
 import {repairFixedClassLinks} from "./study-class-links.js";
 import {removeCourseStudyTask} from "./study-plan-core.js";
@@ -1038,7 +1038,7 @@ panel.addEventListener("dragend", () => {
 
 let sharedTaskSnapshot=studyTaskIndex(bridge.getState());
 window.studyDegree = {
-  findStudyTask,setStudyTaskDone,removeCourseStudyTask,findScheduleCourse,progressTaskScheduleIndex,taskSchedulePresentation,isLegacyDateDetail,progressTaskName,
+  findStudyTask,setStudyTaskDone,removeCourseStudyTask,findScheduleCourse,progressTaskScheduleIndex,taskSchedulePresentation,progressTaskName,
   ensureTaskLinks(state){const before=JSON.stringify(state);reconcileLinkedTasks(state);return before!==JSON.stringify(state);},
   repairClassLinks(state){
     const before=new Map((scheduleCourses(state)).filter(c=>c.planEvents?.some(e=>e.type==="class"||e.type==="workshop")).map(c=>[c.id,captureCoursePlan(state,c.id)]));

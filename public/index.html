@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>My Study Tracker</title>
   <link rel="stylesheet" href="degree-plan.css">
-  <link rel="stylesheet" href="study-plan.css?v=20261128-6">
+  <link rel="stylesheet" href="study-plan.css?v=20261128-7">
   <link rel="stylesheet" href="exam-hourglass.css">
   <style>
     :root {
@@ -1189,6 +1189,8 @@
       text-align: right;
     }
 
+    .task-content { min-width: 0; }
+
     .task-name {
       min-width: 0;
       overflow-wrap: anywhere;
@@ -2342,7 +2344,7 @@
 
   <script src="cloud-bootstrap.js"></script>
   <script type="module" src="api-sync.js"></script>
-  <script type="module" src="degree-plan.js?v=20261128-6"></script>
+  <script type="module" src="degree-plan.js?v=20261128-7"></script>
   <script src="i18n.js"></script>
   <script>
     const STORAGE_KEY = "study-tracker-online-state-v1";
@@ -4670,7 +4672,7 @@
       taskEl.innerHTML = `
         <span class="task-number"></span>
         <input type="checkbox" data-action="toggle-task">
-        <span class="task-name"></span>
+        <div class="task-content"><span class="task-name"></span></div>
         <div class="actions">
           <button class="btn icon note-toggle" type="button" data-action="toggle-task-details" aria-expanded="${!collapsed}" title="${t("收起或展开备注与附件")}">${t("备注/附件")} ${collapsed ? "▸" : "▾"}</button>
           <button class="btn icon" type="button" data-action="move-task-up" title="上移任务">↑</button>
@@ -4696,11 +4698,10 @@
       const title = task.title || task.name || "";
       const detail = task.detail || "";
       const planning = progressScheduleIndex.get(task.id);
-      const legacyDate = Boolean(planning&&window.studyDegree?.isLegacyDateDetail(detail));
       const nameEl = taskEl.querySelector(".task-name");
       nameEl.innerHTML = `
         <strong class="task-title"></strong>
-        ${detail ? (legacyDate?"":`<span class="task-detail"></span>`) : `<input class="task-detail-input" data-action="update-task-detail" placeholder="填写第二栏内容">`}
+        ${detail ? `<span class="task-detail"></span>` : `<input class="task-detail-input" data-action="update-task-detail" placeholder="填写第二栏内容">`}
       `;
       nameEl.querySelector(".task-title").textContent = title;
       const detailEl = nameEl.querySelector(".task-detail");
@@ -4709,8 +4710,7 @@
       if (detailInput) detailInput.value = detail;
       if(planning){
         const presentation=window.studyDegree.taskSchedulePresentation(planning,currentLocale()==="en-US");
-        const schedule=document.createElement("button");schedule.type="button";schedule.className="task-schedule-summary";schedule.dataset.action="open-task-study-schedule";schedule.textContent=presentation.text;schedule.title=presentation.tooltip;nameEl.appendChild(schedule);
-        if(legacyDate){const previous=document.createElement("p");previous.className="task-legacy-date";previous.textContent=presentation.legacyCaption+detail;taskEl.querySelector(".task-extra").prepend(previous);}
+        const schedule=document.createElement("button");schedule.type="button";schedule.className="task-schedule-summary";schedule.dataset.action="open-task-study-schedule";schedule.textContent=presentation.text;schedule.title=presentation.tooltip;if(presentation.text)taskEl.querySelector(".task-content").appendChild(schedule);
       }
       taskEl.querySelector(".task-note").value = task.note || "";
       renderAttachments(taskEl.querySelector(".attachments"), task, "task");
@@ -5588,7 +5588,7 @@
           const tasksHtml = category.tasks.map((task, index) => {
             const title = task.title || task.name || "";
             const planning=taskScheduleText(task);
-            const detail = planning&&window.studyDegree?.isLegacyDateDetail(task.detail)?"":task.detail||"";
+            const detail = task.detail||"";
             return `
               <tr>
                 <td>${index + 1}</td>

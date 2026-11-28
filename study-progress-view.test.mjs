@@ -1,5 +1,5 @@
 import assert from "node:assert/strict";
-import {progressTaskScheduleIndex,taskSchedulePresentation,isLegacyDateDetail,progressTaskName} from "./public/study-progress-view.js";
+import {progressTaskScheduleIndex,taskSchedulePresentation,progressTaskName} from "./public/study-progress-view.js";
 import {patchStudyScheduleEntry,removeStudyScheduleEntry,removeCourseStudyTask,studyTaskItems} from "./public/study-plan-core.js";
 import {setStudyTaskDone,reconcileLinkedTasks,studyTaskIndex} from "./public/study-task-sync.js";
 const source={id:"learning",name:"Komputer & Creativität",categories:[
@@ -11,9 +11,11 @@ const course={id:"kc",code:"EI04001",name:source.name,courseId:"learning",tasks:
 {id:"classes",type:"class",title:"K&C class",date:"2026-12-02",startTime:"13:15",endTime:"16:15",repeat:{until:"2027-01-27",weekdays:[3],exceptDates:[]},taskWeekLinks:{"2026-11-30":"v8","2027-01-25":"v15"}}]};
 const state={semesters:[{id:"s",name:"Winter",courses:[source]}],degreePlan:{modules:[{id:"m",courses:[course]}],blocks:[]},timer:{sessions:[],calendarItems:[]}};
 const before=JSON.stringify(state),index=()=>progressTaskScheduleIndex(state,"2026-11-28");
-assert.equal(isLegacyDateDetail("02.11.2026"),true);assert.equal(isLegacyDateDetail("2026-12-02 13:15–16:15"),true);
-assert.equal(isLegacyDateDetail("Review the worksheet from 02.11.2026"),false);
-assert.equal(progressTaskName(source.categories[0].tasks[0]),"Week 8");
+assert.equal(progressTaskName(source.categories[0].tasks[0]),"Week 8 02.11.2026");
+for(const detail of ["05.11.2-26","2026-12-02 13:15–16:15","Personal note","01.12.2026\nOther details"]){
+ assert.equal(progressTaskName({title:"Task",detail}),"Task "+detail,"User detail is always literal content");
+}
+assert.equal(taskSchedulePresentation({slots:[],mode:"flexible",window:{},done:true}).text,"","Progress-only records do not acquire scheduling prompts");
 assert.equal(progressTaskName(source.categories[1].tasks[0]),"Week 8 Complete worksheet");
 let projection=index();assert.equal(projection.size,4);assert.equal(projection.get("v8").slots[0].date,"2026-12-02");
 assert.equal(projection.get("v15").slots[0].date,"2027-01-27","Actual calendar year wins over legacy date text");

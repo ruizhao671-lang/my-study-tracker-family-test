@@ -25,9 +25,10 @@ try{
  await page.goto(process.env.STUDY_TRACKER_TEST_URL||"http://127.0.0.1:8096",{waitUntil:"networkidle"});await page.waitForFunction(()=>window.studyDegree);await progress();
  assert.ok((await label("v8").innerText()).includes("2026-12-02 13:15–16:15"));
  assert.ok((await label("v15").innerText()).includes("2027-01-27"));
- assert.equal(await row("v8").locator(".task-name .task-detail").count(),0,"Old plain-date detail is not shown as the live schedule");
- assert.equal(await row("v8").locator(".task-legacy-date").textContent(),"原第二栏文字（不用于排课）：02.11.2026");
- assert.ok((await label("held").innerText()).includes("时间待定"));assert.ok((await label("h8").innerText()).includes("待安排"));
+ assert.equal(await row("v8").locator(".task-name .task-detail").textContent(),"02.11.2026","User detail remains visible even when it is a date");
+ assert.equal(await row("v8").locator(".task-legacy-date").count(),0);
+ assert.equal(await row("v8").locator(".task-name .task-schedule-summary").count(),0,"Schedule is separate from user detail");
+ assert.ok((await label("held").innerText()).includes("时间待定"));assert.equal(await label("h8").count(),0,"Tasks without schedule metadata keep their original progress-only appearance");
  assert.equal(tasks(await state()).find(t=>t.id==="v8").detail,"02.11.2026","Original detail is not overwritten");
  await label("v8").click();assert.equal(await page.locator("[data-schedule-filter]").inputValue(),"kc");
  const card=()=>page.locator('.schedule-day-grid [data-task-source-id="v8"]');
@@ -42,7 +43,7 @@ try{
  await page.locator('#degreeDialog [name="done"]').uncheck();await save();await progress();assert.equal(await row("v8").locator('[data-action="toggle-task"]').isChecked(),false);
  // Finish-time completion is an explicit user choice and updates the same progress task.
  await page.evaluate(()=>studyTrackerBridge.startPlannedTaskTimer("kc","v8"));
- assert.equal(await page.locator("#timerCompleteTask").isChecked(),false);assert.ok(!(await page.locator("#timerTask option:checked").innerText()).includes("02.11.2026"));
+ assert.equal(await page.locator("#timerCompleteTask").isChecked(),false);assert.ok((await page.locator("#timerTask option:checked").innerText()).includes("02.11.2026"),"Timer names also retain user detail");
  await page.locator("#timerCompleteTask").check();assert.equal(tasks(await state()).find(t=>t.id==="v8").done,false);
  await page.waitForTimeout(1100);await page.locator("#timerFinishBtn").click();
  let s=await state();assert.equal(tasks(s).find(t=>t.id==="v8").done,true);assert.equal(s.timer.sessions.at(-1).taskId,"v8");

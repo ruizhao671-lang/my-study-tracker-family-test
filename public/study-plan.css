@@ -270,4 +270,3 @@ body.study-schedule-mode .app{width:min(1480px,calc(100% - 36px))}
 
 .task-schedule-summary{display:block;margin-top:4px;padding:2px 0;border:0;background:none;color:#157c70;font:inherit;font-size:.82em;line-height:1.5;text-align:left;cursor:pointer;white-space:normal;overflow-wrap:anywhere}
 .task-schedule-summary:hover{text-decoration:underline}.task-schedule-summary:focus-visible{outline:2px solid #328879;outline-offset:3px;border-radius:3px}
-.task-legacy-date{font-size:.82em;color:var(--muted);margin:0 0 6px;white-space:pre-wrap}
