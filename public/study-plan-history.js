@@ -1,5 +1,5 @@
 import {matchImportedItem} from "./study-plan-update-core.js";
-import {courseStudyTasks,applyCourseStudyPlan} from "./study-plan-core.js";
+import {courseStudyTasks,applyCourseStudyPlan,taskScheduleEvents} from "./study-plan-core.js";
 const findCourse=(state,id)=>{const course=state.degreePlan?.modules.flatMap(m=>m.courses).find(c=>c.id===id);if(!course)throw new Error("Course missing");return course;};
 export function captureCoursePlan(state,courseId){
   const course=findCourse(state,courseId);
@@ -81,6 +81,7 @@ export function coursePlanRestorePreview(state,courseId,versionId){
   const targetEventIds=new Set(targetEvents.map(e=>e.id)),currentEvents=new Map(current.events.map(e=>[e.id,e]));
   const events=targetEvents.map(e=>({...e,executed:currentEvents.get(e.id)?.executed??e.executed,completedDates:[...new Set([...(e.completedDates||[]),...(currentEvents.get(e.id)?.completedDates||[])])]}));
   events.push(...current.events.filter(e=>!targetEventIds.has(e.id)&&(e.userScheduled||e.executed||e.completedDates?.length||kept.some(t=>t.id===e.taskId))));
+  for(const task of tasks)if(task.schedulingMode==="fixed"&&!(task.date&&task.startTime)&&!taskScheduleEvents(task,events).some(e=>e.date&&e.startTime))task.fixedTimePending=true;
   return {tasks,events,weeklyRules:target.weeklyRules||[],range:target.range,link:current.link,keptLink:target.link!==current.link,keptTasks:kept.length,changes:snapshotPatch(current,{...target,tasks,events}),versionId};
 }
 

@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>My Study Tracker</title>
   <link rel="stylesheet" href="degree-plan.css">
-  <link rel="stylesheet" href="study-plan.css?v=20261127-1">
+  <link rel="stylesheet" href="study-plan.css?v=20261128-1">
   <link rel="stylesheet" href="exam-hourglass.css">
   <style>
     :root {
@@ -2342,7 +2342,7 @@
 
   <script src="cloud-bootstrap.js"></script>
   <script type="module" src="api-sync.js"></script>
-  <script type="module" src="degree-plan.js?v=20261127-1"></script>
+  <script type="module" src="degree-plan.js?v=20261128-1"></script>
   <script src="i18n.js"></script>
   <script>
     const STORAGE_KEY = "study-tracker-online-state-v1";
@@ -3535,6 +3535,8 @@
     function handlePlanCalendarAction(action,item,target) {
       if(action==="execute-planned-session")window.studyTrackerBridge.patchStudyScheduleEntry(item.degreeCourseId,item.id,item.date,{executed:target.checked});
       if(action==="complete-planned-task")window.studyTrackerBridge.setPlannedTaskDone(item.degreeCourseId,item.taskId,target.checked);
+      if(action==="delete-planned-task"&&confirm(t("删除这个任务及其未来安排？实际计时记录会保留。")))window.studyTrackerBridge.removeCourseStudyTask(item.degreeCourseId,item.taskId);
+      if(action==="cancel-planned-session")window.studyTrackerBridge.removeStudyScheduleEntry(item.degreeCourseId,item.id,item.date);
       if(action==="time-planned-task")window.studyTrackerBridge.startPlannedTaskTimer(item.degreeCourseId,item.taskId);
       if(action==="edit-plan-source")window.studyDegree.openCourseStudyPlan(item.degreeCourseId);
     }
@@ -3860,7 +3862,8 @@
         ${item.executionAvailable?`<label><input type="checkbox" data-action="execute-planned-session" ${item.executed?"checked":""}> ${t("已按计划执行")}</label>`:""}
         ${item.taskId?`<label><input type="checkbox" data-action="complete-planned-task" ${item.done?"checked":""}> ${t("内容任务已完成")}</label>`:""}
         <div class="actions">${item.canonical?`<button class="btn secondary" data-action="time-planned-task" type="button">${t("开始任务计时")}</button>`:""}
-        <button class="btn secondary" data-action="edit-plan-source" type="button">${t("编辑课程计划")}</button></div>`;
+        <button class="btn secondary" data-action="edit-plan-source" type="button">${t("编辑课程计划")}</button>
+        ${includeActions?`<button class="btn secondary" data-action="cancel-planned-session" type="button">${t("取消这个时段")}</button>${item.taskId?`<button class="btn secondary task-delete" data-action="delete-planned-task" type="button">${t("删除任务")}</button>`:""}`:""}</div>`;
       const path = [item.semesterName, item.courseName].filter(Boolean).join(" / ");
       const separator = currentLocale() === "en-US" ? ": " : "：";
       const timeText = item.startTime
@@ -6745,6 +6748,18 @@
         semesters: state.semesters,
         editable: !READ_ONLY_LINK && !window.studyCloud?.isReadOnly?.()
       }),
+      repairStudySchedules(){
+        if(READ_ONLY_LINK||window.studyCloud?.isReadOnly?.())return;
+        const draft=structuredClone(state);if(!window.studyDegree.repairClassLinks(draft))return;
+        state=normalizeState(draft);commit(undefined,true,"plan");
+      },
+      removeCourseStudyTask(courseId,taskId){
+        if(READ_ONLY_LINK||window.studyCloud?.isReadOnly?.())return;
+        const draft=structuredClone(state),before=window.studyDegree.captureCoursePlan(draft,courseId);
+        window.studyDegree.removeCourseStudyTask(draft,courseId,taskId);
+        window.studyDegree.recordCoursePlanChange(draft,courseId,before,"删除学习任务");
+        state=normalizeState(draft);commit(undefined,true,"plan");
+      },
       applyWeeklyRule(courseId,input,rows){
         if(READ_ONLY_LINK||window.studyCloud?.isReadOnly?.())return;
         const draft=structuredClone(state),result=window.studyDegree.applyWeeklyRule(draft,courseId,input,rows);
@@ -6844,6 +6859,7 @@
       },
       replaceState(nextState, options = {}) {
         state = normalizeState(nextState);
+        if(!READ_ONLY_LINK&&!window.studyCloud?.isReadOnly?.())window.studyDegree?.repairClassLinks(state);
         window.studyDegree?.resetTaskSync(state);
         history = [JSON.stringify(state)];
         historyIndex = 0;historyKinds=["baseline"];

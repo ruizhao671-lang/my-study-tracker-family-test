@@ -111,6 +111,7 @@ body.study-schedule-mode #examHourglass{display:none}
 .degree-saved-study{margin:.75rem 0 .4rem;padding:.65rem .75rem;border-radius:9px;background:#edf5f1;color:#315e53;font-size:.82rem;line-height:1.5}
 
 /* Editable task review and independent plan execution. */
+.task-delete{color:#a33333!important;border-color:#d9bcbc!important}.fixed-pending-list{padding:12px;margin:10px 0;border:1px solid #d3ddd9;border-radius:10px;background:#f5f8f6}.fixed-pending-list summary{cursor:pointer;font-weight:700}.fixed-pending-list article{display:grid;gap:7px;padding:12px 0;border-top:1px solid #dce4df;margin-top:8px}.fixed-pending-list small{font-size:.75rem;color:#667a6d}.fixed-pending-list .btn,.session-task-actions .btn{font-size:.8rem;white-space:normal}.session-task-actions{display:flex;gap:8px;flex-wrap:wrap;margin-top:12px}.task-brick>strong{cursor:pointer}
 .plan-import-policy{display:grid;gap:.55rem;padding-top:.8rem;margin-top:.3rem;border-top:1px solid #c8dfd4}.plan-import-policy>strong{font-size:.86rem}.plan-import-policy small{color:#567361;line-height:1.5}.plan-import-policy .btn{white-space:normal;min-height:42px}.plan-import-choice{padding:.65rem .8rem;background:#f2f7f4;border:1px solid #d3e3da;border-radius:9px;font-size:.85rem}.plan-import-policy [data-plan-action="import-apply-all"]{background:#157c70;color:#fff;border-color:#157c70}
 #degreeDialog.degree-study-plan-dialog{width:min(1080px,96vw)}
 .plan-editor-intro{padding:1rem;border-radius:14px;background:#f1f7f5;margin-bottom:1rem}

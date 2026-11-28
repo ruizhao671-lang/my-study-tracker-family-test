@@ -75,6 +75,19 @@ export function reconcileLinkedTasks(state,before=null,today=localToday()){
           event.archivedTask=shortTask(meta);event.taskId="";event.taskSeriesKey="";
         }
       }
+      if(event.taskWeekLinks){
+        for(const [week,id]of Object.entries(event.taskWeekLinks))if(!active.has(id)){
+          const meta=removed.find(t=>t.id===id)||{id,title:event.taskSnapshot?.title||event.title,group:""};
+          (event.removedTaskWeeks ||= {})[week]=shortTask(meta);
+          if(event.repeat){
+            const skip=new Set(event.repeat.exceptDates||[]);
+            for(let date=event.date;date<=event.repeat.until;date=new Date(Date.parse(date+"T12:00:00Z")+86400000).toISOString().slice(0,10))
+              if(date>=today&&weekOf(date)===week)skip.add(date);
+            event.repeat.exceptDates=[...skip];
+          }
+          delete event.taskWeekLinks[week];
+        }
+      }
       if(event.taskSeriesKey){
         const missing=removed.filter(t=>(t.raw.planSeriesKey||t.raw.seriesKey)===event.taskSeriesKey&&(t.raw.weekOf||""));
         if(missing.length){

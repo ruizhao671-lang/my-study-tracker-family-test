@@ -1,3 +1,4 @@
+import {repairFixedClassLinks} from "./study-class-links.js";
 import {studyTaskIndex,reconcileLinkedTasks} from "./study-task-sync.js";
 import {TASK_FIELDS,EVENT_FIELDS,importFields,matchImportedItem,hydrateImportedItem,itemIdentity,validateImportIds} from "./study-plan-update-core.js";
 import { creditNumber, parseStudyTasks, setProgressLink, nextExam, isEarned, TUM_TERMS } from "./degree-core.js";
@@ -29,7 +30,7 @@ export function courseStudyTasks(course, semesters) {
     for (const task of category.tasks) {
       if (task.id === course.passTaskId) continue;
       result.push({
-        id: task.id, categoryId:category.id, canonical: true, schedulingMode:explicitMode(task.schedulingMode), title: task.title || task.name, group: category.name,
+        id: task.id, categoryId:category.id, canonical: true,classDefaultMode:task.classDefaultMode===true,fixedTimePending:task.fixedTimePending===true, schedulingMode:explicitMode(task.schedulingMode), title: task.title || task.name, group: category.name,
         detail: task.detail || "", hours: task.estimatedHours ?? null, done: task.done,
         date: task.plannedDate || "", startTime: task.plannedStart || "", endTime: task.plannedEnd || "",
         weekOf: task.weekOf || "", deadline: task.deadline || "", blockId: task.planBlockId || "",
@@ -49,11 +50,13 @@ export function eventSchedulingMode(event,task){
   return explicitMode(task?.schedulingMode)||explicitMode(event.schedulingMode)||(["class","workshop"].includes(event.type)?"fixed":"flexible");
 }
 export function taskScheduleEvents(task,events){
-  return events.filter(event=>event.taskId===task.id||event.taskId&&task.importKey==="task:"+event.taskId||event.taskSeriesKey&&event.taskSeriesKey===task.seriesKey&&
+  return events.filter(event=>event.taskId===task.id||Object.values(event.taskWeekLinks||{}).includes(task.id)||event.taskId&&task.importKey==="task:"+event.taskId||event.taskSeriesKey&&event.taskSeriesKey===task.seriesKey&&
     (!task.weekOf||scheduleOccurrences(event,task.weekOf,addPlanDays(task.weekOf,6)).length));
 }
 export function taskSchedulingMode(task,events=[]){
-  return explicitMode(task.schedulingMode)||(events.filter(event=>event.taskId===task.id||event.taskId&&task.importKey==="task:"+event.taskId||event.taskSeriesKey&&event.taskSeriesKey===task.seriesKey).some(event=>eventSchedulingMode(event)==="fixed")?"fixed":"flexible");
+  const linked=events.filter(event=>event.taskId===task.id||Object.values(event.taskWeekLinks||{}).includes(task.id)||event.taskId&&task.importKey==="task:"+event.taskId||event.taskSeriesKey&&event.taskSeriesKey===task.seriesKey);
+  if(!task.classDefaultMode&&explicitMode(task.schedulingMode))return task.schedulingMode;
+  return linked.length?(linked.some(event=>eventSchedulingMode(event)==="fixed")?"fixed":"flexible"):explicitMode(task.schedulingMode)||"flexible";
 }
 export function studyCalendarWeek(date,plan={}){
   if(!validPlanDate(date))return null;
@@ -70,7 +73,7 @@ export function studyWeekLabel(date,plan={},english=false,{dates=true}={}){
     "KW "+week.isoWeek+" · "+week.isoYear,dates?week.start+" — "+week.end:"",week.holiday?(english?"Includes lecture-free days":"本周含校历停课日"):""].filter(Boolean).join(" · ");
 }
 function validateFixedTasks(tasks,events){
-  for(const task of tasks)if(task.schedulingMode==="fixed"&&!(task.date&&task.startTime)&&
+  for(const task of tasks)if(task.schedulingMode==="fixed"&&!task.fixedTimePending&&!(task.date&&task.startTime)&&
     !taskScheduleEvents(task,events).some(event=>event.date&&event.startTime))
     throw new Error("固定时间任务「"+task.title+"」需要日期和开始时间，或关联已有固定日程。");
   for(const event of events)if(event.schedulingMode==="fixed"&&eventSchedulingMode(event,tasks.find(t=>t.id===event.taskId))==="fixed"&&["study","class","workshop"].includes(event.type)&&!(event.date&&event.startTime))
@@ -112,7 +115,7 @@ function normalizeTask(task) {
     !/^(?:待定|待估算|未知|未估算|tbd|unknown|\?)$/i.test(text(rawHours))) throw new Error(title);
   return {
     id: task.id || crypto.randomUUID(),partial:task.partial===true,providedFields:task.providedFields||importFields(task),doneEdited:task.doneEdited===true,importAliases:task.importAliases||[], title, categoryId:text(task.categoryId,100), group: text(task.group, 100), detail: text(task.detail, 4000),
-    schedulingMode:explicitMode(task.schedulingMode),hours, date, startTime, endTime, windowStart,windowEnd,teachingWeek,weekOf:weekOf?planWeek(weekOf):"", deadline, blockId: task.blockId ?? "",
+    schedulingMode:explicitMode(task.schedulingMode),classDefaultMode:task.classDefaultMode===true,fixedTimePending:task.fixedTimePending===true,hours, date, startTime, endTime, windowStart,windowEnd,teachingWeek,weekOf:weekOf?planWeek(weekOf):"", deadline, blockId: task.blockId ?? "",
     canonical: task.canonical === true, done: task.done === true, importKey: text(task.importKey, 1000), userScheduled: task.userScheduled === true,
     seriesKey: text(task.seriesKey,1000), scheduleExecuted: task.scheduleExecuted === true,
     scheduleHours: planHours(task.scheduleHours), period:text(task.period,80)
@@ -149,6 +152,7 @@ function normalizeEvent(event) {
   return { id: event.id || crypto.randomUUID(),partial:event.partial===true,providedFields:event.providedFields||importFields(event,"event"),importAliases:event.importAliases||[],executionEdited:event.executionEdited===true,repeatProvidedFields:event.repeatProvidedFields, title, type, date, startTime, endTime,
     schedulingMode:explicitMode(event.schedulingMode),detail: text(event.detail, 4000), taskId: text(event.taskId, 100), taskSeriesKey:text(event.taskSeriesKey,1000), repeat,
     hours,userScheduled:event.userScheduled===true,batchRuleId:text(event.batchRuleId,100),autoTaskTitle:event.autoTaskTitle===true,
+    taskWeekLinks:event.taskWeekLinks,autoLinkDisabled:event.autoLinkDisabled===true,
     taskSnapshot:event.taskSnapshot,archivedTask:event.archivedTask,removedTaskWeeks:event.removedTaskWeeks,weekOf:weekOf?planWeek(weekOf):"",period:text(event.period,80),executed:event.executed===true,
     completedDates: [...new Set((event.completedDates || []).filter(validPlanDate))].slice(0,500),
     importKey: text(event.importKey, 1000) || sourceKey([type, title, date, startTime]),
@@ -289,6 +293,7 @@ export function mergeImportedPlan(existingTasks,existingEvents,imported){
       const arranged=previous.userScheduled&&task.decision!=="apply"?Object.fromEntries(["date","startTime","endTime","userScheduled"].map(key=>[key,previous[key]])):{};
       Object.assign(previous,patch,{importAliases:aliases(previous,task,"task"),importKey:task.importKey||previous.importKey,
         done:task.doneEdited?task.done===true:previous.done,doneEdited:task.doneEdited||previous.doneEdited,
+        classDefaultMode:fields.includes("schedulingMode")?false:previous.classDefaultMode,
         canonical:previous.canonical,scheduleExecuted:previous.scheduleExecuted===true,scheduleHours:previous.scheduleHours??task.scheduleHours},arranged);
     }else{tasks.push({...task,...(task.forceNew?{importKey:"copy:"+task.id}:{})});addedTasks++;}
   }
@@ -318,6 +323,8 @@ export function applyCourseStudyPlan(state, courseId, input) {
     input.range.end > addPlanDays(input.range.start,366) || (input.range.exceptDates || []).some(day=>!validPlanDate(day)))) throw new Error("Invalid plan range");
   let tasks = input.tasks.map(task=>normalizeTask({...task,partial:false}));
   const events = input.events.map(event=>normalizeEvent({...event,partial:false}));
+  const previousTasks=courseStudyTasks(course,state.semesters);
+  for(const task of tasks)if(task.schedulingMode==="fixed"&&!(task.date&&task.startTime)&&!taskScheduleEvents(task,events).some(e=>e.date&&e.startTime)&&previousTasks.some(t=>t.id===task.id&&taskSchedulingMode(t,course.planEvents)==="fixed"))task.fixedTimePending=true;
   validateFixedTasks(tasks,events);
   if (!input.link) {
     setProgressLink(course, "", "", state.semesters);
@@ -365,7 +372,7 @@ export function applyCourseStudyPlan(state, courseId, input) {
         learning.categories.push(category);
       }
       const saved = { ...previous, id: previous?.id || task.id, title: task.title, name: task.title,
-        schedulingMode:task.schedulingMode,detail: task.detail, done: task.done, estimatedHours: task.hours, plannedDate: task.date,
+        schedulingMode:task.schedulingMode,classDefaultMode:task.classDefaultMode,fixedTimePending:task.fixedTimePending,detail: task.detail, done: task.done, estimatedHours: task.hours, plannedDate: task.date,
         plannedStart: task.startTime, plannedEnd: task.endTime, weekOf: task.weekOf,
         deadline: task.deadline,windowStart:task.windowStart,windowEnd:task.windowEnd,teachingWeek:task.teachingWeek, planBlockId: task.blockId, planImportKey: task.importKey,planImportAliases:task.importAliases||[], userScheduled: task.userScheduled,
         planSeriesKey:task.seriesKey,scheduleExecuted:task.scheduleExecuted,scheduleHours:task.scheduleHours,plannedPeriod:task.period,
@@ -387,6 +394,7 @@ export function applyCourseStudyPlan(state, courseId, input) {
   if (input.range) course.planRange = input.range;
   if(Array.isArray(input.weeklyRules))course.weeklyRules=structuredClone(input.weeklyRules);
   reconcileLinkedTasks(state,taskSnapshot);
+  repairFixedClassLinks(state);
 }
 
 export function studyScheduleEntries(state, from, until) {
@@ -399,7 +407,8 @@ export function studyScheduleEntries(state, from, until) {
       const occurrences=event.date ? scheduleOccurrences(event,from,until) :
         (!event.weekOf || (event.weekOf<=until && addPlanDays(event.weekOf,6)>=from)) ? [{...event,executed:event.executed===true}] : [];
       for (const occurrence of occurrences) {
-        const task=event.taskSeriesKey ? tasks.find(task=>task.seriesKey===event.taskSeriesKey && task.weekOf===planWeek(occurrence.date || occurrence.weekOf || from)) : tasks.find(task=>task.id===occurrence.taskId);
+        const mapped=event.taskWeekLinks?.[planWeek(occurrence.date||occurrence.weekOf||from)];
+        const task=mapped?tasks.find(t=>t.id===mapped):event.taskSeriesKey ? tasks.find(task=>task.seriesKey===event.taskSeriesKey && task.weekOf===planWeek(occurrence.date || occurrence.weekOf || from)) : tasks.find(task=>task.id===occurrence.taskId);
         const archived=event.archivedTask||event.removedTaskWeeks?.[planWeek(occurrence.date||occurrence.weekOf||from)];
         entries.push({ ...occurrence,archivedTask:archived, schedulingMode:task?taskSchedulingMode(task,course.planEvents):eventSchedulingMode(occurrence),taskId:task?.id || occurrence.taskId, taskGroup:task?.group||archived?.group||"", taskTitle:task?.title||archived?.title||"", contentDone:task?.done===true, course, kind: "event", id: "plan-event:" + event.id + ":" + (occurrence.date || "flexible") });
       }
@@ -446,7 +455,7 @@ export function patchStudyScheduleEntry(state,courseId,entryId,date,changes) {
   const {taskDone,viaDrag,...scheduleChanges}=changes;
   const sourceEntry=studyScheduleEntries(state,date||"0001-01-01",date||"9999-12-31").find(entry=>entry.id===entryId);
   if(viaDrag&&sourceEntry?.schedulingMode==="fixed")throw new Error("固定时间不能拖动，请先切换为自由安排。");
-  if("schedulingMode" in changes){const target=tasks.find(task=>task.id===(kind==="plan-task"?id:sourceEntry?.taskId));if(target)target.schedulingMode=changes.schedulingMode;}
+  if("schedulingMode" in changes){const target=tasks.find(task=>task.id===(kind==="plan-task"?id:sourceEntry?.taskId));if(target){target.schedulingMode=changes.schedulingMode;target.classDefaultMode=false;}}
   changes=scheduleChanges;
   if(typeof taskDone==="boolean"){
     const entry=studyScheduleEntries(state,date||"0001-01-01",date||"9999-12-31").find(entry=>entry.id===entryId);
@@ -467,7 +476,7 @@ export function patchStudyScheduleEntry(state,courseId,entryId,date,changes) {
     const event=events.find(event=>event.id===id);
     if(!event)throw new Error("Time plan missing");
     if(event.repeat){
-      const before={...event,date,executed:(event.completedDates||[]).includes(date)};
+      const before={...event,hours:event.hours??(event.startTime&&event.endTime?studySessionHours(event):null),date,taskId:event.taskSeriesKey?event.taskId:sourceEntry?.taskId||event.taskId,taskSeriesKey:event.taskSeriesKey,executed:(event.completedDates||[]).includes(date)};
       changes=Object.fromEntries(Object.entries(changes).filter(([key,value])=>JSON.stringify(value??"")!==JSON.stringify(before[key]??"")));
     }
     if(event.repeat && Object.keys(changes).every(key=>key==="executed")){
@@ -477,9 +486,9 @@ export function patchStudyScheduleEntry(state,courseId,entryId,date,changes) {
     }else if(event.repeat){
       const already=(event.completedDates||[]).includes(date);
       event.repeat.exceptDates=[...new Set([...event.repeat.exceptDates,date])];
-      const task=event.taskSeriesKey ? tasks.find(task=>task.seriesKey===event.taskSeriesKey && task.weekOf===planWeek(date)) : null;
+      const task=tasks.find(t=>t.id===sourceEntry?.taskId)|| (event.taskSeriesKey ? tasks.find(task=>task.seriesKey===event.taskSeriesKey && task.weekOf===planWeek(date)) : null);
       events.push({...event,...changes,id:crypto.randomUUID(),date:changes.date??date,repeat:undefined,
-        taskId:task?.id || event.taskId,taskSeriesKey:"",executed:changes.executed??already,completedDates:[],
+        taskId:changes.taskId??task?.id??event.taskId,taskSeriesKey:"",taskWeekLinks:undefined,executed:changes.executed??already,completedDates:[],
         importKey:"moved:"+event.id+":"+date});
     }else Object.assign(event,changes);
     if(Object.keys(changes).some(key=>["date","startTime","endTime","hours","weekOf","period"].includes(key)))event.userScheduled=true;
@@ -607,6 +616,13 @@ export function createTaskStudySession(state,courseId,taskId,values) {
   applyCourseStudyPlan(state,courseId,{tasks,events:[...(course.planEvents||[]),event],link:course.courseId||"",range:course.planRange});
   return event.id;
 }
+export function removeCourseStudyTask(state,courseId,taskId){
+  const course=state.degreePlan?.modules.flatMap(m=>m.courses).find(c=>c.id===courseId);
+  if(!course)throw new Error("Course missing");
+  const tasks=courseStudyTasks(course,state.semesters);
+  if(!tasks.some(t=>t.id===taskId))throw new Error("Task missing");
+  applyCourseStudyPlan(state,courseId,{tasks:tasks.filter(t=>t.id!==taskId),events:course.planEvents||[],link:course.courseId||"",range:course.planRange});
+}
 export function removeStudyScheduleEntry(state,courseId,entryId,date) {
   const course=state.degreePlan?.modules.flatMap(module=>module.courses).find(course=>course.id===courseId);
   if(!course)throw new Error("Course missing");
@@ -621,5 +637,7 @@ export function removeStudyScheduleEntry(state,courseId,entryId,date) {
     if(event.repeat){if(!validPlanDate(date))throw new Error("Occurrence date required");event.repeat.exceptDates=[...new Set([...event.repeat.exceptDates,date])];}
     else events=events.filter(event=>event.id!==id);
   }else throw new Error("Only time plans can be removed");
+  const targetId=studyScheduleEntries(state,date||"0001-01-01",date||"9999-12-31").find(e=>e.id===entryId)?.taskId;
+  const target=tasks.find(t=>t.id===targetId);if(target&&taskSchedulingMode(target,course.planEvents)==="fixed")target.fixedTimePending=true;
   applyCourseStudyPlan(state,courseId,{tasks,events,link:course.courseId||"",range:course.planRange});
 }

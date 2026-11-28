@@ -1,6 +1,10 @@
 (() => {
   const LANGUAGE_KEY = "study-tracker-language-v1";
   const english = {
+    "取消这个时段": "Cancel this session",
+    "删除任务": "Delete task",
+    "删除这个任务及其未来安排？实际计时记录会保留。": "Delete this task and its future sessions? Actual time records will be kept.",
+    "删除学习任务": "Delete study task",
     "内容任务已完成": "Content task completed",
     "标记内容任务完成": "Mark content task complete",
     "任务已完成 · 改为未完成": "Task complete · mark incomplete",

@@ -1,3 +1,5 @@
+import {repairFixedClassLinks} from "./study-class-links.js";
+import {removeCourseStudyTask} from "./study-plan-core.js";
 import {studyTaskIndex,reconcileLinkedTasks,findStudyTask,setStudyTaskDone} from "./study-task-sync.js";
 import {applyWeeklyRule,refreshWeeklyRules} from "./study-batch-core.js";
 import {captureCoursePlan,recordCoursePlanChange,saveCoursePlanUpdate,coursePlanVersions,coursePlanRestorePreview,restoreCoursePlanVersion,preserveLiveHistory} from "./study-plan-history.js";
@@ -1067,10 +1069,17 @@ panel.addEventListener("dragend", () => {
 
 let sharedTaskSnapshot=studyTaskIndex(bridge.getState());
 window.studyDegree = {
-  findStudyTask,setStudyTaskDone,
+  findStudyTask,setStudyTaskDone,removeCourseStudyTask,
+  repairClassLinks(state){
+    const before=new Map((state.degreePlan?.modules.flatMap(m=>m.courses)||[]).filter(c=>c.planEvents?.some(e=>e.type==="class"||e.type==="workshop")).map(c=>[c.id,captureCoursePlan(state,c.id)]));
+    if(!repairFixedClassLinks(state))return false;
+    for(const [id,snapshot]of before)recordCoursePlanChange(state,id,snapshot,"关联固定课程与学习任务");
+    return true;
+  },
   resetTaskSync(state){sharedTaskSnapshot=studyTaskIndex(state);},
   reconcileStudyWorkspace(state){
     sharedTaskSnapshot=reconcileLinkedTasks(state,sharedTaskSnapshot);
+    window.studyDegree.repairClassLinks(state);
     const before=new Map((state.degreePlan?.modules.flatMap(m=>m.courses)||[]).filter(c=>c.weeklyRules?.some(r=>r.enabled)).map(c=>[c.id,captureCoursePlan(state,c.id)]));
     if(refreshWeeklyRules(state))for(const [id,snapshot]of before)recordCoursePlanChange(state,id,snapshot,"按每周规则新增安排");
   },
@@ -1091,6 +1100,7 @@ window.studyDegree = {
     if (editable && course) openStudyPlan(course, plan, semesters);
   }
 };
+bridge.repairStudySchedules();
 bridge.render();
 window.addEventListener("hashchange", receiveStudyPlanLink);
 receiveStudyPlanLink();

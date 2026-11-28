@@ -60,10 +60,12 @@ export function openPlanEditor({course,plan,semesters,received,showDialog,bridge
   for(const el of row.querySelectorAll("[data-field]")){
     if(el.validity?.badInput)throw new Error(w("请检查日期、时间或小时的输入。","Check the date, time or hours."));
     const key=el.dataset.field,value=el.type==="checkbox"?el.checked:key==="hours"?readNumber(el):key==="teachingWeek"?(el.value===""?null:Number(el.value)):el.value;
+    if(key==="schedulingMode"&&task.classDefaultMode&&value===el.dataset.modeInitial){task.schedulingMode=value;continue;}
     if(key==="schedulingMode"&&!task.schedulingMode&&value===el.dataset.modeInitial)continue;
     if(JSON.stringify(task[key]??null)!==JSON.stringify(value??null)){
       if(task.providedFields)task.providedFields=[...new Set([...task.providedFields,key])];
       if(key==="done")task.doneEdited=true;
+      if(key==="schedulingMode")task.classDefaultMode=false;
     }
     task[key]=value;
   }
@@ -82,7 +84,11 @@ export function openPlanEditor({course,plan,semesters,received,showDialog,bridge
     assign(key,el.type==="checkbox"?el.checked:key==="hours"?readNumber(el):el.value);
   }
   const link=row.querySelector('[data-field="taskLink"]').value;
-  assign("taskId",link.startsWith("series:")?"":link);assign("taskSeriesKey",link.startsWith("series:")?link.slice(7):"");
+  if(link!=="week-map"){
+    if(event.taskWeekLinks){delete event.taskWeekLinks;event.autoLinkDisabled=!link;}
+    if(!link&&(event.taskId||event.taskSeriesKey))event.autoLinkDisabled=true;
+    assign("taskId",link.startsWith("series:")?"":link);assign("taskSeriesKey",link.startsWith("series:")?link.slice(7):"");
+  }
   const until=row.querySelector('[data-field="repeatUntil"]').value;
   assign("repeat",until?{frequency:"weekly",until,weekdays:row.querySelector('[data-field="weekdays"]').value.split(/[,，\s]+/).filter(Boolean).map(Number),
     exceptDates:row.querySelector('[data-field="exceptDates"]').value.split(/[,，\s]+/).filter(Boolean)}:undefined);
@@ -105,10 +111,11 @@ export function openPlanEditor({course,plan,semesters,received,showDialog,bridge
   function modeChoice(mode){return `<label class="plan-mode-choice">${w("安排方式","Scheduling")}<select class="input" data-field="schedulingMode" data-mode-initial="${mode}">${opts([["fixed",w("固定时间","Fixed time")],["flexible",w("自由安排","Flexible")]],mode)}</select></label>`;}
   function eventPool(){return preview?mergeImportedPlan(tasks,events,{tasks:preview.tasks.filter(t=>t.include!==false),events:preview.events.filter(e=>e.include!==false)}).events:events;}
   function taskEvents(t){const pool=eventPool();return [...new Set([...taskScheduleEvents(t,pool),...taskScheduleEvents({...t,id:t.mergeIntoId||t.id},pool)])];}
-  function modeFor(t){return t.schedulingMode||((taskSchedulingMode(t,eventPool())==="fixed"||taskSchedulingMode({...t,id:t.mergeIntoId||t.id},eventPool())==="fixed")?"fixed":"flexible");}
+  function modeFor(t){return (!t.classDefaultMode&&t.schedulingMode)||((taskSchedulingMode(t,eventPool())==="fixed"||taskSchedulingMode({...t,id:t.mergeIntoId||t.id},eventPool())==="fixed")?"fixed":"flexible");}
   function fixedAnchor(t){
     if(t.date&&t.startTime)return {date:t.date,startTime:t.startTime,endTime:t.endTime};
-    const from=t.weekOf||t.windowStart||readRange().start,until=t.weekOf?addPlanDays(t.weekOf,6):t.windowEnd||readRange().end;
+    const mapped=taskEvents(t).flatMap(e=>Object.entries(e.taskWeekLinks||{})).find(([,id])=>id===t.id||id===t.mergeIntoId)?.[0];
+    const from=t.weekOf||t.windowStart||mapped||readRange().start,until=t.weekOf?addPlanDays(t.weekOf,6):mapped?addPlanDays(mapped,6):t.windowEnd||readRange().end;
     return taskEvents(t).flatMap(e=>scheduleOccurrences(e,from,until)).find(e=>e.startTime);
   }
   function taskFields(t,includeMode=true){
@@ -126,13 +133,14 @@ export function openPlanEditor({course,plan,semesters,received,showDialog,bridge
   function taskLinks(selected){
     const available=[...tasks,...(preview?.tasks||[])];const seen=new Set(),series=new Map();
     const result=[["",w("不关联内容任务","No task association")]];
+    if(selected==="week-map")result.push(["week-map",w("按每周上课日期关联 Vorlesung 任务","Link lecture tasks by the weekly class date")]);
     for(const t of available){if(!seen.has(t.id)){result.push([t.id,describe(t)]);seen.add(t.id);}if(t.seriesKey)series.set(t.seriesKey,[t.group,t.title].filter(Boolean).join(" · "));}
     for(const [key,title] of series)result.push(["series:"+key,title+" · "+w("按周关联","match each week")]);
     if(selected&&!result.some(item=>item[0]===selected))result.push([selected,w("原关联任务不在此课程，请重新选择","Previous task is not in this course; choose again")]);
     return opts(result,selected);
   }
   function eventFields(e){
-    const selected=e.taskSeriesKey?"series:"+e.taskSeriesKey:e.taskId||"";
+    const selected=e.taskSeriesKey?"series:"+e.taskSeriesKey:e.taskId||(Object.keys(e.taskWeekLinks||{}).length?"week-map":"");
     const executable=["study","class","workshop"].includes(e.type),linkedTask=tasks.find(t=>t.id===e.taskId)||preview?.tasks.find(t=>t.id===e.taskId);
     return `<div class="plan-event-main">${field(w("安排名称","Time plan"),"title",e.title)}<label>${w("类型","Type")}<select class="input" data-field="type">${opts(types(),e.type)}</select></label>
       ${field(w("预计小时","Planned hours"),"hours",e.hours??"","number",'min="0" step="any" placeholder="'+w("未估算","Unknown")+'"')}</div>
@@ -319,7 +327,11 @@ function drawHistory(selected=""){
       if(action.startsWith("pane-")){pane=action.slice(5);draw();const section=preview?form.querySelector(".plan-preview"):form.querySelector('.plan-draft-section[data-plan-pane="'+pane+'"]');section?.scrollIntoView({block:"start"});return;}
       if(action==="add-task"||action==="add-group-task"){tasks.push({id:crypto.randomUUID(),title:"",group:event.target.closest("[data-group]")?.dataset.group||"",hours:null,done:false});pane="tasks";form.querySelector(".plan-existing-tasks").open=true;}
       if(action==="add-event"){events.push({id:crypto.randomUUID(),title:"",type:"study",date:"",weekOf:"",hours:null,period:"",executed:false});pane="events";}
-      if(action==="delete-task"){const id=event.target.closest("[data-task-row]").dataset.taskRow;tasks=tasks.filter(t=>t.id!==id);events=events.filter(e=>e.taskId!==id);}
+      if(action==="delete-task"){
+        const id=event.target.closest("[data-task-row]").dataset.taskRow,removed=tasks.find(t=>t.id===id);
+        if(preview&&removed){const excluded=preview.tasks.filter(t=>matchImportedItem(t,[removed])?.id===id);for(const t of excluded)t.include=false;for(const e of preview.events)if(e.taskId===id||excluded.some(t=>t.id===e.taskId))e.include=false;}
+        tasks=tasks.filter(t=>t.id!==id);events=events.filter(e=>e.taskId!==id);
+      }
       if(action==="delete-event")events=events.filter(e=>e.id!==event.target.closest("[data-event-row]").dataset.eventRow);
       draw();
     }catch(error){showError(error.message);}
