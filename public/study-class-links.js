@@ -20,7 +20,7 @@ export function repairFixedClassLinks(state){
   const sources=(course.planEvents||[]).filter(e=>["class","workshop"].includes(e.type)&&e.startTime&&!e.autoLinkDisabled);
   if(!tasks.length||!sources.length)continue;
   const defaultFixed=sources.some(e=>e.schedulingMode!=="flexible");
-  for(const {raw:t}of tasks)if(!t.schedulingMode||t.classDefaultMode){t.classDefaultMode=true;t.schedulingMode=defaultFixed?"fixed":"flexible";t.fixedTimePending=defaultFixed&&!(t.plannedDate&&t.plannedStart||t.date&&t.startTime);}
+  for(const {raw:t}of tasks)if(!t.schedulingMode||t.classDefaultMode||course.code==="EI04001"&&t.schedulingMode==="flexible"&&t.classDefaultMode===undefined){t.classDefaultMode=true;t.schedulingMode=defaultFixed?"fixed":"flexible";t.fixedTimePending=defaultFixed&&!(t.plannedDate&&t.plannedStart||t.date&&t.startTime);}
   const anchors=new Set();
   for(const {raw:t}of tasks){
    const n=ordinal(t);if(!n)continue;
@@ -45,9 +45,15 @@ export function repairFixedClassLinks(state){
   }
   const duplicates=new Set();
   for(const [key,items]of byWeek){
-   if(items.length!==1)continue;
-   const {raw:t}=items[0];
    let slots=options.get(key)||[];
+   let candidates=items;
+   if(items.length>1){
+    const existing=new Set(slots.flatMap(s=>[s.e.taskId,s.e.taskWeekLinks?.[key],...items.filter(t=>s.e.taskSeriesKey&&(t.raw.planSeriesKey||t.raw.seriesKey)===s.e.taskSeriesKey).map(t=>t.raw.id)]).filter(Boolean));
+    const linked=existing.size?existing:new Set((course.planEvents||[]).filter(e=>e.type==="study"&&!e.repeat&&items.some(t=>t.raw.id===e.taskId)&&slots.some(s=>s.date===e.date&&s.e.startTime===e.startTime)).map(e=>e.taskId));
+    candidates=items.filter(t=>linked.has(t.raw.id));
+   }
+   if(candidates.length!==1)continue;
+   const {raw:t}=candidates[0];
    // A dated workshop takes precedence only when the normal class is already excluded.
    if(slots.length!==1)continue;
    const {e,date}=slots[0],seriesMatch=e.taskSeriesKey&&(t.planSeriesKey||t.seriesKey)===e.taskSeriesKey;

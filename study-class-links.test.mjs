@@ -4,6 +4,7 @@ import {courseStudyTasks,studyScheduleEntries,studyTaskItems,removeStudySchedule
 const NativeDate=globalThis.Date;
 globalThis.Date=class extends NativeDate{constructor(...args){super(...(args.length?args:["2026-11-28T11:00:00+01:00"]));}static now(){return NativeDate.parse("2026-11-28T11:00:00+01:00");}};
 const raw=[7,8,9].map(n=>({id:"v"+n,title:"Week "+n,done:false,estimatedHours:3,note:"keep",attachments:[{name:"keep.pdf"}]}));
+raw.push({id:"orphan",title:"Week 7",schedulingMode:"flexible",done:false,estimatedHours:3});
 const course={id:"kc",code:"EI04001",name:"Komputer & Creativität",courseId:"learning",tasks:[],exams:[],planRange:{start:"2026-10-14",end:"2026-12-16"},planEvents:[
 {id:"class",title:"Komputer & Creativität 上课",type:"class",date:"2026-10-14",startTime:"13:15",endTime:"16:15",repeat:{until:"2026-12-16",weekdays:[3],exceptDates:[]}},
 {id:"duplicate",title:"Vorlesung · Week 7",type:"study",date:"2026-11-25",startTime:"13:15",endTime:"16:30",taskId:"v7",executed:true,userScheduled:true},
@@ -19,6 +20,7 @@ assert.ok(course.planEvents[0].completedDates.includes("2026-11-25"));
 assert.equal(studyScheduleEntries(state,"2026-11-25","2026-11-25").filter(e=>e.date==="2026-11-25").length,1);
 assert.equal(studyTaskItems(state,"2026-11-23","2026-12-06").find(t=>t.taskId==="v8").schedulingMode,"fixed");
 assert.equal(studyTaskItems(state,"2026-11-23","2026-12-06").find(t=>t.taskId==="v8").plannedHours,3);
+assert.equal(raw.find(t=>t.id==="orphan").schedulingMode,"fixed","Legacy unlinked K&C attendance tasks default to fixed rather than remaining draggable");
 assert.equal(raw[1].weekOf,"2026-11-30");assert.equal(raw[0].done,false);
 let event=studyScheduleEntries(state,"2026-12-02","2026-12-02").find(e=>e.taskId==="v8");
 patchStudyScheduleEntry(state,course.id,event.id,event.date,{schedulingMode:"flexible"});

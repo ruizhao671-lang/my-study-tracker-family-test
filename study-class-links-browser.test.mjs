@@ -11,6 +11,7 @@ const fixture={ownerName:"Class repair QA",semesters:[{id:"s",name:"Winter",cour
 {id:"class",title:"Komputer & Creativität 上课",type:"class",date:"2026-10-14",startTime:"13:15",endTime:"16:15",repeat:{until:"2026-12-09",weekdays:[3],exceptDates:[]}},
 {id:"duplicate",title:"Vorlesung · Week 7",type:"study",taskId:"v7",date:"2026-11-25",startTime:"13:15",endTime:"16:30",executed:true,userScheduled:true}
 ]}]}]},timer:{calendarItems:[],sessions:[{id:"actual",taskId:"v7",courseId:"learning",startAt:Date.parse("2026-11-25T10:00:00+01:00"),endAt:Date.parse("2026-11-25T11:00:00+01:00"),durationMs:3600000}],scheduleStartMinute:0,scheduleEndMinute:0}};
+fixture.semesters[0].courses[0].categories[0].tasks.push({id:"orphan",title:"Week 7",schedulingMode:"flexible",estimatedHours:3,done:false});
 const get=()=>page.evaluate(()=>studyTrackerBridge.getState());
 const raw=s=>s.semesters[0].courses[0].categories.flatMap(c=>c.tasks);
 const course=s=>s.degreePlan.modules[0].courses[0];
@@ -22,6 +23,7 @@ try{
  await page.addInitScript(s=>{if(!localStorage.getItem("study-tracker-online-guest-v1"))localStorage.setItem("study-tracker-online-guest-v1",JSON.stringify(s));localStorage.setItem("study-tracker-language-v1","zh-CN");},fixture);
  await page.goto(process.env.STUDY_TRACKER_TEST_URL||"http://127.0.0.1:8096",{waitUntil:"networkidle"});await page.waitForFunction(()=>window.studyDegree);
  await page.evaluate(()=>studyDegree.openSchedule("kc","2026-11-23"));await page.locator('[data-task-bucket="all"]').click();
+ assert.equal(await brick("orphan").count(),0);assert.equal(await page.locator('[data-fixed-task="orphan"]').count(),1);
  assert.equal(await brick("v7").count(),0);assert.equal(await brick("v8").count(),0);assert.equal(await brick("ha").count(),1);
  assert.equal(await page.locator(".schedule-day-grid .schedule-event").count(),1,"Only one copy of the real class is displayed");
  assert.equal(await card("2026-11-25").getAttribute("draggable"),"false");assert.equal(course(await get()).planEventArchive[0].event.id,"duplicate");

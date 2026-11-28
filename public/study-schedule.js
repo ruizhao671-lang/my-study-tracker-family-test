@@ -1,6 +1,6 @@
 import {openWeeklyPlanner} from "./study-batch-editor.js";
 import { studyEntryStatus, studyExamEntries, studyPlanFocusDate, studyScheduleEntries, courseStudyTasks, taskActualHours, addPlanDays, planWeek, studySessionHours,studyTaskItems,studyTaskWindow,studyCalendarEntries,monthTaskWeeks,studyWeekLabel,eventSchedulingMode,taskSchedulingMode,studySchedulePeriod,shiftStudyScheduleDate,studyMonthEntries,studyCalendarWeek } from "./study-plan-core.js";
-const SCHEDULE_VERSION="2026.11.28.1";
+const SCHEDULE_VERSION="2026.11.28.2";
 const en=()=>window.studyI18n?.getLanguage?.()==="en";
 const w=(zh,english)=>en()?english:zh;
 const esc=v=>String(v??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"})[c]);

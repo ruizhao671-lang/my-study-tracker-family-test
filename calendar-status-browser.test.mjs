@@ -12,7 +12,7 @@ const course={id:"kc",name:"Komputer & Creativität",code:"EI04001",credits:6,pa
  {id:"future",type:"study",title:"Sunday evening",date:"2026-11-22",startTime:"19:00",endTime:"21:00",hours:2,taskId:"linked-homework",executed:false},
  {id:"date",type:"milestone",title:"Project milestone",date:"2026-11-19"}]};
 const fixture={ownerName:"Calendar test",semesters:[{id:"stage",name:"Winter",courses:[{id:"learning",name:course.name,categories:[
-{id:"lecture",name:"Vorlesung",tasks:[{id:"done",title:"Week 1",done:true,estimatedHours:2,schedulingMode:"flexible"},{id:"linked-lecture",title:"Chapter 2",done:true,estimatedHours:2}]},
+{id:"lecture",name:"Vorlesung",tasks:[{id:"done",title:"Week 1",done:true,estimatedHours:2,schedulingMode:"flexible",classDefaultMode:false},{id:"linked-lecture",title:"Chapter 2",done:true,estimatedHours:2}]},
 {id:"homework",name:"Hausaufgabe",tasks:[{id:"pending",title:"Week 1",done:false,estimatedHours:2},{id:"linked-homework",title:"Übung 2",done:false,estimatedHours:2},
 {id:"overdue",title:"Übungsblatt",done:false,deadline:"2026-11-18"}]}]}]}],
 degreePlan:{name:"Test",requiredCredits:180,modules:[{id:"m",name:"Electives",kind:"elective",requiredCredits:30,courses:[course,
