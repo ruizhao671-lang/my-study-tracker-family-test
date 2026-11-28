@@ -14,6 +14,11 @@ export function weeklyCategories(state,courseId=""){
   }
   return result;
 }
+// The picker and its task dropdown must use the same scheduling-mode projection.
+export function weeklyPlannerCategories(state){
+  const available=new Set(studyTaskItems(state,"0001-01-01","9999-12-31").filter(t=>t.schedulingMode!=="fixed"&&t.categoryId).map(t=>JSON.stringify([t.course.id,t.categoryId])));
+  return weeklyCategories(state).filter(c=>available.has(JSON.stringify([c.courseId,c.categoryId])));
+}
 export function normalizeWeeklyRule(state,courseId,input){
   const category=weeklyCategories(state,courseId).find(c=>c.categoryId===input.categoryId);
   if(!category)throw new Error("请先关联学习进度，并选择课程中的分类。");

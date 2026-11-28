@@ -1,4 +1,4 @@
-import {weeklyCategories,previewWeeklyRule,weeklyConflicts,weeklyRowsOverlap} from "./study-batch-core.js";
+import {weeklyCategories,weeklyPlannerCategories,previewWeeklyRule,weeklyConflicts,weeklyRowsOverlap} from "./study-batch-core.js";
 import {addPlanDays,planWeek,studyTaskItems,validPlanDate} from "./study-plan-core.js";
 import {scheduleCourses} from "./study-workspace.js";
 const en=()=>window.studyI18n?.getLanguage?.()==="en";
@@ -7,18 +7,24 @@ const esc=value=>String(value??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;
 const options=(items,value)=>items.map(([id,label])=>`<option value="${esc(id)}" ${id===value?"selected":""}>${esc(label)}</option>`).join("");
 const field=(label,key,value,type="text")=>`<label>${esc(label)}<input class="input" name="${key}" type="${type}" value="${esc(value)}" required></label>`;
 export function openWeeklyPlanner({bridge,showDialog,date,courseId="",categoryId="",preset={}}){
-  const state=bridge.getState(),categories=weeklyCategories(state),courses=scheduleCourses(state).filter(c=>categories.some(g=>g.courseId===c.id));
-  if(!courses.length){bridge.showToast(w("先在学习进度里添加课程任务。","Add course tasks in learning progress first."));return;}
+  const state=bridge.getState(),categories=weeklyPlannerCategories(state),allCourses=scheduleCourses(state),courses=allCourses.filter(c=>categories.some(g=>g.courseId===c.id));
+  const requested=allCourses.find(c=>c.id===courseId),requestedCategory=weeklyCategories(state,courseId).find(c=>c.categoryId===categoryId);
+  if(!courses.length||requested&&!courses.some(c=>c.id===requested.id)||requestedCategory&&!categories.some(c=>c.courseId===requestedCategory.courseId&&c.categoryId===requestedCategory.categoryId)){
+    const target=requested||allCourses[0];
+    const fixed=requestedCategory?.count>0;
+    showDialog(w("没有可自由安排的任务","No flexible tasks to schedule"),`<p>${w(fixed?"这个分类的任务都是固定时间课程，请在日历中修改上课安排。":"当前没有可自由安排的任务。固定课程在日历中维护，空分类需要先添加任务。",fixed?"This category contains fixed classes. Edit their time on the calendar.":"There are no flexible tasks here. Manage fixed classes on the calendar, or add tasks to an empty category.")}</p>`,()=>{if(target)window.studyDegree.openSchedule(target.id,date);},target?w("查看课程时间表","Open course timetable"):w("知道了","OK"));
+    return;
+  }
   let course=courses.find(c=>c.id===courseId)||courses[0],rule=null,preview=null,rows=[];
   const form=showDialog(w("分类每周安排","Schedule a category weekly"),`
-    <p class="degree-help">${w("选一个起始任务和开始周，之后每周安排下一个任务。日期自动填写；不会修改任务本身的完成范围。","Choose a first task and a first week. The next task follows each week. Dates are filled automatically; task completion windows stay unchanged.")}</p>
+    <p class="degree-help">${w("选一个起始任务和开始周，之后每周安排下一个任务。日期自动填写；不会修改任务本身的完成范围。","Choose a first task and a first week. The next task follows each week. Dates are filled automatically; task completion windows stay unchanged.")}</p><p class="degree-help">${w("这里只安排自由任务；固定课程请点日历时间块修改。","This schedules flexible tasks. Edit fixed classes directly on the calendar.")}</p>
     <div class="degree-fields" data-weekly-config>
       <label>${w("课程","Course")}<select class="input" name="courseId">${options(courses.map(c=>[c.id,c.name]),course.id)}</select></label>
       <label>${w("分类","Category")}<select class="input" name="categoryId"></select></label>
       <label>${w("已保存规则","Saved rule")}<select class="input" name="ruleId"></select></label>
-      <label>${w("从哪个任务开始","First task")}<select class="input" name="startTaskId" required></select></label>
+      <label>${w("从哪个任务开始","First task")}<select class="input" name="startTaskId" required></select><small data-weekly-empty role="status"></small></label>
       ${field(w("从哪一周开始（选该周任意一天）","First week (any date in that week)"),"fromWeek",planWeek(date),"date")}
-      ${field(w("安排到哪一天","Schedule until"),"untilWeek",addPlanDays(planWeek(date),84),"date")}
+      ${field(w("到哪一周结束","Last week"),"untilWeek",addPlanDays(planWeek(date),84),"date")}
       <label>${w("每周","Every week")}<select class="input" name="weekday">${options([1,2,3,4,5,6,7].map((n,i)=>[String(n),[w("周一","Monday"),w("周二","Tuesday"),w("周三","Wednesday"),w("周四","Thursday"),w("周五","Friday"),w("周六","Saturday"),w("周日","Sunday")][i]]),"3")}</select></label>
       ${field(w("开始时间","Start"),"startTime","19:00","time")}${field(w("结束时间","End"),"endTime","21:00","time")}
     </div>
@@ -38,23 +44,26 @@ export function openWeeklyPlanner({bridge,showDialog,date,courseId="",categoryId
   const results=form.querySelector("[data-weekly-results]"),error=form.querySelector("[data-weekly-error]"),hint=form.querySelector("[data-weekly-hint]"),submit=form.querySelector('[type="submit"]');
   submit.disabled=true;
   function reset(){preview=null;rows=[];submit.disabled=true;results.replaceChildren();error.textContent="";hint.textContent="";}
-  function taskChoices(value=""){
+  function taskChoices(value="",updateEnd=false){
     const tasks=studyTaskItems(bridge.getState(),"0001-01-01","9999-12-31").filter(t=>t.course.id===course.id&&t.categoryId===form.elements.categoryId.value&&t.schedulingMode!=="fixed");
     tasks.sort((a,b)=>a.title.localeCompare(b.title,"en",{numeric:true}));
     const chosen=tasks.find(t=>t.taskId===value)||tasks.find(t=>!t.done&&!t.allocations.length)||tasks[0];
-    form.elements.startTaskId.innerHTML=options(tasks.map(t=>[t.taskId,t.title]),chosen?.taskId||"");
+    form.elements.startTaskId.innerHTML=options(tasks.length?tasks.map(t=>[t.taskId,t.title]):[["",w("暂无可自由安排的任务","No flexible tasks available")]],chosen?.taskId||"");
+    form.elements.startTaskId.disabled=!tasks.length;
+    form.querySelector("[data-weekly-preview]").disabled=!tasks.length;
+    form.querySelector("[data-weekly-empty]").textContent=tasks.length?"":w("任务可能已变为固定课程或被删除，请选择其他分类。","Tasks may have become fixed or been removed. Choose another category.");
     const last=course.planRange?.end||tasks.map(t=>t.window.end||t.weekOf).filter(validPlanDate).sort().at(-1);
-    if(last&&last>=form.elements.fromWeek.value)form.elements.untilWeek.value=last;
+    if(updateEnd&&last&&last>=form.elements.fromWeek.value)form.elements.untilWeek.value=last;
   }
   function fillRules(){
     const list=(course.weeklyRules||[]).filter(r=>r.categoryId===form.elements.categoryId.value);
     form.elements.ruleId.innerHTML=options([["",w("新建每周安排","New weekly schedule")],...list.map(r=>[r.id,r.startTime+"–"+r.endTime+" · "+r.fromWeek])],"");
-    rule=null;taskChoices();reset();
+    rule=null;taskChoices("",true);reset();
   }
   function fillCategories(id=""){form.elements.categoryId.innerHTML=options(categories.filter(c=>c.courseId===course.id).map(c=>[c.categoryId,c.name]),id);fillRules();}
   function useRule(id){
     rule=course.weeklyRules?.find(r=>r.id===id)||null;
-    if(rule){for(const key of ["weekday","startTime","endTime","fromWeek","untilWeek"])form.elements[key].value=rule[key];form.elements.skipWeeks.value=(rule.skipWeeks||[]).join(", ");form.elements.enabled.checked=rule.enabled!==false;taskChoices(rule.startTaskId);}
+    if(rule){for(const key of ["weekday","startTime","endTime","fromWeek","untilWeek"])form.elements[key].value=rule[key];form.elements.skipWeeks.value=(rule.skipWeeks||[]).join(", ");form.elements.enabled.checked=rule.enabled!==false;taskChoices(rule.startTaskId);}else taskChoices();
     reset();
   }
   function input(){return {...(rule||{}),mappingMode:"sequence",id:rule?.id||crypto.randomUUID(),categoryId:form.elements.categoryId.value,startTaskId:form.elements.startTaskId.value,fromWeek:form.elements.fromWeek.value,untilWeek:form.elements.untilWeek.value,weekday:form.elements.weekday.value,startTime:form.elements.startTime.value,endTime:form.elements.endTime.value,skipWeeks:form.elements.skipWeeks.value.split(/[,，\s]+/).filter(Boolean),enabled:form.elements.enabled.checked};}
