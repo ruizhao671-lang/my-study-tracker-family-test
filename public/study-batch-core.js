@@ -30,7 +30,7 @@ export function normalizeWeeklyRule(state,courseId,input){
   if(!validPlanDate(anchorWeekDate))throw new Error("请填写课程周次对应的日期。");
   if(anchor!==null&&(!Number.isInteger(anchor)||anchor<1||anchor>100))throw new Error("课程起始周次需为 1 到 100，未知可留空。");
   const skipWeeks=[...new Set((input.skipWeeks||[]).map(value=>{if(!validPlanDate(value))throw new Error("跳过周的日期无效。");return planWeek(value);} ))];
-  return {id:input.id||crypto.randomUUID(),categoryId:category.categoryId,categoryName:category.name,weekday,startTime:input.startTime,endTime:input.endTime,fromWeek,untilWeek,anchorWeekNumber:anchor,anchorWeekDate:planWeek(anchorWeekDate),skipWeeks,enabled:input.enabled!==false,mappingMode:input.mappingMode==="sequence"?"sequence":"window",startTaskId:input.startTaskId||"",sequenceTaskIds:Array.isArray(input.sequenceTaskIds)?[...new Set(input.sequenceTaskIds)]:[],excludedTaskIds:[...new Set(Array.isArray(input.excludedTaskIds)?input.excludedTaskIds:[])].slice(-1000)};
+  return {id:input.id||crypto.randomUUID(),categoryId:category.categoryId,categoryName:category.name,weekday,startTime:input.startTime,endTime:input.endTime,fromWeek,untilWeek,anchorWeekNumber:anchor,anchorWeekDate:planWeek(anchorWeekDate),skipWeeks,enabled:input.enabled!==false,mappingMode:input.mappingMode==="sequence"?"sequence":"window",...(input.compactSelection===true?{compactSelection:true}:{}),startTaskId:input.startTaskId||"",sequenceTaskIds:Array.isArray(input.sequenceTaskIds)?[...new Set(input.sequenceTaskIds)]:[],excludedTaskIds:[...new Set(Array.isArray(input.excludedTaskIds)?input.excludedTaskIds:[])].slice(-1000)};
 }
 function taskWeek(rule,task){
   if(task.weekOf)return planWeek(task.weekOf);
@@ -53,9 +53,42 @@ export function weeklyConflicts(state,row,ignoreId=""){
     return span>start?start<mins(row.endTime)&&span>mins(row.startTime):start>=mins(row.startTime)&&start<mins(row.endTime);
   }).map(e=>[e.course?.name,e.title].filter(Boolean).join(" · "));
 }
+function previewCompactWeekly(state,course,rule,items,input,today){
+  const start=items.findIndex(t=>t.taskId===rule.startTaskId);
+  if(start<0)throw new Error("起始任务已变化，请重新选择。");
+  const selected=Array.isArray(input.selectedTaskIds)?new Set(input.selectedTaskIds):null;
+  const owned=(course.planEvents||[]).filter(e=>e.batchRuleId===rule.id);
+  const positions=[];
+  for(let week=rule.fromWeek;week<=rule.untilWeek;week=addPlanDays(week,7)){
+    if(rule.skipWeeks.includes(week))continue;
+    const date=addPlanDays(week,rule.weekday-1);
+    if(input.automatic&&date<today)continue;
+    if(owned.some(e=>weeklyRowsOverlap({date,startTime:rule.startTime,endTime:rule.endTime},e)))continue;
+    positions.push({week,date});
+  }
+  let cursor=0;
+  const rows=items.slice(start).map(task=>{
+    const blocked=task.done?"已完成，保留":taskSchedulingMode(task,course.planEvents)==="fixed"?"固定时间，保留":task.allocations.length?"已有安排，保留":"";
+    const include=!blocked&&(selected?selected.has(task.taskId):!rule.excludedTaskIds.includes(task.taskId)&&cursor<positions.length);
+    const position=include?positions[cursor++]:null;
+    const row={taskId:task.taskId,title:task.title,group:task.group,ordinal:studyTaskWindow(task).teachingWeek,
+      week:position?.week||"",date:position?.date||"",startTime:rule.startTime,endTime:rule.endTime,
+      templateDate:position?.date||"",templateStart:rule.startTime,templateEnd:rule.endTime,
+      existingId:"",blocked:!!blocked,include,reason:blocked||(!include?"未选，保持待安排":!position?"本次时段不足，请延长结束周或减少任务":""),conflicts:[]};
+    if(include&&position){
+      row.conflicts=weeklyConflicts(state,row);
+      if(row.conflicts.length)row.reason="时间冲突，待确认";
+      else if(row.date<today)row.reason="日期已过去，请核对";
+      else if(task.deadline&&row.date>task.deadline)row.reason="晚于截止日期，请核对";
+    }
+    return row;
+  });
+  return {rule,rows};
+}
 export function previewWeeklyRule(state,courseId,input,today=todayKey()){
   const course=getCourse(state,courseId);if(!course)throw new Error("课程不存在。");
   const rule=normalizeWeeklyRule(state,courseId,input),items=studyTaskItems(state,rule.fromWeek,addPlanDays(rule.untilWeek,6)).filter(t=>t.course.id===courseId&&t.categoryId===rule.categoryId);
+  if(rule.compactSelection)return previewCompactWeekly(state,course,rule,items,input,today);
   const ordered=[...items].sort((a,b)=>a.title.localeCompare(b.title,"en",{numeric:true}));
   if(rule.mappingMode==="sequence")rule.sequenceTaskIds=[...rule.sequenceTaskIds,...ordered.filter(t=>!rule.sequenceTaskIds.includes(t.taskId)).map(t=>t.taskId)];
   const start=rule.sequenceTaskIds.indexOf(rule.startTaskId),weeks=[];
@@ -86,12 +119,12 @@ export function previewWeeklyRule(state,courseId,input,today=todayKey()){
 function upsertRuleEvent(course,rule,row){
   const existing=(course.planEvents||[]).find(e=>e.batchRuleId===rule.id&&e.taskId===row.taskId);
   const value={id:existing?.id||crypto.randomUUID(),type:"study",title:[row.group,row.title].filter(Boolean).join(" · "),taskId:row.taskId,taskSeriesKey:"",date:row.date,startTime:row.startTime,endTime:row.endTime,
-    hours:(mins(row.endTime)-mins(row.startTime))/60,weekOf:"",period:"",schedulingMode:"flexible",executed:existing?.executed===true,completedDates:[],autoTaskTitle:true,userScheduled:row.date!==addPlanDays(row.week||planWeek(row.date),rule.weekday-1)||row.startTime!==rule.startTime||row.endTime!==rule.endTime,batchRuleId:rule.id,importKey:existing?.importKey||"batch:"+rule.id+":"+row.taskId,detail:existing?.detail||""};
+    hours:(mins(row.endTime)-mins(row.startTime))/60,weekOf:"",period:"",schedulingMode:"flexible",executed:existing?.executed===true,completedDates:[],autoTaskTitle:true,userScheduled:row.manualOverride===true||row.date!==(row.templateDate||addPlanDays(row.week||planWeek(row.date),rule.weekday-1))||row.startTime!==(row.templateStart||rule.startTime)||row.endTime!==(row.templateEnd||rule.endTime),batchRuleId:rule.id,importKey:existing?.importKey||"batch:"+rule.id+":"+row.taskId,detail:existing?.detail||""};
   if(existing)Object.assign(existing,value);else (course.planEvents ||= []).push(value);
   return value.id;
 }
 export function applyWeeklyRule(state,courseId,input,selectedRows,today=todayKey()){
-  const course=getCourse(state,courseId),before=captureCoursePlan(state,courseId),preview=previewWeeklyRule(state,courseId,input,today);
+  const course=getCourse(state,courseId),before=captureCoursePlan(state,courseId),preview=previewWeeklyRule(state,courseId,input.compactSelection?{...input,selectedTaskIds:selectedRows.filter(r=>r.include!==false).map(r=>r.taskId)}:input,today);
   if(!course)throw new Error("课程不存在。");
   const rule=preview.rule,allowed=new Map(preview.rows.map(r=>[r.taskId,r])),seen=new Set();
   const chosen=selectedRows.filter(r=>r.include!==false).map(row=>{
@@ -99,7 +132,7 @@ export function applyWeeklyRule(state,courseId,input,selectedRows,today=todayKey
     if(!original||original.blocked||seen.has(row.taskId))throw new Error("请重新预览，已有安排或任务内容已经变化。");
     seen.add(row.taskId);
     if(!validPlanDate(row.date)||!validTime(row.startTime)||!validTime(row.endTime)||row.endTime<=row.startTime)throw new Error("请填写所选任务的有效日期与开始、结束时间。");
-    return {...original,date:row.date,startTime:row.startTime,endTime:row.endTime};
+    return {...original,date:row.date,startTime:row.startTime,endTime:row.endTime,manualOverride:row.manualOverride===true};
   });
   for(const row of chosen){
     const overlap=chosen.some(other=>other!==row&&weeklyRowsOverlap(row,other));
@@ -120,9 +153,9 @@ export function refreshWeeklyRules(state,today=todayKey()){
   let added=0;
   for(const course of scheduleCourses(state))for(const input of course.weeklyRules||[]){
     if(!input.enabled)continue;
-    let preview;try{preview=previewWeeklyRule(state,course.id,input,today);}catch{continue;}
+    let preview;try{preview=previewWeeklyRule(state,course.id,{...input,automatic:true},today);}catch{continue;}
     for(const row of preview.rows){
-      if(!row.include||row.existingId||row.date<today)continue;
+      if(!row.include||row.existingId||row.date<today||row.conflicts?.length)continue;
       upsertRuleEvent(course,preview.rule,row);added++;
     }
   }

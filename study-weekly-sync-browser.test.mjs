@@ -26,7 +26,9 @@ try{
  await page.locator("#degreeDialog details > summary").click();
  await page.locator('#degreeDialog [name="skipWeeks"]').fill("2026-12-21");
  await page.locator('[data-weekly-preview]').click();
- assert.equal(await page.locator('[data-weekly-row]').count(),3,"Skipped weeks do not require empty date rows");
+ assert.equal(await page.locator('[data-weekly-row]').count(),4,"Unselected pending tasks remain available to check");
+ assert.equal(await row(3).locator("[data-include]").isChecked(),false);
+ assert.equal(await row(3).locator('[data-slot="date"]').count(),0,"Skipped weeks do not create empty date inputs");
  assert.equal(await row(0).locator('[data-slot="date"]').inputValue(),"2026-12-01");
  await row(1).locator('[data-slot="date"]').fill("2026-12-10");
  await row(1).locator('[data-slot="startTime"]').fill("20:00");await row(1).locator('[data-slot="endTime"]').fill("21:00");

@@ -30,7 +30,9 @@ try{
  assert.deepEqual(await page.locator('[data-slot="date"]').evaluateAll(nodes=>nodes.map(n=>n.value)),["2027-01-06","2027-01-13"]);
  await save();let s=await get();assert.equal(s.degreePlan.modules[0].courses[0].planEvents[0].date,"2027-01-13","Published fixed class is unchanged");
  assert.equal(s.degreePlan.modules[0].courses[0].planEvents.filter(e=>e.batchRuleId).length,2);
- await open();assert.equal(await page.locator('#degreeDialog [name="untilWeek"]').inputValue(),"2027-01-18","Reloading a saved rule preserves its end week");
+ await open();assert.equal(await page.locator('#degreeDialog [name="ruleId"]').inputValue(),"","A new opening never edits the previous batch");
+ await page.locator('#degreeDialog [name="ruleId"]').selectOption(s.degreePlan.modules[0].courses[0].weeklyRules[0].id);
+ assert.equal(await page.locator('#degreeDialog [name="untilWeek"]').inputValue(),"2027-01-18","Reusing saved settings preserves the end week");
  await page.keyboard.press("Escape");
  await page.locator("[data-schedule-filter]").selectOption("fixed");await open();
  assert.equal(await page.locator('#degreeDialog [name="startTaskId"]').count(),0,"Fixed-only course gets a clear explanation instead of an empty picker");
