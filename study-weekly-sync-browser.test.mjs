@@ -15,7 +15,7 @@ const row=i=>page.locator('[data-weekly-row="'+i+'"]');
 const save=()=>page.locator('#degreeDialog button[type="submit"]').click();
 const close=()=>page.locator('#degreeDialog .degree-dialog-close').click();
 async function schedule(){await page.evaluate(()=>studyDegree.openSchedule("demo","2026-11-30"));}
-async function openSession(id){const slot=slots(await get()).find(e=>e.id===id);await page.locator('.schedule-agenda-item[data-entry="plan-event:'+id+':'+slot.date+'"] .schedule-agenda-open').click();}
+async function openSession(id){const slot=slots(await get()).find(e=>e.id===id);await page.locator('.schedule-event[data-entry="plan-event:'+id+':'+slot.date+'"] .schedule-event-open').click();}
 try{
  await page.clock.setFixedTime(new Date("2026-11-25T10:00:00+01:00"));
  await page.addInitScript(s=>{if(!localStorage.getItem("study-tracker-online-guest-v1"))localStorage.setItem("study-tracker-online-guest-v1",JSON.stringify(s));localStorage.setItem("study-tracker-language-v1","zh-CN");},fixture);
@@ -26,7 +26,7 @@ try{
  await page.locator("#degreeDialog details > summary").click();
  await page.locator('#degreeDialog [name="skipWeeks"]').fill("2026-12-21");
  await page.locator('[data-weekly-preview]').click();
- assert.equal(await page.locator('[data-weekly-row]').count(),4);assert.equal(await row(3).locator("[data-include]").isChecked(),false);
+ assert.equal(await page.locator('[data-weekly-row]').count(),3,"Skipped weeks do not require empty date rows");
  assert.equal(await row(0).locator('[data-slot="date"]').inputValue(),"2026-12-01");
  await row(1).locator('[data-slot="date"]').fill("2026-12-10");
  await row(1).locator('[data-slot="startTime"]').fill("20:00");await row(1).locator('[data-slot="endTime"]').fill("21:00");
@@ -38,11 +38,10 @@ try{
  assert.equal(await page.locator("#degreeDialog[open]").count(),0);
  let s=await get();assert.equal(slots(s).length,3);assert.equal(raw(s).length,4);assert.equal(slots(s).find(e=>e.taskId==="t2").date,"2026-12-10");
  assert.equal(await brick("t1").count(),0,"Allocated task leaves pending");
- await page.locator('[data-task-bucket="scheduled"]').click();assert.equal(await brick("t1").count(),1);assert.ok((await brick("t1").innerText()).includes("尚未分配：2 h"));
- await brick("t1").locator("[data-plan-task-time]").click();await page.locator('#degreeDialog [name="date"]').fill("2026-12-03");await page.locator('#degreeDialog [name="startTime"]').fill("10:00");await page.locator('#degreeDialog [name="endTime"]').fill("12:00");await save();
+ assert.equal(await brick("t1").count(),0);await openSession(slots(await get()).find(e=>e.taskId==="t1").id);assert.ok((await page.locator("[data-linked-task-label]").innerText()).includes("还需安排 2 h"));await page.locator('[data-schedule="add-task-session"]').click();await page.locator('#degreeDialog [name="date"]').fill("2026-12-03");await page.locator('#degreeDialog [name="startTime"]').fill("10:00");await page.locator('#degreeDialog [name="endTime"]').fill("12:00");await save();
  assert.equal(slots(await get()).filter(e=>e.taskId==="t1").length,2);
  for(const slot of slots(await get()).filter(e=>e.taskId==="t1")){await openSession(slot.id);await page.locator('#degreeDialog [data-schedule="unschedule"]').click();}
- await page.locator('[data-task-bucket="current"]').click();assert.equal(await brick("t1").count(),1);
+ assert.equal(await brick("t1").count(),1);
  assert.equal(slots(await get()).filter(e=>e.taskId==="t1").length,0,"Canceled weekly slot stays canceled");
  await page.locator('[data-weekly-drag]').dragTo(page.locator('.schedule-day-grid[data-drop-date="2026-12-04"]'),{targetPosition:{x:40,y:112}});
  await page.locator('[data-weekly-preview]').waitFor();assert.equal(await page.locator('#degreeDialog [name="weekday"]').inputValue(),"5");
@@ -50,15 +49,12 @@ try{
  assert.equal(slots(await get()).length,count,"Category drag opens preview without writing");
  await brick("t1").locator("strong").first().dragTo(page.locator('.schedule-day-grid[data-drop-date="2026-12-04"]'),{targetPosition:{x:40,y:112}});
  assert.equal(slots(await get()).filter(e=>e.taskId==="t1").length,1);
- assert.equal(await page.locator('[data-task-bucket="scheduled"]').getAttribute("aria-pressed"),"true");
- await brick("t1").locator("[data-task-done]").click();
+ assert.equal(await brick("t1").count(),0);await openSession(slots(await get()).find(e=>e.taskId==="t1").id);await page.locator('#degreeDialog [name="done"]').check();await save();
  assert.equal(raw(await get()).find(t=>t.id==="t1").done,true);
  await page.evaluate(()=>studyTrackerBridge.openCourseProgress("learning"));
  const progress=page.locator('[data-task-id="t1"] input[data-action="toggle-task"]');
  assert.equal(await progress.isChecked(),true);await progress.uncheck();
- await schedule();await page.locator('[data-task-bucket="scheduled"]').click();
- assert.equal(await brick("t1").locator("[data-task-done]").isChecked(),false);
- await brick("t1").locator("[data-brick-timer]").click();
+ await schedule();assert.equal(await brick("t1").count(),0);await openSession(slots(await get()).find(e=>e.taskId==="t1").id);assert.equal(await page.locator('#degreeDialog [name="done"]').isChecked(),false);await page.locator('[data-schedule="task-timer"]').click();
  if(await page.locator("#restModal.open").count())await page.locator("#restExtendBtn").click();
  await page.waitForFunction(()=>studyTrackerBridge.getState().timer.active);
  assert.equal(await page.locator("#timerTask").inputValue(),"t1");
@@ -83,10 +79,10 @@ try{
  await page.locator('#editModal [name="title"]').fill("Week 3 revised");await page.locator("#editForm").evaluate(f=>f.requestSubmit());
  s=await get();assert.ok(slots(s).find(e=>e.taskId==="t3").title.includes("Week 3 revised"));
  await schedule();await page.locator('[data-schedule="weekly-category"]').click();await page.locator('[data-weekly-preview]').click();
- assert.equal(await row(0).locator("[data-include]").isDisabled(),true,"Completed task cannot be overwritten");
+ assert.ok(!(await page.locator("[data-weekly-results]").innerText()).includes("Week 1"),"Completed tasks are omitted from weekly updates");
  await page.keyboard.press("Escape");await page.reload({waitUntil:"networkidle"});await page.waitForFunction(()=>window.studyDegree);await schedule();
  s=await get();assert.equal(s.degreePlan.modules[0].courses[0].weeklyRules.length,1);assert.equal(s.timer.sessions.length,2);
- await page.locator('[data-task-bucket="scheduled"]').click();await page.screenshot({path:process.env.TEMP+"/studytracker-weekly-desktop.png",fullPage:true});
+ await page.screenshot({path:process.env.TEMP+"/studytracker-weekly-desktop.png",fullPage:true});
  await page.setViewportSize({width:390,height:844});assert.ok(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth+1));
  await page.locator('[data-schedule="weekly-category"]').click();await page.locator('[data-weekly-preview]').click();
  assert.ok(await page.evaluate(()=>document.querySelector("#degreeDialog").scrollWidth<=document.querySelector("#degreeDialog").clientWidth+1));
@@ -94,23 +90,14 @@ try{
  const undated=structuredClone(fixture);
  undated.semesters[0].courses[0].categories[0].tasks=[6,7,8,9].map(n=>({id:"w"+n,title:"Week "+n,estimatedHours:2,done:n===6}));
  await page.evaluate(s=>studyTrackerBridge.replaceState(s),undated);await schedule();
- await page.locator('[data-schedule="weekly-category"]').click();await page.locator("[data-weekly-preview]").click();
- await page.locator("[data-anchor-help]").waitFor({state:"visible"});
- assert.equal(await row(0).locator("[data-slot]").count(),0,"Completed undated tasks do not show meaningless empty date inputs");
- await row(1).locator("[data-include]").check();await row(2).locator("[data-include]").check();
- assert.equal(await page.locator("[data-weekly-confirm-wrap]").isVisible(),false,"Two empty dates must not trigger an overlap warning");
- assert.equal(await page.locator(".weekly-conflict").filter({hasText:"重叠"}).count(),0);
- assert.equal(await page.locator('#degreeDialog [type="submit"]').isDisabled(),true);
- await page.locator("[data-anchor-number]").fill("7");await page.locator("[data-anchor-date]").fill("2026-12-09");
- await page.screenshot({path:process.env.TEMP+"/studytracker-week-anchor-mobile.png",fullPage:false});
- await page.locator("[data-anchor-apply]").click();
+ await page.locator('[data-schedule="weekly-category"]').click();
+ assert.equal(await page.locator('[name="startTaskId"]').inputValue(),"w7");
+ await page.locator('[name="fromWeek"]').fill("2026-12-07");await page.locator('[name="weekday"]').selectOption("2");await page.locator("[data-weekly-preview]").click();
  assert.equal(await page.locator("[data-anchor-help]").count(),0);
- assert.equal(await row(1).locator('[data-slot="date"]').inputValue(),"2026-12-07");
- assert.equal(await row(2).locator('[data-slot="date"]').inputValue(),"2026-12-14");
- assert.equal(await row(3).locator('[data-slot="date"]').inputValue(),"2026-12-21");
+ assert.deepEqual(await page.locator('[data-slot="date"]').evaluateAll(nodes=>nodes.map(n=>n.value)),["2026-12-08","2026-12-15","2026-12-22"]);
  assert.equal(await page.locator("[data-weekly-confirm-wrap]").isVisible(),false);
  await save();s=await get();assert.equal(slots(s).length,3);assert.equal(raw(s).length,4);
- assert.equal(s.degreePlan.modules[0].courses[0].weeklyRules[0].anchorWeekDate,"2026-12-07");
+ assert.equal(s.degreePlan.modules[0].courses[0].weeklyRules[0].mappingMode,"sequence");
  assert.deepEqual(errors,[]);
  console.log("PASS browser weekly batches: editable weekly preview, skips, category drag, individual splitting, pending/scheduled transitions, cancellations, three-panel completion, timer records, strict rename/deletion, reload and mobile");
 }finally{await browser.close();}

@@ -1,3 +1,4 @@
+import {scheduleCourses,ensureStudyCourse,matchingStudyCourse} from "./study-workspace.js";
 // Linked courses use the progress tree as the only active task store.
 export function studyTaskIndex(state){
   const tasks={};
@@ -37,7 +38,7 @@ function migrateLocalTasks(state,course,linked){
     if(all[id])id=crypto.randomUUID();
     let category=linked.categories.find(c=>c.name===(task.group||"未分组"));
     if(!category){category={id:crypto.randomUUID(),name:task.group||"未分组",tasks:[],degreePlanGenerated:true};linked.categories.push(category);}
-    category.tasks.push({...structuredClone(task),id,title:task.title||task.name,done:task.done===true,estimatedHours:task.hours??task.estimatedHours??null,
+    category.tasks.push({...structuredClone(task),legacyPlanTask:true,id,title:task.title||task.name,done:task.done===true,estimatedHours:task.hours??task.estimatedHours??null,
       plannedDate:task.date||task.plannedDate||"",plannedStart:task.startTime||"",plannedEnd:task.endTime||"",planImportKey:task.importKey||"",planSeriesKey:task.seriesKey||"",privatePlanTask:true,note:task.note||"",attachments:task.attachments||[]});
     for(const event of course.planEvents||[])if(event.taskId===task.id)event.taskId=id;
   }
@@ -45,7 +46,9 @@ function migrateLocalTasks(state,course,linked){
 }
 export function reconcileLinkedTasks(state,before=null,today=localToday()){
   const previous=before?.tasks||{};
-  const courses=state.degreePlan?.modules.flatMap(m=>m.courses)||[];
+  const degree=state.degreePlan?.modules.flatMap(m=>m.courses)||[];
+  for(const course of degree){const match=!course.courseId&&matchingStudyCourse(state,course);if(course.tasks?.length||match&&!degree.some(c=>c.courseId===match.id))ensureStudyCourse(state,course);}
+  const courses=scheduleCourses(state);
   for(const course of courses){const linked=state.semesters?.flatMap(s=>s.courses).find(c=>c.id===course.courseId);if(linked)migrateLocalTasks(state,course,linked);}
   const current=studyTaskIndex(state).tasks;
   for(const course of courses){
@@ -68,11 +71,9 @@ export function reconcileLinkedTasks(state,before=null,today=localToday()){
         }else{
           const meta=removed.find(t=>t.id===event.taskId)||{id:event.taskId,title:event.taskSnapshot?.title||event.title,group:event.taskSnapshot?.group||""};
           archive(course,meta.raw?meta:null);
-          if(event.repeat){
-            event.repeat={...event.repeat,until:[event.repeat.until,dayBefore(today)].sort()[0]};
-            if(event.date>event.repeat.until)continue;
-          }else if(!event.date||event.date>=today&&!event.executed)continue;
-          event.archivedTask=shortTask(meta);event.taskId="";event.taskSeriesKey="";
+          course.planEventArchive ||= [];
+          if(!course.planEventArchive.some(a=>a.event.id===event.id))course.planEventArchive.push({event:structuredClone(event),reason:"deleted-task"});
+          continue;
         }
       }
       if(event.taskWeekLinks){
@@ -82,9 +83,10 @@ export function reconcileLinkedTasks(state,before=null,today=localToday()){
           if(event.repeat){
             const skip=new Set(event.repeat.exceptDates||[]);
             for(let date=event.date;date<=event.repeat.until;date=new Date(Date.parse(date+"T12:00:00Z")+86400000).toISOString().slice(0,10))
-              if(date>=today&&weekOf(date)===week)skip.add(date);
+              if(weekOf(date)===week)skip.add(date);
             event.repeat.exceptDates=[...skip];
           }
+          if(!event.repeat&&weekOf(event.date)===week)event.deletedTaskOccurrence=true;
           delete event.taskWeekLinks[week];
         }
       }
@@ -97,15 +99,15 @@ export function reconcileLinkedTasks(state,before=null,today=localToday()){
             const week=task.raw.weekOf;event.removedTaskWeeks[week]=shortTask(task);
             if(event.repeat){
               const skip=new Set(event.repeat.exceptDates||[]);
-              for(let date=event.date;date<=event.repeat.until;){if(date>=today&&weekOf(date)===week&&event.repeat.weekdays.includes(new Date(date+"T12:00:00Z").getUTCDay()||7))skip.add(date);
+              for(let date=event.date;date<=event.repeat.until;){if(weekOf(date)===week&&event.repeat.weekdays.includes(new Date(date+"T12:00:00Z").getUTCDay()||7))skip.add(date);
                 const next=new Date(date+"T12:00:00Z");next.setUTCDate(next.getUTCDate()+1);date=next.toISOString().slice(0,10);}
               event.repeat={...event.repeat,exceptDates:[...skip]};
             }
           }
-          if(!liveSeries&&event.repeat){event.repeat={...event.repeat,until:[event.repeat.until,dayBefore(today)].sort()[0]};if(event.date>event.repeat.until)continue;}
+          if(!liveSeries){course.planEventArchive ||= [];if(!course.planEventArchive.some(a=>a.event.id===event.id))course.planEventArchive.push({event:structuredClone(source),reason:"deleted-task"});continue;}
         }
       }
-      kept.push(event);
+      if(!event.deletedTaskOccurrence)kept.push(event);
     }
     course.planEvents=kept;
     if(course.courseId&&!linked){course.courseId="";course.passTaskId="";for(const rule of course.weeklyRules||[])rule.enabled=false;}

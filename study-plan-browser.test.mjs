@@ -38,7 +38,7 @@ try{
   await page.locator('[data-field="rangeStart"]').fill("2026-11-23");
   await page.locator('[data-plan-action="preview"]').click();
   assert.ok((await page.locator(".plan-preview").innerText()).includes("待安排"));
-  assert.equal(await page.locator('[name="progressLink"]').inputValue(),"__new");
+  assert.ok(await page.locator('[name="progressLink"]').inputValue(),"Course tasks automatically share a canonical progress course");
   await confirmSave();
   await page.locator('[data-plan-action="schedule"]').waitFor();
   assert.equal(await page.evaluate(()=>studyTrackerBridge.getState().degreePlan.modules[0].courses[0].planEvents.find(e=>e.type==="class").legacyTaskDone),true);
@@ -50,10 +50,10 @@ try{
   await page.locator("[data-schedule-date]").dispatchEvent("change");
   assert.equal(await page.locator('.schedule-day-grid .schedule-event.workshop').count(),1);
   assert.equal(await page.locator('.schedule-day-grid .schedule-event.class').count(),0);
-  assert.equal(await page.locator('.schedule-flexible .schedule-event.plan-task').count(),1);
+  assert.equal(await page.locator('.schedule-flexible .schedule-event.plan-task').count(),11,"All future unscheduled tasks remain visible");
   await page.screenshot({path:process.env.TEMP+"/studytracker-week-plan.png",fullPage:true});
   const flexibleId=await page.locator(".schedule-flexible [data-task-source]").first().getAttribute("data-task-source");
-  await page.locator(".schedule-flexible .schedule-event.plan-task [data-plan-task-time]").click();
+  await page.locator(".schedule-flexible .schedule-event.plan-task [data-plan-task-time]").first().click();
   await page.locator('#degreeDialog [name="date"]').fill("2026-12-08");
   await page.locator('#degreeDialog [name="startTime"]').fill("10:00");
   await page.locator('#degreeDialog [name="endTime"]').fill("12:00");
@@ -164,7 +164,7 @@ try{
   await page.locator('[data-plan-action="save-schedule"]').click();
   assert.equal(await page.locator('#degreeDialog[open]').count(),0);
   assert.ok(await page.locator(".study-schedule").isVisible());
-  await page.locator('[data-task-bucket="all"]').first().click();
+
   assert.ok(await page.locator(".schedule-flexible .schedule-event").count()>=36);
   console.log("PASS browser: long editor keeps close/save/cancel visible on desktop and mobile; closing discards drafts; Escape and Save & view timetable work");
   await page.setViewportSize({width:1440,height:900});

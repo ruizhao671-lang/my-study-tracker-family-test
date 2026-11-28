@@ -257,3 +257,13 @@ body.study-schedule-mode .app{width:min(1480px,calc(100% - 36px))}
 @media(max-width:600px){.weekly-preview-rows{grid-template-columns:minmax(0,1fr)}.weekly-row-times{grid-template-columns:minmax(0,1.3fr) minmax(0,1fr) minmax(0,1fr)}}
 
 @media(max-width:600px){.schedule-plan-list .schedule-flexible-grid{grid-template-columns:minmax(0,1fr)}.schedule-plan-list{max-height:680px}.task-brick-filters{grid-template-columns:minmax(0,1fr) 95px}}
+
+/* One task shelf, one calendar. */
+.schedule-delete-x{position:absolute;top:3px;right:4px;z-index:5;width:23px;height:23px;border:0;border-radius:6px;background:#ffffffdb;color:#9c493e;font-size:20px;line-height:20px;cursor:pointer}
+.schedule-drag-grip{right:31px}.schedule-day-grid .schedule-event-open{padding-right:43px}
+.schedule-delete-x:hover{background:#ffe6df;color:#8b291f}.schedule-event-open{padding-right:22px}.schedule-event{position:relative}
+.schedule-flexible .task-brick{padding:12px;gap:8px}.schedule-flexible .task-brick-actions{grid-template-columns:1.4fr 1fr 1fr}.schedule-flexible .task-brick-actions .btn{padding:7px;font-size:.78rem;min-height:36px}
+.schedule-flexible .task-brick-head{justify-content:space-between}.schedule-flexible .task-window-label{font-size:.75rem}
+.schedule-plan-list{padding:14px}.schedule-plan-list .task-shelf-course{padding:10px}.task-shelf-category>header{cursor:default}
+.schedule-month-entry-wrap{position:relative;min-width:0}.schedule-month-entry-wrap .schedule-month-entry{width:100%;padding-right:25px}
+.schedule-month-entry-wrap .schedule-delete-x{font-size:16px;width:20px;height:20px;top:2px;right:2px}

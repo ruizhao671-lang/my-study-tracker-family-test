@@ -27,3 +27,4 @@ build/
 Thumbs.db
 github-update-*/
 github-upload-ready/
+test-results/

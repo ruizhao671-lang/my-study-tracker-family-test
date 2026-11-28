@@ -29,13 +29,13 @@ try{
  await page.goto(url,{waitUntil:"networkidle"});
  await page.waitForFunction(()=>window.studyDegree?.openSchedule);
  await page.evaluate(()=>studyDegree.openSchedule("kc","2026-11-18"));
- await page.locator('[data-task-bucket="all"]').first().click();
+
  const flexible=page.locator(".schedule-flexible");
- assert.ok((await flexible.innerText()).includes("Vorlesung · Week 1"));
+ assert.equal(await flexible.locator('[data-entry="plan-task:done"]').count(),0,"Completed tasks do not clutter pending");
  assert.ok((await flexible.innerText()).includes("Hausaufgabe · Week 1"));
- assert.equal(await flexible.locator('[data-entry="plan-task:done"]').getAttribute("data-study-status"),"complete");
- assert.equal(await flexible.locator('[data-entry="plan-task:pending"]').getAttribute("data-study-status"),"pending");
- assert.equal(await flexible.locator('[data-entry="plan-task:overdue"]').getAttribute("data-study-status"),"overdue");
+
+ assert.equal(await flexible.locator('[data-entry="plan-task:pending"]').count(),1);
+ assert.equal(await flexible.locator('[data-entry="plan-task:overdue"]').count(),1);
  const card=id=>page.locator('.schedule-day-grid [data-entry="plan-event:'+id+':'+({missed:"2026-11-18",executed:"2026-11-17",future:"2026-11-22"}[id])+'"]');
  assert.equal(await card("missed").getAttribute("data-study-status"),"overdue");
  assert.equal(await card("executed").getAttribute("data-study-status"),"complete");
@@ -44,14 +44,14 @@ try{
  assert.equal(await page.locator(".schedule-event.exam").getAttribute("data-study-status"),"exam");
  assert.equal(await page.locator(".schedule-actual.study-status-record").count(),1);
  assert.ok((await page.locator(".schedule-actual").innerText()).includes("Hausaufgabe · Week 1"));
- assert.ok((await page.locator('.schedule-agenda-item[data-entry="plan-event:missed:2026-11-18"]').innerText()).includes("Vorlesung · Chapter 2"));
+ await card("missed").locator(".schedule-event-open").click();assert.ok((await page.locator("[data-linked-task-label]").innerText()).includes("Vorlesung · Chapter 2"));await page.keyboard.press("Escape");
  const colors=await Promise.all([card("missed"),card("executed"),card("future"),page.locator(".schedule-event.exam"),page.locator(".schedule-actual")].map(l=>l.evaluate(el=>getComputedStyle(el).backgroundColor)));
  assert.equal(new Set(colors).size,5,"Five states must use visibly different colors");
  assert.equal(await page.locator(".study-calendar-legend .study-legend-item").count(),6);
  await card("missed").scrollIntoViewIfNeeded();
  assert.ok(await card("missed").evaluate(el=>el.querySelector("[data-schedule-execute]").getBoundingClientRect().bottom<=el.getBoundingClientRect().bottom),"Checkbox must fit");
  await page.screenshot({path:process.env.TEMP+"/studytracker-calendar-status.png",fullPage:true});
- await page.locator('.schedule-agenda-item[data-entry="plan-event:missed:2026-11-18"] [data-schedule-execute]').check();
+ await page.locator('.schedule-event[data-entry="plan-event:missed:2026-11-18"] [data-schedule-execute]').check();
  assert.equal(await card("missed").getAttribute("data-study-status"),"complete");
  let state=await get();assert.equal(state.semesters[0].courses[0].categories[0].tasks[0].done,true);
  assert.equal(state.semesters[0].courses[0].categories[1].tasks[0].done,false);

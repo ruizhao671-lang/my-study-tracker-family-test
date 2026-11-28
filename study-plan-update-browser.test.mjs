@@ -75,7 +75,7 @@ try{
  await page.locator("[data-confirm-restore]").check();
  await page.screenshot({path:process.env.TEMP+"/studytracker-plan-history.png",fullPage:false});
  await page.locator('[data-plan-action="restore-history"]').click();
- await page.locator('[name="progressLink"]').waitFor();
+ await page.locator('[name="progressLink"]').waitFor({state:"attached"});
  state=await get();assert.equal(current(state).estimatedHours,4);assert.equal(current(state).done,true);assert.equal(current(state).note,"Keep notes");
  assert.equal(state.timer.sessions.length,1);assert.equal(allTasks(state).find(t=>t.id===added.id).done,true,"Protected added task stays after rollback");
  assert.ok(plan(state).planHistory.some(v=>v.label==="恢复历史版本"));

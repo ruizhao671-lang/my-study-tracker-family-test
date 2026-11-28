@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>My Study Tracker</title>
   <link rel="stylesheet" href="degree-plan.css">
-  <link rel="stylesheet" href="study-plan.css?v=20261128-2">
+  <link rel="stylesheet" href="study-plan.css?v=20261128-3">
   <link rel="stylesheet" href="exam-hourglass.css">
   <style>
     :root {
@@ -2342,7 +2342,7 @@
 
   <script src="cloud-bootstrap.js"></script>
   <script type="module" src="api-sync.js"></script>
-  <script type="module" src="degree-plan.js?v=20261128-2"></script>
+  <script type="module" src="degree-plan.js?v=20261128-3"></script>
   <script src="i18n.js"></script>
   <script>
     const STORAGE_KEY = "study-tracker-online-state-v1";
@@ -3853,7 +3853,7 @@
       }
       els.timerCalendarGrid.innerHTML = cells.join("");
       document.getElementById("timerCalendarLegend").innerHTML = window.studyDegree?.renderCalendarLegend?.() || "";
-      document.getElementById("timerWeekPlanBtn").hidden = READ_ONLY_LINK || !state.degreePlan;
+      document.getElementById("timerWeekPlanBtn").hidden = READ_ONLY_LINK;
       document.getElementById("timerTaskWeeks").innerHTML = !READ_ONLY_LINK ? window.studyDegree?.renderMonthTaskWeeks?.(state,state.timer.calendarMonth) || "" : "";
     }
 
@@ -4506,9 +4506,7 @@
               <h2></h2>
               <span class="course-label" hidden></span>
               <span class="badge"></span>
-              ${canLinkDegree ? `<button class="btn secondary progress-link" type="button" data-action="link-degree-progress">
-                ${t(degreeLabel ? "已关联毕业规划" : "关联毕业规划")}</button>
-                ${degreeLabel?'<button class="btn secondary" type="button" data-action="open-linked-study-plan">'+t("任务与学习计划")+'</button><button class="btn secondary" type="button" data-action="open-linked-study-schedule">'+t("课程时间表")+'</button>':""}` : ""}
+              ${canLinkDegree ? `<button class="btn secondary" type="button" data-action="open-linked-study-plan">${t("任务与学习计划")}</button><button class="btn secondary" type="button" data-action="open-linked-study-schedule">${t("课程时间表")}</button>` : ""}
             </div>
             <div class="progress-bar" aria-hidden="true">
               <div class="progress-fill"></div>
@@ -6357,7 +6355,7 @@
       }
 
       if(["open-linked-study-plan","open-linked-study-schedule"].includes(action) && course){
-        const linked=state.degreePlan?.modules.flatMap(m=>m.courses).find(c=>c.courseId===course.id);
+        const linked=state.degreePlan?.modules.flatMap(m=>m.courses).find(c=>c.courseId===course.id)||{id:"progress-"+course.id};
         if(linked){if(action==="open-linked-study-schedule")window.studyDegree.openSchedule(linked.id);else window.studyDegree.openCourseStudyPlan(linked.id);}
       }
       if (action === "link-degree-progress" && course) {
@@ -6750,7 +6748,7 @@
       }),
       repairStudySchedules(){
         if(READ_ONLY_LINK||window.studyCloud?.isReadOnly?.())return;
-        const draft=structuredClone(state);if(!window.studyDegree.repairClassLinks(draft))return;
+        const draft=structuredClone(state),linked=window.studyDegree.ensureTaskLinks(draft),repaired=window.studyDegree.repairClassLinks(draft);if(!linked&&!repaired)return;
         state=normalizeState(draft);commit(undefined,true,"plan");
       },
       removeCourseStudyTask(courseId,taskId){
@@ -6803,7 +6801,7 @@
       },
       setPlannedTaskDone(courseId,taskId,done) {
         if (READ_ONLY_LINK || window.studyCloud?.isReadOnly?.()) return;
-        const degreeCourse=state.degreePlan?.modules.flatMap(m=>m.courses).find(c=>c.id===courseId);
+        const degreeCourse=window.studyDegree.findScheduleCourse(state,courseId);
         const learning=state.semesters.flatMap(s=>s.courses).find(c=>c.id===degreeCourse?.courseId);
         const task=learning?.categories.flatMap(c=>c.tasks).find(t=>t.id===taskId) || degreeCourse?.tasks.find(t=>t.id===taskId);
         if(task){window.studyDegree.setStudyTaskDone(state,taskId,done,courseId);commit();}
@@ -6823,7 +6821,7 @@
       startPlannedTaskTimer(courseId,taskId) {
         if (READ_ONLY_LINK || window.studyCloud?.isReadOnly?.()) return;
         if(state.timer.active){setActivePanel("timer");return;}
-        const degreeCourse=state.degreePlan?.modules.flatMap(m=>m.courses).find(c=>c.id===courseId);
+        const degreeCourse=window.studyDegree.findScheduleCourse(state,courseId);
         const stage=state.semesters.find(s=>s.courses.some(c=>c.id===degreeCourse?.courseId));
         const learning=stage?.courses.find(c=>c.id===degreeCourse?.courseId);
         const category=learning?.categories.find(c=>c.tasks.some(t=>t.id===taskId));
@@ -6859,7 +6857,7 @@
       },
       replaceState(nextState, options = {}) {
         state = normalizeState(nextState);
-        if(!READ_ONLY_LINK&&!window.studyCloud?.isReadOnly?.())window.studyDegree?.repairClassLinks(state);
+        if(!READ_ONLY_LINK&&!window.studyCloud?.isReadOnly?.()){window.studyDegree?.ensureTaskLinks(state);window.studyDegree?.repairClassLinks(state);}
         window.studyDegree?.resetTaskSync(state);
         history = [JSON.stringify(state)];
         historyIndex = 0;historyKinds=["baseline"];

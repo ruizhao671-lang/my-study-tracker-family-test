@@ -83,6 +83,7 @@ private_state = {
     ],
 }
 
+private_state["semesters"][0]["courses"][0].update({"planEvents": [{"id": "source-private-slot", "title": "PRIVATE_PLANNED_TASK"}], "weeklyRules": [{"id": "source-private-rule"}], "planHistory": [{"id": "source-private-history", "label": "PRIVATE_PLANNED_TASK"}], "planEventArchive": [{"event": {"title": "PRIVATE_PLANNED_TASK"}}]})
 private_state["semesters"][0]["courses"][0]["categories"][0]["tasks"][0].update(
     {"scheduleExecuted": True, "scheduleHours": 2, "plannedPeriod": "PRIVATE_PLANNED_PERIOD"}
 )

@@ -1,3 +1,4 @@
+import {scheduleCourses} from "./study-workspace.js";
 // Repair orphan attendance tasks using existing class dates, never generate a second class.
 const dateOK=s=>typeof s==="string"&&/^\d{4}-\d{2}-\d{2}$/.test(s)&&Number.isFinite(Date.parse(s));
 const day=(s,n)=>{const d=new Date(s+"T12:00:00Z");d.setUTCDate(d.getUTCDate()+n);return d.toISOString().slice(0,10);};
@@ -13,7 +14,7 @@ function occurrences(e){
 }
 export function repairFixedClassLinks(state){
  const before=JSON.stringify([state.degreePlan||null,state.semesters||[]]);
- for(const course of state.degreePlan?.modules.flatMap(m=>m.courses)||[]){
+ for(const course of scheduleCourses(state)){
   const learning=state.semesters?.flatMap(s=>s.courses).find(c=>c.id===course.courseId);
   const tasks=learning?learning.categories.flatMap(c=>lecture(c.name)?c.tasks.map(raw=>({raw,group:c.name})):[]):(course.tasks||[]).filter(t=>lecture(t.group)).map(raw=>({raw,group:raw.group}));
   const numbered=tasks.filter(t=>ordinal(t.raw)>0);tasks.splice(0,tasks.length,...numbered);

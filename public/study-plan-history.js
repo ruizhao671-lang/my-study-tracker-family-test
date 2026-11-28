@@ -1,6 +1,7 @@
+import {scheduleCourses,findScheduleCourse} from "./study-workspace.js";
 import {matchImportedItem} from "./study-plan-update-core.js";
 import {courseStudyTasks,applyCourseStudyPlan,taskScheduleEvents} from "./study-plan-core.js";
-const findCourse=(state,id)=>{const course=state.degreePlan?.modules.flatMap(m=>m.courses).find(c=>c.id===id);if(!course)throw new Error("Course missing");return course;};
+const findCourse=(state,id)=>{const course=findScheduleCourse(state,id);if(!course)throw new Error("Course missing");return course;};
 export function captureCoursePlan(state,courseId){
   const course=findCourse(state,courseId);
   return {link:course.courseId||"",range:structuredClone(course.planRange||null),tasks:courseStudyTasks(course,state.semesters).map(t=>{const {canonical,...task}=t;return task;}),events:structuredClone(course.planEvents||[]),weeklyRules:structuredClone(course.weeklyRules||[])};
@@ -48,7 +49,7 @@ export function recordCoursePlanChange(state,courseId,before,label="修改计划
   add(after,label);
   const trim=target=>{const versions=coursePlanVersions(target);if(versions.length<=2)return false;target.planHistory.shift();target.planHistory[0].snapshot=versions[1].snapshot;delete target.planHistory[0].patch;return true;};
   while(course.planHistory.length>20||new TextEncoder().encode(JSON.stringify(course.planHistory)).length>131072){if(!trim(course))break;}
-  const all=state.degreePlan.modules.flatMap(m=>m.courses);
+  const all=scheduleCourses(state);
   while(new TextEncoder().encode(JSON.stringify(all.map(c=>c.planHistory||[]))).length>524288){
     const oldest=all.filter(c=>c.planHistory?.length>2).sort((a,b)=>a.planHistory[0].createdAt.localeCompare(b.planHistory[0].createdAt))[0];
     if(!oldest||!trim(oldest))break;
@@ -101,14 +102,14 @@ export function restoreCoursePlanVersion(state,courseId,versionId){
     category.tasks.push(structuredClone(archived.task));
   }
   applyCourseStudyPlan(state,courseId,{...restore,replaceLinkedTasks:true});
-  if(restore.range===null)delete course.planRange;
+  if(restore.range===null)course.planRange=undefined;
   recordCoursePlanChange(state,courseId,before,"恢复历史版本");
 }
 
 export function preserveLiveHistory(restored,live,{preserveProgress=false}={}){
   restored.timer=structuredClone(live.timer);
-  for(const course of restored.degreePlan?.modules.flatMap(m=>m.courses)||[]){
-    const current=live.degreePlan?.modules.flatMap(m=>m.courses).find(c=>c.id===course.id);
+  for(const course of scheduleCourses(restored)){
+    const current=findScheduleCourse(live,course.id);
     if(current?.planHistory)course.planHistory=structuredClone(current.planHistory);
     if(current?.planTaskArchive){const activeIds=new Set([...(course.tasks||[]),...restored.semesters.flatMap(s=>s.courses).flatMap(c=>c.categories).flatMap(c=>c.tasks)].map(t=>t.id));course.planTaskArchive=structuredClone(current.planTaskArchive.filter(a=>!activeIds.has(a.task.id)));}
   }
@@ -132,8 +133,8 @@ export function preserveLiveHistory(restored,live,{preserveProgress=false}={}){
         }
       }
     }
-    for(const course of restored.degreePlan?.modules.flatMap(m=>m.courses)||[]){
-      const current=live.degreePlan?.modules.flatMap(m=>m.courses).find(c=>c.id===course.id);
+    for(const course of scheduleCourses(restored)){
+      const current=findScheduleCourse(live,course.id);
       for(const task of course.tasks||[]){const old=current?.tasks.find(t=>t.id===task.id);if(old)task.done=old.done;}
       for(const task of current?.tasks||[])if(!course.tasks.some(t=>t.id===task.id)&&(task.done||(live.timer?.sessions||[]).some(s=>s.taskId===task.id)))course.tasks.push(structuredClone(task));
     }

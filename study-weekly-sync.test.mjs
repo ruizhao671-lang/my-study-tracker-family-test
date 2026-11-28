@@ -83,8 +83,8 @@ const config={categoryId:"ha",weekday:2,startTime:"19:00",endTime:"21:00",fromWe
  setStudyTaskDone(state,raw.id,false);assert.equal(state.timer.active.markTaskDone,false);
  before=studyTaskIndex(state);moved.tasks=[];
  reconcileLinkedTasks(state,before,"2026-11-25");
- assert.equal(course.planEvents.length,1,"Only past schedule remains");
- assert.equal(course.planEvents[0].archivedTask.id,raw.id);assert.equal(course.planEvents[0].taskId,"");
+ assert.equal(course.planEvents.length,0,"Deleted task leaves the active calendar in every period");
+ assert.ok(course.planEventArchive.some(a=>a.event.taskId===raw.id),"Historical plans are archived separately");
  assert.equal(state.timer.sessions.length,1);assert.equal(state.timer.active.archivedTask.taskId,raw.id);
  assert.equal(course.planTaskArchive.find(a=>a.task.id===raw.id).task.attachments[0].name,"keep.pdf");
 }
@@ -95,8 +95,8 @@ const config={categoryId:"ha",weekday:2,startTime:"19:00",endTime:"21:00",fromWe
  course.planEvents=[{id:"series",taskSeriesKey:"series",type:"class",title:"Weekly class",date:"2026-11-25",startTime:"13:00",endTime:"15:00",repeat:{weekdays:[3],until:"2026-12-02",exceptDates:[]}}];
  const before=studyTaskIndex(state);category.tasks.shift();category.tasks.shift();
  reconcileLinkedTasks(state,before,"2026-11-26");
- assert.equal(studyScheduleEntries(state,"2026-11-20","2026-12-10").filter(e=>e.type==="class").length,1);
- assert.equal(studyScheduleEntries(state,"2026-11-25","2026-11-25").find(e=>e.type==="class").taskTitle,"Week 1");
+ assert.equal(studyScheduleEntries(state,"2026-11-20","2026-12-10").filter(e=>e.type==="class").length,0);
+ assert.ok(course.planEventArchive.some(a=>a.event.id==="series"));
 }
 {
  const {state,course,category}=fixture();course.courseId="";course.tasks=[{id:"t1",title:"Independent",done:false}];

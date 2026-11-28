@@ -51,8 +51,8 @@ try{
  assert.equal(await page.locator(".schedule-month-day").count(),42);
  assert.equal(await page.locator('[data-schedule="month"]').getAttribute("aria-pressed"),"true");
  assert.ok((await page.locator(".schedule-summary").innerText()).includes("本月计划"));
- assert.equal(await page.locator('.schedule-month-entry[data-entry="plan-exam:c1:exam"]').count(),1);
- assert.equal(await page.locator('.schedule-month-entry[data-entry="plan-exam:c1:retake"]').count(),1,"Month includes every known sitting");
+ assert.equal(await page.locator('.schedule-month-entry-wrap[data-entry="plan-exam:c1:exam"]').count(),1);
+ assert.equal(await page.locator('.schedule-month-entry-wrap[data-entry="plan-exam:c1:retake"]').count(),1,"Month includes every known sitting");
  assert.equal(await page.locator('.schedule-month-entry[data-scheduling-mode="fixed"]').getAttribute("draggable"),"false");
  assert.equal(await page.locator(".schedule-month-actual").count(),1);
  const monthDay=date=>page.locator('[data-month-date="'+date+'"]');
@@ -68,8 +68,8 @@ try{
  assert.equal((await get()).degreePlan.modules[0].courses[0].planEvents[0].startTime,"18:00");
  assert.equal((await get()).degreePlan.modules[0].courses[0].planEvents[0].endTime,"21:00");
  await monthDay("2026-11-28").locator('[data-entry="plan-event:slot:2026-11-28"]').dragTo(monthDay("2026-11-26"),{targetPosition:{x:80,y:100}});
- await page.locator('[data-task-bucket="all"]').click();
- await page.locator('[data-task-source="t1"] strong').first().dragTo(monthDay("2026-11-29"),{targetPosition:{x:80,y:100}});
+
+ await monthDay("2026-11-26").locator('[data-entry="plan-event:slot:2026-11-26"]').click();await page.locator('[data-schedule="add-task-session"]').click();await page.locator('#degreeDialog [name="date"]').fill("2026-11-29");await page.locator('#degreeDialog button[type="submit"]').click();
  const newSlot=(await get()).degreePlan.modules[0].courses[0].planEvents.find(e=>e.taskId==="t1"&&e.id!=="slot");
  assert.equal(newSlot.date,"2026-11-29");assert.equal(newSlot.startTime,"","Month task drops never invent a clock time");
  await monthDay("2026-11-29").locator('[data-entry="plan-event:'+newSlot.id+':2026-11-29"]').click();

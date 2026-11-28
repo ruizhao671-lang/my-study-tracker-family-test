@@ -1,3 +1,4 @@
+import {scheduleCourses,findScheduleCourse} from "./study-workspace.js";
 import {repairFixedClassLinks} from "./study-class-links.js";
 import {removeCourseStudyTask} from "./study-plan-core.js";
 import {studyTaskIndex,reconcileLinkedTasks,findStudyTask,setStudyTaskDone} from "./study-task-sync.js";
@@ -197,7 +198,7 @@ function render() {
     </div>` : ""}
     ${incomingStudyPlan ? button(word("导入待确认学习计划", "Review incoming study plan"), "incoming-study-plan") : ""}
     </header>
-    ${plan ? (view === "schedule" ? renderStudySchedule(bridge.getState()) : view === "credits" ? renderCredits(plan, semesters) : renderTimeline(plan, semesters)) : renderSetup()}`;
+    ${view === "schedule" ? renderStudySchedule(bridge.getState()) : plan ? (view === "credits" ? renderCredits(plan, semesters) : renderTimeline(plan, semesters)) : renderSetup()}`;
   if(view === "schedule") bindStudySchedule(panel,{bridge,showDialog,render});
   panel.querySelectorAll("details[data-key]").forEach(node => {
     node.open = previousDetails.get(node.dataset.key) ?? node.hasAttribute("data-initial-open");
@@ -640,40 +641,8 @@ function linkProgressDialog(course, semesters) {
 }
 
 function openProgressLinks(courseId) {
-  const { plan, semesters, editable } = get();
-  if (!editable) return;
-  const learning = semesters.flatMap(stage => stage.courses).find(course => course.id === courseId);
-  if (!learning) return;
-  const entries = (plan?.modules || []).flatMap(module => module.courses.map(course => ({ course, label: course.name + " · " + module.name })));
-  const title = word("关联毕业规划", "Link degree plan");
-  if (!entries.length) {
-    showDialog(title, caption(word("先在「毕业规划」添加课程，就可以在这里选择。", "Add a course to the degree plan to link it here.")),
-      bridge.openDegreePlanner, word("打开毕业规划", "Open Degree Planner"));
-    return;
-  }
-  const current = entries.filter(({ course }) => course.courseId === courseId);
-  const candidates = entries.filter(({ course }) => course.courseId !== courseId);
-  const choices = candidates.map(({ course, label }) => {
-    const previous = linkedProgressCourse(course, semesters);
-    return option(course.id, previous ? label + word(" · 目前关联到 ", " · Currently linked to ") + previous.name : label);
-  }).join("");
-  showDialog(title, `<p><strong>${escape(learning.name)}</strong></p>` +
-    (current.length ? caption(word("已关联的课程可取消勾选来解除。", "Uncheck a linked course to unlink it.")) +
-      current.map(({ course, label }) => `<div class="degree-row"><label><input type="checkbox" name="keep" value="${escape(course.id)}" checked>
-        ${escape(label)}</label></div>`).join("") : "") +
-    (choices ? fields(select(word("选择毕业规划中的课程", "Choose a course from the degree plan"), "add",
-      option("", word("选择课程", "Select course")) + choices)) : ""), data => {
-    const retained = new Set(data.getAll("keep"));
-    const remove = new Set(current.map(({ course }) => course.id).filter(id => !retained.has(id)));
-    const add = data.get("add");
-    if (!remove.size && !add) return;
-    update(draft => {
-      for (const course of allCourses(draft)) {
-        if (remove.has(course.id)) setProgressLink(course, "", "", semesters);
-        if (course.id === add) setProgressLink(course, courseId, "", semesters);
-      }
-    });
-  });
+  const state=bridge.getState(),course=scheduleCourses(state).find(c=>c.courseId===courseId);
+  if(course)window.studyDegree.openCourseStudyPlan(course.id);
 }
 
 function deleteCourseDialog(course, module) {
@@ -794,8 +763,7 @@ function showIncomingStudyPlan(chooseCourse = false) {
   const { editable, plan, semesters } = get();
   const pending = incomingStudyPlan;
   if (!editable || !pending) return;
-  const entries = (plan?.modules || []).flatMap(group =>
-    group.courses.map(course => ({ course, group: group.name })));
+  const entries = scheduleCourses(bridge.getState()).map(course=>({course,group:course.progressOnly?word("学习进度","Learning progress"):(plan?.modules||[]).find(m=>m.courses.some(c=>c.id===course.id))?.name||""}));
   if (!entries.length) {
     bridge.showToast(word("登录后打开已有毕业规划，或创建规划并添加课程，就能导入这份计划。",
       "Sign in to your degree plan, or create a degree plan with a course to import these tasks."));
@@ -1069,9 +1037,10 @@ panel.addEventListener("dragend", () => {
 
 let sharedTaskSnapshot=studyTaskIndex(bridge.getState());
 window.studyDegree = {
-  findStudyTask,setStudyTaskDone,removeCourseStudyTask,
+  findStudyTask,setStudyTaskDone,removeCourseStudyTask,findScheduleCourse,
+  ensureTaskLinks(state){const before=JSON.stringify(state);reconcileLinkedTasks(state);return before!==JSON.stringify(state);},
   repairClassLinks(state){
-    const before=new Map((state.degreePlan?.modules.flatMap(m=>m.courses)||[]).filter(c=>c.planEvents?.some(e=>e.type==="class"||e.type==="workshop")).map(c=>[c.id,captureCoursePlan(state,c.id)]));
+    const before=new Map((scheduleCourses(state)).filter(c=>c.planEvents?.some(e=>e.type==="class"||e.type==="workshop")).map(c=>[c.id,captureCoursePlan(state,c.id)]));
     if(!repairFixedClassLinks(state))return false;
     for(const [id,snapshot]of before)recordCoursePlanChange(state,id,snapshot,"关联固定课程与学习任务");
     return true;
@@ -1080,7 +1049,7 @@ window.studyDegree = {
   reconcileStudyWorkspace(state){
     sharedTaskSnapshot=reconcileLinkedTasks(state,sharedTaskSnapshot);
     window.studyDegree.repairClassLinks(state);
-    const before=new Map((state.degreePlan?.modules.flatMap(m=>m.courses)||[]).filter(c=>c.weeklyRules?.some(r=>r.enabled)).map(c=>[c.id,captureCoursePlan(state,c.id)]));
+    const before=new Map((scheduleCourses(state)).filter(c=>c.weeklyRules?.some(r=>r.enabled)).map(c=>[c.id,captureCoursePlan(state,c.id)]));
     if(refreshWeeklyRules(state))for(const [id,snapshot]of before)recordCoursePlanChange(state,id,snapshot,"按每周规则新增安排");
   },
   applyWeeklyRule,
@@ -1089,14 +1058,14 @@ window.studyDegree = {
   openSchedule(courseId="",date="",options={}) {
     if(!get().editable)return;
     const current=get();
-    const course=current.plan?.modules.flatMap(module=>module.courses).find(course=>course.id===courseId);
+    const course=findScheduleCourse(bridge.getState(),courseId);
     const targetDate=date || (course ? studyPlanFocusDate(course,current.semesters,today()) : "");
     selectStudySchedule(courseId,targetDate,options); view="schedule"; bridge.openDegreePlanner(); render();
     requestAnimationFrame(()=>panel.scrollIntoView({block:"start"}));
   },
   openCourseStudyPlan(courseId) {
     const { plan, semesters, editable } = get();
-    const course = plan && allCourses(plan).find(item => item.id === courseId);
+    const course = findScheduleCourse(bridge.getState(),courseId);
     if (editable && course) openStudyPlan(course, plan, semesters);
   }
 };

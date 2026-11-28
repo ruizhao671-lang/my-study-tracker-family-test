@@ -1,4 +1,5 @@
 import {itemChanges} from "./study-plan-update-core.js";
+import {findScheduleCourse} from "./study-workspace.js";
 import {coursePlanVersions,coursePlanRestorePreview,captureCoursePlan} from "./study-plan-history.js";
 const en=()=>window.studyI18n?.getLanguage?.()==="en";
 const w=(zh,english)=>en()?english:zh;
@@ -34,7 +35,7 @@ export function decisionReview(item,previous,kind="task",taskNames={}){
 }
 
 export function historyPanel(state,courseId,selected=""){
-  const course=state.degreePlan.modules.flatMap(m=>m.courses).find(c=>c.id===courseId),versions=coursePlanVersions(course);
+  const course=findScheduleCourse(state,courseId),versions=coursePlanVersions(course);
   if(!versions.length)return `<div class="plan-empty">${w("下一次保存计划时会自动记录修改前后的版本。已有计划和进度不会改变。","The next plan save will record before/after versions without changing existing progress.")}</div>`;
   let preview="";
   if(selected){
