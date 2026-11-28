@@ -34,15 +34,19 @@ export function repairFixedClassLinks(state){
    const starts=sources.filter(e=>e.type==="class"&&e.repeat&&dateOK(e.date)).map(e=>e.date).sort();
    if(starts[0]&&dateOK(course.planRange?.start)&&week(starts[0])===week(course.planRange.start))anchors.add(week(starts[0]));
   }
-  const anchor=anchors.size===1?[...anchors][0]:"",byWeek=new Map();
-  for(const task of tasks){
-   const t=task.raw,n=ordinal(t),date=t.weekOf||t.windowStart||t.plannedDate||t.date;
-   const key=dateOK(date)?week(date):anchor&&n?day(anchor,(n-1)*7):"";
-   if(key){if(!byWeek.has(key))byWeek.set(key,[]);byWeek.get(key).push(task);}
-  }
-  const options=new Map();
+  const anchor=anchors.size===1?[...anchors][0]:"",byWeek=new Map(),options=new Map(),boundWeeks=new Map();
   for(const e of sources)for(const date of occurrences(e)){
    const key=week(date);if(!options.has(key))options.set(key,[]);options.get(key).push({e,date});
+   // Use the same stable ID precedence as the calendar. A week label or an old
+   // completion window must never add another class to an already linked task.
+   const id=e.taskWeekLinks?.[key]||(e.taskSeriesKey?tasks.find(t=>(t.raw.planSeriesKey||t.raw.seriesKey)===e.taskSeriesKey&&t.raw.weekOf===key)?.raw.id:e.taskId);
+   if(id){if(!boundWeeks.has(id))boundWeeks.set(id,new Set());boundWeeks.get(id).add(key);}
+  }
+  for(const task of tasks){
+   const t=task.raw,n=ordinal(t),date=t.weekOf||t.windowStart||t.plannedDate||t.date;
+   const inferred=dateOK(date)?week(date):anchor&&n?day(anchor,(n-1)*7):"";
+   const keys=boundWeeks.has(t.id)?[...boundWeeks.get(t.id)]:inferred?[inferred]:[];
+   for(const key of keys){if(!byWeek.has(key))byWeek.set(key,[]);byWeek.get(key).push(task);}
   }
   const duplicates=new Set();
   for(const [key,items]of byWeek){

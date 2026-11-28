@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>My Study Tracker</title>
   <link rel="stylesheet" href="degree-plan.css">
-  <link rel="stylesheet" href="study-plan.css?v=20261128-3">
+  <link rel="stylesheet" href="study-plan.css?v=20261128-4">
   <link rel="stylesheet" href="exam-hourglass.css">
   <style>
     :root {
@@ -2342,7 +2342,7 @@
 
   <script src="cloud-bootstrap.js"></script>
   <script type="module" src="api-sync.js"></script>
-  <script type="module" src="degree-plan.js?v=20261128-3"></script>
+  <script type="module" src="degree-plan.js?v=20261128-4"></script>
   <script src="i18n.js"></script>
   <script>
     const STORAGE_KEY = "study-tracker-online-state-v1";
@@ -2368,6 +2368,7 @@
     ];
 
     let state = normalizeState(loadState());
+    let progressScheduleIndex = new Map();
     let editContext = null;
     let appClipboard = null;
     let templatePlacementActive = false;
@@ -3028,6 +3029,15 @@
       }).join("");
     }
 
+    function taskScheduleText(task) {
+      const planning=progressScheduleIndex.get(task.id);
+      return planning?window.studyDegree.taskSchedulePresentation(planning,currentLocale()==="en-US").text:"";
+    }
+
+    function taskDisplayName(task) {
+      return window.studyDegree?.progressTaskName(task) ?? [task.title||task.name,task.detail].filter(Boolean).join(" ");
+    }
+
     function currentLocale() {
       return window.studyI18n?.getLanguage?.() === "en" ? "en-US" : "zh-CN";
     }
@@ -3303,7 +3313,7 @@
         categoryId,
         categoryName: category?.name || "",
         taskId,
-        taskName: task ? (task.detail ? `${task.title || task.name} ${task.detail}` : task.title || task.name || "") : "",
+        taskName: task ? taskDisplayName(task) : "",
         task,
         markTaskDone: Boolean(task && els.timerCompleteTask.checked),
         note: els.timerNote.value.trim()
@@ -3340,7 +3350,7 @@
       els.timerCategory.value = course?.categories?.some(category => category.id === selectedCategoryId) ? selectedCategoryId : "";
       const category = course && els.timerCategory.value ? findCategory(course, els.timerCategory.value) : null;
       els.timerTask.innerHTML = `<option value="">${escapeHtml(t("不关联任务"))}</option>${(category?.tasks || []).map(task => {
-        const label = task.detail ? `${task.title || task.name} ${task.detail}` : task.title || task.name || "";
+        const label = taskDisplayName(task);
         return `<option value="${task.id}">${escapeHtml(label)}</option>`;
       }).join("")}`;
       els.timerTask.disabled = !category;
@@ -3365,7 +3375,7 @@
         categoryId: category?.id || "",
         categoryName: category?.name || "",
         taskId: task?.id || "",
-        taskName: task ? (task.detail ? `${task.title || task.name} ${task.detail}` : task.title || task.name || "") : "",
+        taskName: task ? taskDisplayName(task) : "",
         task,
         markTaskDone: Boolean(task && markTaskDone),
         note
@@ -3416,7 +3426,7 @@
         const course = semester && courseSelect.value ? findCourse(semester, courseSelect.value) : null;
         const category = course && categorySelect.value ? findCategory(course, categorySelect.value) : null;
         replaceSelectOptions(taskSelect, selectOptions(category?.tasks || [], "不关联任务", task => (
-          task.detail ? `${task.title || task.name} ${task.detail}` : task.title || task.name || ""
+          taskDisplayName(task)
         )), selectedTaskId);
         taskSelect.disabled = !category;
       };
@@ -4128,6 +4138,7 @@
     }
 
     function render() {
+      progressScheduleIndex = !READ_ONLY_LINK&&!window.studyCloud?.isReadOnly?.() ? window.studyDegree?.progressTaskScheduleIndex(state)||new Map() : new Map();
       const pageTitle = state.ownerName ? `${state.ownerName}的学习系统` : "我的学习系统";
       els.appTitle.textContent = pageTitle;
       els.editOwnerBtn.hidden = !state.ownerName;
@@ -4320,7 +4331,7 @@
           const plot = document.createElement("div");
           plot.className = `garden-plot${task.done ? " done" : ""}`;
           plot.style.setProperty("--plot-accent", categoryColors[categoryIndex % categoryColors.length]);
-          const title = [category.name, task.title || task.name || "", task.detail || ""].filter(Boolean).join(" · ");
+          const title = [category.name, taskDisplayName(task),taskScheduleText(task)].filter(Boolean).join(" · ");
           plot.title = title;
           plot.setAttribute("aria-label", `${title}：${task.done ? "已完成" : "未完成"}`);
           if (task.done) {
@@ -4684,16 +4695,23 @@
       taskEl.querySelector("input").checked = task.done;
       const title = task.title || task.name || "";
       const detail = task.detail || "";
+      const planning = progressScheduleIndex.get(task.id);
+      const legacyDate = Boolean(planning&&window.studyDegree?.isLegacyDateDetail(detail));
       const nameEl = taskEl.querySelector(".task-name");
       nameEl.innerHTML = `
         <strong class="task-title"></strong>
-        ${detail ? `<span class="task-detail"></span>` : `<input class="task-detail-input" data-action="update-task-detail" placeholder="填写第二栏内容">`}
+        ${detail ? (legacyDate?"":`<span class="task-detail"></span>`) : `<input class="task-detail-input" data-action="update-task-detail" placeholder="填写第二栏内容">`}
       `;
       nameEl.querySelector(".task-title").textContent = title;
       const detailEl = nameEl.querySelector(".task-detail");
       if (detailEl) detailEl.textContent = detail;
       const detailInput = nameEl.querySelector(".task-detail-input");
       if (detailInput) detailInput.value = detail;
+      if(planning){
+        const presentation=window.studyDegree.taskSchedulePresentation(planning,currentLocale()==="en-US");
+        const schedule=document.createElement("button");schedule.type="button";schedule.className="task-schedule-summary";schedule.dataset.action="open-task-study-schedule";schedule.textContent=presentation.text;schedule.title=presentation.tooltip;nameEl.appendChild(schedule);
+        if(legacyDate){const previous=document.createElement("p");previous.className="task-legacy-date";previous.textContent=presentation.legacyCaption+detail;taskEl.querySelector(".task-extra").prepend(previous);}
+      }
       taskEl.querySelector(".task-note").value = task.note || "";
       renderAttachments(taskEl.querySelector(".attachments"), task, "task");
 
@@ -5569,7 +5587,8 @@
           const categoryProgress = getProgress(category.tasks);
           const tasksHtml = category.tasks.map((task, index) => {
             const title = task.title || task.name || "";
-            const detail = task.detail || "";
+            const planning=taskScheduleText(task);
+            const detail = planning&&window.studyDegree?.isLegacyDateDetail(task.detail)?"":task.detail||"";
             return `
               <tr>
                 <td>${index + 1}</td>
@@ -5577,6 +5596,7 @@
                 <td>
                   <strong>${escapeHtml(title)}</strong>
                   ${detail ? `<span>${escapeHtml(detail)}</span>` : ""}
+                  ${planning?`<span>${escapeHtml(planning)}</span>`:""}
                   ${task.note ? `<span>备注：${escapeHtml(task.note)}</span>` : ""}
                   ${(task.attachments || []).length ? `<span>附件：${task.attachments.length} 个</span>` : ""}
                 </td>
@@ -6354,6 +6374,9 @@
         }
       }
 
+      if(action==="open-task-study-schedule"&&task){
+        const planning=progressScheduleIndex.get(task.id);if(planning)window.studyDegree.openSchedule(planning.courseId,planning.focusDate,{taskId:task.id});
+      }
       if(["open-linked-study-plan","open-linked-study-schedule"].includes(action) && course){
         const linked=state.degreePlan?.modules.flatMap(m=>m.courses).find(c=>c.courseId===course.id)||{id:"progress-"+course.id};
         if(linked){if(action==="open-linked-study-schedule")window.studyDegree.openSchedule(linked.id);else window.studyDegree.openCourseStudyPlan(linked.id);}

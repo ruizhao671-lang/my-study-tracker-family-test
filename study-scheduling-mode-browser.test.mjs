@@ -25,7 +25,7 @@ try{
  await page.locator("#degreePanelBtn").click();
  await page.locator('#degreePanel [data-degree="schedule"]').click();
  await page.locator("[data-schedule-filter]").selectOption("kc");
- assert.equal(await page.locator("[data-schedule-version]").innerText(),"v2026.11.28.3");
+ assert.equal(await page.locator("[data-schedule-version]").innerText(),"v2026.11.28.4");
  assert.ok((await page.locator("[data-calendar-week]").innerText()).includes("校历第 7 周"));
  assert.ok((await page.locator("[data-calendar-week]").innerText()).includes("KW 48"));
 

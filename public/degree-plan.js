@@ -1,3 +1,4 @@
+import {progressTaskScheduleIndex,taskSchedulePresentation,isLegacyDateDetail,progressTaskName} from "./study-progress-view.js";
 import {scheduleCourses,findScheduleCourse} from "./study-workspace.js";
 import {repairFixedClassLinks} from "./study-class-links.js";
 import {removeCourseStudyTask} from "./study-plan-core.js";
@@ -1037,7 +1038,7 @@ panel.addEventListener("dragend", () => {
 
 let sharedTaskSnapshot=studyTaskIndex(bridge.getState());
 window.studyDegree = {
-  findStudyTask,setStudyTaskDone,removeCourseStudyTask,findScheduleCourse,
+  findStudyTask,setStudyTaskDone,removeCourseStudyTask,findScheduleCourse,progressTaskScheduleIndex,taskSchedulePresentation,isLegacyDateDetail,progressTaskName,
   ensureTaskLinks(state){const before=JSON.stringify(state);reconcileLinkedTasks(state);return before!==JSON.stringify(state);},
   repairClassLinks(state){
     const before=new Map((scheduleCourses(state)).filter(c=>c.planEvents?.some(e=>e.type==="class"||e.type==="workshop")).map(c=>[c.id,captureCoursePlan(state,c.id)]));
@@ -1061,7 +1062,10 @@ window.studyDegree = {
     const course=findScheduleCourse(bridge.getState(),courseId);
     const targetDate=date || (course ? studyPlanFocusDate(course,current.semesters,today()) : "");
     selectStudySchedule(courseId,targetDate,options); view="schedule"; bridge.openDegreePlanner(); render();
-    requestAnimationFrame(()=>panel.scrollIntoView({block:"start"}));
+    requestAnimationFrame(()=>{
+      const task=options.taskId&&(panel.querySelector('[data-task-source-id="'+CSS.escape(options.taskId)+'"]')||panel.querySelector('[data-task-source="'+CSS.escape(options.taskId)+'"]'));
+      (task||panel).scrollIntoView({block:task?"center":"start",inline:"center"});
+    });
   },
   openCourseStudyPlan(courseId) {
     const { plan, semesters, editable } = get();

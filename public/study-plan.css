@@ -43,7 +43,7 @@
 .task-shelf-category small{color:#728478;font-size:.72rem;white-space:nowrap}
 .task-group-grid{display:grid;grid-template-columns:minmax(0,1fr);gap:8px}
 .task-drag-hint{display:block;border-top:1px dashed #b6cec1;padding-top:7px;margin-top:5px;font-size:.72rem;color:#4e7460;cursor:grab}
-.task-brick.is-focused{outline:2px solid #2c9276;outline-offset:2px}
+.schedule-event.is-focused,.task-brick.is-focused{outline:2px solid #2c9276;outline-offset:2px}
 @media(max-width:1150px){.task-group-grid{grid-template-columns:repeat(auto-fit,minmax(220px,1fr))}}
 @media(max-width:600px){.plan-task-group>header{padding:10px;align-items:flex-start}.plan-task-group>header>.btn{font-size:.75rem;padding:6px}.plan-task-overview{gap:7px}.plan-path-actions .btn{min-width:190px}.task-group-grid{grid-template-columns:minmax(0,1fr)}}
 
@@ -267,3 +267,7 @@ body.study-schedule-mode .app{width:min(1480px,calc(100% - 36px))}
 .schedule-plan-list{padding:14px}.schedule-plan-list .task-shelf-course{padding:10px}.task-shelf-category>header{cursor:default}
 .schedule-month-entry-wrap{position:relative;min-width:0}.schedule-month-entry-wrap .schedule-month-entry{width:100%;padding-right:25px}
 .schedule-month-entry-wrap .schedule-delete-x{font-size:16px;width:20px;height:20px;top:2px;right:2px}
+
+.task-schedule-summary{display:block;margin-top:4px;padding:2px 0;border:0;background:none;color:#157c70;font:inherit;font-size:.82em;line-height:1.5;text-align:left;cursor:pointer;white-space:normal;overflow-wrap:anywhere}
+.task-schedule-summary:hover{text-decoration:underline}.task-schedule-summary:focus-visible{outline:2px solid #328879;outline-offset:3px;border-radius:3px}
+.task-legacy-date{font-size:.82em;color:var(--muted);margin:0 0 6px;white-space:pre-wrap}

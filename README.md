@@ -136,6 +136,8 @@ The sidebar is only for incomplete tasks with no allocated session. It can show 
 
 Weekly category scheduling asks for a first task, first week, weekday and times, then automatically fills consecutive dates. The editable preview supports skip weeks and explicit overlap confirmation. Existing manual slots, fixed classes and completed tasks remain protected. Older course-week anchor rules continue to work. Canceled generated slots stay canceled; new matching tasks can follow the saved rule.
 
+Progress task rows read their dates directly from the same calendar allocations, with a direct link to the highlighted task. Legacy plain-date detail text stays in task details instead of appearing as the scheduled date. Existing fixed task IDs take precedence over inferred week numbers. Timer completion remains a user choice and updates this same task. Check with `node study-progress-view.test.mjs` and `node study-progress-view-browser.test.mjs`.
+
 Run `node study-simple-planner.test.mjs` and `node study-simple-planner-browser.test.mjs` for the simplified planner and progress-only course coverage. The browser check covers scheduling, splitting, canceling, dragging back, task deletion, fixed classes, weekly dates, imports through the editor, task timers, reloads and mobile layout.
 
 Run `node study-weekly-sync.test.mjs` and `node study-weekly-sync-browser.test.mjs` (with the same browser environment) for batch scheduling and cross-panel synchronization checks.
